@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Beauty E-Commerce Platform",
-    "slug": "beauty-ecommerce-platform",
+    "name": "Botica",
+    "slug": "Botica",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,11 +15,9 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.beauty-ecommerce-platform",
+      "bundleIdentifier": "app.rork.Botica",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ],
+        "UIBackgroundModes": ["audio"],
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone"
       }
     },
@@ -29,9 +27,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "app.rork.beauty_ecommerce_platform",
-      "permissions": [
-        "RECORD_AUDIO"
-      ]
+      "permissions": ["RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -67,6 +63,12 @@
       "assetPatternsToBeBundled": [],
       "disableAntiBrickingMeasures": false
     },
-    "runtimeVersion": "<UNKNOWN>"
+    "runtimeVersion": "<UNKNOWN>",
+    "extra": {
+      "BASE_URL": "http://10.0.2.2:8000/graphql",
+      "STORE_NAME": "Botica",
+      "STORE_ACCESS_TOKEN": "your-access-token",
+      "ADMIN_ACCESS_TOKEN": "your-admin-token"
+    }
   }
 }

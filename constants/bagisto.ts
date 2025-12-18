@@ -1,10 +1,11 @@
 import Constants from 'expo-constants';
 
 const extra =
+  // Constants.manifest?.extra ||
   Constants.expoConfig?.extra ||
   {};
 
-export const SHOPIFY_CONFIG = {
+export const BAGISTO_CONFIG = {
   baseUrl: extra.BASE_URL,
   storeName: extra.STORE_NAME,
   storefrontAccessToken: extra.STORE_ACCESS_TOKEN,
