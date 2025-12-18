@@ -1,5 +1,7 @@
 import { SHOPIFY_CONFIG } from '@/constants/shopify';
+import { BAGISTO_CONFIG } from '@/constants/bagisto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 const SHOPIFY_API_VERSION = '2024-10';
 const AUTH_STORAGE_KEY = '@beauty_auth';
@@ -18,21 +20,41 @@ export interface Address {
   isDefault?: boolean;
 }
 
+function mapGraphQLAddressToAddress(gqlAddress: any): Address {
+  return {
+    id: gqlAddress.id,
+    firstName: gqlAddress.firstName,
+    lastName: gqlAddress.lastName,
+    address1: gqlAddress.address,
+    address2: undefined,
+    city: gqlAddress.city,
+    province: gqlAddress.state,
+    zip: gqlAddress.postcode,
+    country: gqlAddress.country,
+    phone: gqlAddress.phone,
+    isDefault: gqlAddress.defaultAddress,
+  };
+}
+
+
 export interface Customer {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
+  firstName?: string;
+  lastName?: string;
   displayName: string;
+  phone?: string;
   defaultAddress?: Address;
+  addresses?: Address[];
 }
+
 
 interface AuthState {
   accessToken: string;
-  expiresAt: string;
+  expiresAt: string; // computed
   customer: Customer;
 }
+
 
 interface GraphQLResponse {
   data?: any;
@@ -43,79 +65,69 @@ class AuthService {
   private baseUrl: string;
   private headers: Record<string, string>;
 
+  
+
   constructor() {
-    const storeName = SHOPIFY_CONFIG.storeName;
-    const token = SHOPIFY_CONFIG.storefrontAccessToken;
-    
-    if (!storeName || storeName === 'YOUR_STORE_NAME' || !token || token === 'YOUR_STOREFRONT_ACCESS_TOKEN') {
-      console.warn('Shopify not configured. Please update constants/shopify.ts');
-      this.baseUrl = '';
-      this.headers = {};
-      return;
-    }
-    
-    this.baseUrl = `https://${storeName}.myshopify.com/api/${SHOPIFY_API_VERSION}/graphql.json`;
+    this.baseUrl = BAGISTO_CONFIG.baseUrl;
     this.headers = {
       'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': token,
+      'Accept': 'application/json',
     };
   }
 
-  private async graphqlQuery(query: string): Promise<GraphQLResponse> {
-    if (!this.baseUrl) {
-      throw new Error('Shopify not configured');
-    }
-
-    console.log('Auth GraphQL Query:', query);
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify({ query }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Shopify API error response:', errorText);
-      throw new Error(`Shopify API error: ${response.status} - ${errorText}`);
-    }
-
-    const data: GraphQLResponse = await response.json();
-    console.log('Auth GraphQL Response:', JSON.stringify(data, null, 2));
-    
-    if (data.errors) {
-      console.error('GraphQL errors:', data.errors);
-      throw new Error(`GraphQL errors: ${data.errors.map(e => e.message).join(', ')}`);
-    }
-
-    return data;
-  }
-
+  // -------------------------------
+  // CUSTOMER LOGIN
+  // -------------------------------
   async login(email: string, password: string): Promise<AuthState> {
     try {
-      console.log('Attempting login for:', email);
-      
+      console.log('Attempting customer login:', email);
+
       const query = `
-        mutation customerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
-          customerAccessTokenCreate(input: $input) {
-            customerAccessToken {
-              accessToken
-              expiresAt
+        mutation CustomerLogin(
+          $email: String!
+          $password: String!
+        ) {
+          customerLogin(
+            input: {
+              email: $email
+              password: $password
             }
-            customerUserErrors {
-              code
-              field
-              message
+          ) {
+            success
+            message
+            accessToken
+            tokenType
+            expiresIn
+            customer {
+              id
+              name
+              email
+              phone
+              defaultAddress {
+                id
+                firstName
+                lastName
+                address
+                city
+                state
+                postcode
+                country
+                phone
+                defaultAddress
+              }
             }
           }
         }
       `;
 
       const variables = {
-        input: {
-          email,
-          password,
-        },
+        email,
+        password,
+        remember: true,
+        // deviceToken: GlobalData.fcmToken,
+        // deviceName: GlobalData.deviceName,
       };
+      console.log("Base URL: " + this.baseUrl);
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -123,41 +135,62 @@ class AuthService {
         body: JSON.stringify({ query, variables }),
       });
 
-      const data = await response.json();
-      console.log('Login response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      console.log('Login response:', JSON.stringify(json, null, 2));
 
-      const result = data.data?.customerAccessTokenCreate;
-      
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Login failed');
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(', '));
       }
 
-      const accessToken = result?.customerAccessToken?.accessToken;
-      const expiresAt = result?.customerAccessToken?.expiresAt;
+      const result = json?.data?.customerLogin;
 
-      if (!accessToken) {
+      if (!result?.success) {
+        throw new Error(result?.message || 'Login failed');
+      }
+
+      if (!result.accessToken) {
         throw new Error('No access token received');
       }
 
-      const customer = await this.getCustomer(accessToken);
-      
+      // -------------------------------
+      // Build Customer
+      // -------------------------------
+      const customer: Customer = {
+        id: result.customer.id,
+        email: result.customer.email,
+        displayName: result.customer.name,
+        phone: result.customer.phone,
+        defaultAddress: result.customer.defaultAddress
+          ? mapGraphQLAddressToAddress(result.customer.defaultAddress)
+          : undefined,
+      };
+
+      // -------------------------------
+      // Compute expiresAt
+      // -------------------------------
+      const expiresAt = new Date(
+        Date.now() + result.expiresIn * 1000
+      ).toISOString();
+
       const authState: AuthState = {
-        accessToken,
+        accessToken: result.accessToken,
         expiresAt,
         customer,
       };
 
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authState));
-      console.log('Login successful for:', customer.email);
-      
+      await AsyncStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify(authState)
+      );
+
+      console.log('Login successful:', customer.email);
+
       return authState;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
     }
   }
-
   async signup(email: string, password: string, firstName: string, lastName: string): Promise<AuthState> {
     try {
       console.log('Creating customer account for:', email);
