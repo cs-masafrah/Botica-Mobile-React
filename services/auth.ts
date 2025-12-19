@@ -344,38 +344,47 @@ class AuthService {
     }
   }
 
-  async logout(accessToken: string): Promise<void> {
+  async logout(): Promise<void> {
     try {
       console.log('Logging out...');
-      
+
       const query = `
-        mutation customerAccessTokenDelete($customerAccessToken: String!) {
-          customerAccessTokenDelete(customerAccessToken: $customerAccessToken) {
-            deletedAccessToken
-            deletedCustomerAccessTokenId
-            userErrors {
-              field
-              message
-            }
+        mutation CustomerLogout {
+          customerLogout {
+            success
+            message
           }
         }
       `;
 
-      const variables = {
-        customerAccessToken: accessToken,
-      };
-
-      await fetch(this.baseUrl, {
+      const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.headers,
-        body: JSON.stringify({ query, variables }),
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${(await this.getStoredAuth())?.accessToken}`,
+        },
+        body: JSON.stringify({ query }),
       });
 
-      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-      console.log('Logout successful');
+      const json = await response.json();
+      console.log('Logout response:', JSON.stringify(json, null, 2));
+
+      if (json.errors?.length) {
+        console.error('GraphQL Errors:', json.errors);
+      }
+
+      const result = json.data?.customerLogout;
+
+      if (!result?.success) {
+        console.warn(result?.message || 'Logout failed on server');
+      }
+
     } catch (error) {
       console.error('Logout error:', error);
+    } finally {
+      // 🔥 ALWAYS clear local auth
       await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      console.log('Local auth cleared');
     }
   }
 
