@@ -193,18 +193,33 @@ class AuthService {
   }
   async signup(email: string, password: string, firstName: string, lastName: string): Promise<AuthState> {
     try {
-      console.log('Creating customer account for:', email);
-      
+      console.log('Signing up customer:', email);
+
       const query = `
-        mutation customerCreate($input: CustomerCreateInput!) {
-          customerCreate(input: $input) {
+        mutation CustomerSignUp($input: SignUpInput!) {
+          customerSignUp(input: $input) {
+            success
+            message
+            accessToken
+            tokenType
+            expiresIn
             customer {
               id
-            }
-            customerUserErrors {
-              code
-              field
-              message
+              name
+              email
+              phone
+              defaultAddress {
+                id
+                firstName
+                lastName
+                address
+                city
+                state
+                postcode
+                country
+                phone
+                defaultAddress
+              }
             }
           }
         }
@@ -212,11 +227,15 @@ class AuthService {
 
       const variables = {
         input: {
-          email,
-          password,
           firstName,
           lastName,
-          acceptsMarketing: false,
+          email,
+          password,
+          passwordConfirmation: password,
+          subscribedToNewsLetter: true,
+          agreement: true,
+          deviceToken: 'example-device-token',
+          deviceName: 'React Native App',
         },
       };
 
@@ -226,22 +245,51 @@ class AuthService {
         body: JSON.stringify({ query, variables }),
       });
 
-      const data = await response.json();
-      console.log('Signup response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      console.log('Signup response:', JSON.stringify(json, null, 2));
 
-      const result = data.data?.customerCreate;
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+      }
+
+      const result = json.data?.customerSignUp;
+
+      if (!result?.success) {
+        throw new Error(result?.message || 'Signup failed');
+      }
+
+      if (!result.accessToken) {
+        throw new Error('No access token received');
+      }
+
+      const customer: Customer = {
+        id: result.customer.id,
+        email: result.customer.email,
+        displayName: result.customer.name,
+        phone: result.customer.phone,
+        defaultAddress: result.customer.defaultAddress
+          ? mapGraphQLAddressToAddress(result.customer.defaultAddress)
+          : undefined,
+      };
+
+      const expiresAt = new Date(
+        Date.now() + result.expiresIn * 1000
+      ).toISOString();
+
+      const authState: AuthState = {
+        accessToken: result.accessToken,
+        expiresAt,
+        customer,
+      };
       
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Signup failed');
-      }
+      await AsyncStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify(authState)
+      );
 
-      if (!result?.customer?.id) {
-        throw new Error('Failed to create account');
-      }
+      console.log('Signup successful:', customer.email);
 
-      console.log('Account created, logging in...');
-      return await this.login(email, password);
+      return authState;
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
