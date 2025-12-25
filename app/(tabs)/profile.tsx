@@ -115,7 +115,7 @@ export default function ProfileScreen() {
               <User size={48} color={Colors.primary} />
             </View>
           </View>
-          <Text style={styles.name}>{customer?.displayName || `${customer?.firstName} ${customer?.lastName}`}</Text>
+          <Text style={styles.name}>{`${customer?.firstName} ${customer?.lastName}`}</Text>
           <Text style={styles.email}>{customer?.email}</Text>
         </View>
 

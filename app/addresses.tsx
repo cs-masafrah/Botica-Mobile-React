@@ -19,10 +19,14 @@ import { useAddress } from '@/contexts/AddressContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Address } from '@/services/auth';
 
-type AddressFormData = Omit<Address, 'id'>;
+type AddressFormData = Omit<Address, 'id'> & {
+  email?: string;
+  companyName?: string;
+  vatId?: string;
+};
 
 export default function AddressesScreen() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, customer } = useAuth();
   const {
     addresses,
     isLoading,
@@ -34,6 +38,7 @@ export default function AddressesScreen() {
     isUpdatingAddress,
     isDeletingAddress,
     isSettingDefault,
+    refetchAddresses,
   } = useAddress();
 
   const [showModal, setShowModal] = useState(false);
@@ -48,6 +53,9 @@ export default function AddressesScreen() {
     zip: '',
     country: '',
     phone: '',
+    companyName: '',
+    email: customer?.email || '',
+    vatId: '',
   });
 
   const resetForm = () => {
@@ -61,11 +69,17 @@ export default function AddressesScreen() {
       zip: '',
       country: '',
       phone: '',
+      companyName: '',
+      email: customer?.email || '',
+      vatId: '',
     });
     setEditingAddress(null);
   };
 
   const handleAddNew = () => {
+    if (customer?.email) {
+      setFormData(prev => ({ ...prev, email: customer.email }));
+    }
     resetForm();
     setShowModal(true);
   };
@@ -76,12 +90,15 @@ export default function AddressesScreen() {
       firstName: address.firstName,
       lastName: address.lastName,
       address1: address.address1,
-      address2: address.address2,
+      address2: address.address2 || '',
       city: address.city,
-      province: address.province,
+      province: address.province || '',
       zip: address.zip,
       country: address.country,
-      phone: address.phone,
+      phone: address.phone || '',
+      companyName: address.companyName || '',
+      email: address.email || customer?.email || '',
+      vatId: address.vatId || '',
     });
     setShowModal(true);
   };
@@ -99,6 +116,7 @@ export default function AddressesScreen() {
             try {
               await deleteAddress(addressId);
               Alert.alert('Success', 'Address deleted successfully');
+              refetchAddresses();
             } catch (error) {
               Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete address');
             }
@@ -112,6 +130,7 @@ export default function AddressesScreen() {
     try {
       await setDefaultAddress(addressId);
       Alert.alert('Success', 'Default address updated');
+      refetchAddresses();
     } catch (error) {
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to set default address');
     }
@@ -126,14 +145,44 @@ export default function AddressesScreen() {
 
     try {
       if (editingAddress) {
-        await updateAddress({ id: editingAddress.id, address: formData });
+        await updateAddress({ 
+          id: editingAddress.id, 
+          address: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            address1: formData.address1,
+            address2: formData.address2,
+            city: formData.city,
+            province: formData.province,
+            zip: formData.zip,
+            country: formData.country,
+            phone: formData.phone,
+            companyName: formData.companyName,
+            email: formData.email,
+            vatId: formData.vatId,
+          }
+        });
         Alert.alert('Success', 'Address updated successfully');
       } else {
-        await addAddress(formData);
+        await addAddress({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address1: formData.address1,
+          address2: formData.address2,
+          city: formData.city,
+          province: formData.province,
+          zip: formData.zip,
+          country: formData.country,
+          phone: formData.phone,
+          email: formData.email || customer?.email || '',
+          companyName: formData.companyName,
+          vatId: formData.vatId,
+        });
         Alert.alert('Success', 'Address added successfully');
       }
       setShowModal(false);
       resetForm();
+      refetchAddresses();
     } catch (error) {
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save address');
     }
@@ -179,7 +228,7 @@ export default function AddressesScreen() {
           </View>
         ) : (
           <View style={styles.addressList}>
-            {addresses.map((address: any) => (
+            {addresses.map((address: Address) => (
               <View key={address.id} style={styles.addressCard}>
                 <View style={styles.addressHeader}>
                   <View style={styles.addressHeaderLeft}>
@@ -196,16 +245,22 @@ export default function AddressesScreen() {
                 </View>
 
                 <View style={styles.addressBody}>
+                  {address.companyName && (
+                    <Text style={styles.addressText}>{address.companyName}</Text>
+                  )}
                   <Text style={styles.addressText}>{address.address1}</Text>
-                  {address.address2 && (
+                  {address.address2 && address.address2 !== '' && (
                     <Text style={styles.addressText}>{address.address2}</Text>
                   )}
                   <Text style={styles.addressText}>
-                    {address.city}, {address.province} {address.zip}
+                    {address.city}, {address.province || ''} {address.zip}
                   </Text>
                   <Text style={styles.addressText}>{address.country}</Text>
                   {address.phone && (
-                    <Text style={styles.addressText}>{address.phone}</Text>
+                    <Text style={styles.addressText}>Phone: {address.phone}</Text>
+                  )}
+                  {address.email && (
+                    <Text style={styles.addressText}>Email: {address.email}</Text>
                   )}
                 </View>
 
@@ -216,12 +271,17 @@ export default function AddressesScreen() {
                       onPress={() => handleSetDefault(address.id)}
                       disabled={isSettingDefault}
                     >
-                      <Text style={styles.actionButtonText}>Set as Default</Text>
+                      {isSettingDefault ? (
+                        <ActivityIndicator size="small" color={Colors.primary} />
+                      ) : (
+                        <Text style={styles.actionButtonText}>Set as Default</Text>
+                      )}
                     </Pressable>
                   )}
                   <Pressable
                     style={styles.actionButton}
                     onPress={() => handleEdit(address)}
+                    disabled={isUpdatingAddress}
                   >
                     <Text style={styles.actionButtonText}>Edit</Text>
                   </Pressable>
@@ -230,7 +290,11 @@ export default function AddressesScreen() {
                     onPress={() => handleDelete(address.id)}
                     disabled={isDeletingAddress}
                   >
-                    <Trash2 size={18} color={Colors.error} />
+                    {isDeletingAddress ? (
+                      <ActivityIndicator size="small" color={Colors.error} />
+                    ) : (
+                      <Trash2 size={18} color={Colors.error} />
+                    )}
                   </Pressable>
                 </View>
               </View>
@@ -240,9 +304,19 @@ export default function AddressesScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.addButton} onPress={handleAddNew}>
-          <Plus size={20} color={Colors.white} />
-          <Text style={styles.addButtonText}>Add New Address</Text>
+        <Pressable 
+          style={styles.addButton} 
+          onPress={handleAddNew}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <>
+              <Plus size={20} color={Colors.white} />
+              <Text style={styles.addButtonText}>Add New Address</Text>
+            </>
+          )}
         </Pressable>
       </View>
 
@@ -279,6 +353,7 @@ export default function AddressesScreen() {
                 onChangeText={(value) => updateField('firstName', value)}
                 placeholder="John"
                 placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
@@ -290,6 +365,32 @@ export default function AddressesScreen() {
                 onChangeText={(value) => updateField('lastName', value)}
                 placeholder="Doe"
                 placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Company Name</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.companyName}
+                onChangeText={(value) => updateField('companyName', value)}
+                placeholder="Company Name"
+                placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.email}
+                onChangeText={(value) => updateField('email', value)}
+                placeholder="email@example.com"
+                placeholderTextColor={Colors.textSecondary}
+                keyboardType="email-address"
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
@@ -301,6 +402,7 @@ export default function AddressesScreen() {
                 onChangeText={(value) => updateField('address1', value)}
                 placeholder="123 Main St"
                 placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
@@ -312,6 +414,7 @@ export default function AddressesScreen() {
                 onChangeText={(value) => updateField('address2', value)}
                 placeholder="Apt 4B"
                 placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
@@ -323,6 +426,7 @@ export default function AddressesScreen() {
                 onChangeText={(value) => updateField('city', value)}
                 placeholder="New York"
                 placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
@@ -334,6 +438,7 @@ export default function AddressesScreen() {
                 onChangeText={(value) => updateField('province', value)}
                 placeholder="NY"
                 placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
@@ -345,6 +450,7 @@ export default function AddressesScreen() {
                 onChangeText={(value) => updateField('zip', value)}
                 placeholder="10001"
                 placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
@@ -356,6 +462,7 @@ export default function AddressesScreen() {
                 onChangeText={(value) => updateField('country', value)}
                 placeholder="United States"
                 placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
@@ -368,6 +475,19 @@ export default function AddressesScreen() {
                 placeholder="+1 (555) 123-4567"
                 placeholderTextColor={Colors.textSecondary}
                 keyboardType="phone-pad"
+                editable={!isAddingAddress && !isUpdatingAddress}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>VAT ID (Tax Number)</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.vatId}
+                onChangeText={(value) => updateField('vatId', value)}
+                placeholder="VAT123456"
+                placeholderTextColor={Colors.textSecondary}
+                editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
           </ScrollView>
@@ -484,6 +604,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: Colors.cardBackground,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   actionButtonText: {
     fontSize: 14,
