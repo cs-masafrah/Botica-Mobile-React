@@ -39,11 +39,28 @@ function mapGraphQLAddressToAddress(gqlAddress: any): Address {
 
 export interface Customer {
   id: string;
+
+  firstName: string;
+  lastName: string;
+  name?: string;
+
+  gender?: string;
+  dateOfBirth?: string;
+
   email: string;
-  firstName?: string;
-  lastName?: string;
-  displayName: string;
   phone?: string;
+
+  image?: string;
+  imageUrl?: string;
+
+  status?: boolean;
+  customerGroupId?: number;
+  channelId?: number;
+
+  subscribedToNewsLetter?: boolean;
+  isVerified?: boolean;
+  isSuspended?: boolean;
+
   defaultAddress?: Address;
   addresses?: Address[];
 }
@@ -158,7 +175,8 @@ class AuthService {
       const customer: Customer = {
         id: result.customer.id,
         email: result.customer.email,
-        displayName: result.customer.name,
+        firstName: result.customer.firstName,
+        lastName: result.customer.lastName,
         phone: result.customer.phone,
         defaultAddress: result.customer.defaultAddress
           ? mapGraphQLAddressToAddress(result.customer.defaultAddress)
@@ -265,7 +283,8 @@ class AuthService {
       const customer: Customer = {
         id: result.customer.id,
         email: result.customer.email,
-        displayName: result.customer.name,
+        firstName: result.customer.firstName,
+        lastName: result.customer.lastName,
         phone: result.customer.phone,
         defaultAddress: result.customer.defaultAddress
           ? mapGraphQLAddressToAddress(result.customer.defaultAddress)
@@ -296,53 +315,99 @@ class AuthService {
     }
   }
 
-  async getCustomer(accessToken: string): Promise<Customer> {
-    try {
-      const query = `
-        query getCustomer($customerAccessToken: String!) {
-          customer(customerAccessToken: $customerAccessToken) {
+  async getCustomer(): Promise<Customer> {
+    const auth = await this.getStoredAuth();
+    if (!auth) throw new Error('Not authenticated');
+
+    const query = `
+      query accountInfo {
+        accountInfo {
+          id
+          firstName
+          lastName
+          name
+          gender
+          dateOfBirth
+          email
+          phone
+          image
+          imageUrl
+          status
+          customerGroupId
+          subscribedToNewsLetter
+          isVerified
+          isSuspended
+          defaultAddress {
             id
-            email
             firstName
             lastName
+            address
+            city
+            state
+            postcode
+            country
             phone
-            displayName
+            defaultAddress
+          }
+          addresses {
+            id
+            firstName
+            lastName
+            address
+            city
+            state
+            postcode
+            country
+            phone
+            defaultAddress
           }
         }
-      `;
-
-      const variables = {
-        customerAccessToken: accessToken,
-      };
-
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: this.headers,
-        body: JSON.stringify({ query, variables }),
-      });
-
-      const data = await response.json();
-      console.log('Get customer response:', JSON.stringify(data, null, 2));
-
-      const customer = data.data?.customer;
-      
-      if (!customer) {
-        throw new Error('Customer not found');
       }
+    `;
 
-      return {
-        id: customer.id,
-        email: customer.email,
-        firstName: customer.firstName || '',
-        lastName: customer.lastName || '',
-        phone: customer.phone || undefined,
-        displayName: customer.displayName,
-      };
-    } catch (error) {
-      console.error('Get customer error:', error);
-      throw error;
-    }
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: {
+        ...this.headers,
+        Authorization: `Bearer ${auth.accessToken}`,
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    const json = await response.json();
+    const account = json.data?.accountInfo;
+    if (!account) throw new Error('Account not found');
+
+    const customer: Customer = {
+      id: account.id,
+      firstName: account.firstName,
+      lastName: account.lastName,
+      name: account.name,
+      gender: account.gender,
+      dateOfBirth: account.dateOfBirth,
+      email: account.email,
+      phone: account.phone,
+      image: account.image,
+      imageUrl: account.imageUrl,
+      status: account.status,
+      customerGroupId: account.customerGroupId,
+      subscribedToNewsLetter: account.subscribedToNewsLetter,
+      isVerified: account.isVerified,
+      isSuspended: account.isSuspended,
+      defaultAddress: account.defaultAddress
+        ? mapGraphQLAddressToAddress(account.defaultAddress)
+        : undefined,
+      addresses: account.addresses?.map(mapGraphQLAddressToAddress),
+    };
+
+    await AsyncStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({ ...auth, customer })
+    );
+
+    return customer;
   }
+
 
   async logout(): Promise<void> {
     try {
@@ -420,78 +485,74 @@ class AuthService {
     }
   }
 
-  async updateCustomer(accessToken: string, input: {
-    firstName?: string;
-    lastName?: string;
+  async updateAccount(input: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER' | string | undefined;
+    dateOfBirth?: string | null;
     phone?: string | null;
+    currentPassword?: string;
+    newPassword?: string;
+    newPasswordConfirmation?: string;
+    newsletterSubscriber?: boolean;
+    image?: string | null;
+    
   }): Promise<Customer> {
     try {
-      console.log('Updating customer...', input);
-      
+      const authState = await this.getStoredAuth();
+      if (!authState) throw new Error('Not authenticated');
+
       const query = `
-        mutation customerUpdate($customerAccessToken: String!, $customer: CustomerUpdateInput!) {
-          customerUpdate(customerAccessToken: $customerAccessToken, customer: $customer) {
+        mutation updateAccount($input: UpdateAccountInput!) {
+          updateAccount(input: $input) {
+            success
+            message
             customer {
               id
+              name
               email
-              firstName
-              lastName
-              phone
-              displayName
-            }
-            customerUserErrors {
-              code
-              field
-              message
+              imageUrl
             }
           }
         }
       `;
 
-      const customerInput: any = {};
-      if (input.firstName !== undefined) customerInput.firstName = input.firstName;
-      if (input.lastName !== undefined) customerInput.lastName = input.lastName;
-      if (input.phone !== undefined) {
-        customerInput.phone = input.phone || '';
-      }
-
-      const variables = {
-        customerAccessToken: accessToken,
-        customer: customerInput,
-      };
+      const variables = { input };
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.headers,
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${authState.accessToken}`,
+        },
         body: JSON.stringify({ query, variables }),
       });
 
-      const data = await response.json();
-      console.log('Update customer response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      if (json.errors?.length) throw new Error(json.errors.map((e: any) => e.message).join(', '));
 
-      const result = data.data?.customerUpdate;
-      
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Update failed');
-      }
+      const result = json.data?.updateAccount;
+      if (!result?.success) throw new Error(result?.message || 'Update account failed');
 
-      const customer = result?.customer;
-      
-      if (!customer) {
-        throw new Error('Failed to update customer');
-      }
+      const updated = result.customer;
 
-      return {
-        id: customer.id,
-        email: customer.email,
-        firstName: customer.firstName || '',
-        lastName: customer.lastName || '',
-        phone: customer.phone || undefined,
-        displayName: customer.displayName,
+      const customer: Customer = {
+        id: updated.id,
+        email: updated.email,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        phone: updated.phone || undefined,
+        gender: updated.gender,
+        dateOfBirth: updated.dateOfBirth ?? undefined,
       };
+
+      // تحديث local storage
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ ...authState, customer }));
+
+      return customer;
     } catch (error) {
-      console.error('Update customer error:', error);
+      console.error('Update account error:', error);
       throw error;
     }
   }

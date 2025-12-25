@@ -32,16 +32,16 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   });
 
   const signupMutation = useMutation({
-    mutationFn: async ({ 
-      email, 
-      password, 
-      firstName, 
-      lastName 
-    }: { 
-      email: string; 
-      password: string; 
-      firstName: string; 
-      lastName: string; 
+    mutationFn: async ({
+      email,
+      password,
+      firstName,
+      lastName,
+    }: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
     }) => {
       return await authService.signup(email, password, firstName, lastName);
     },
@@ -55,7 +55,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       if (accessToken) {
-        await authService.logout(accessToken);
+        await authService.logout();
       }
     },
     onSuccess: () => {
@@ -67,12 +67,20 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (input: {
-      firstName?: string;
-      lastName?: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      gender: 'MALE' | 'FEMALE' | 'OTHER' | string | undefined;
+      dateOfBirth?: string | null;            
       phone?: string | null;
+      currentPassword?: string;
+      newPassword?: string;
+      newPasswordConfirmation?: string;
+      newsletterSubscriber?: boolean;
+      image?: string | null;
     }) => {
       if (!accessToken) throw new Error('Not authenticated');
-      return await authService.updateCustomer(accessToken, input);
+      return await authService.updateAccount(input);
     },
     onSuccess: (updatedCustomer) => {
       setCustomer(updatedCustomer);
