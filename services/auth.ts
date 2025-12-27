@@ -18,43 +18,63 @@ export interface Address {
   country: string;
   phone?: string;
   isDefault?: boolean;
+  companyName?: string;
+  email?: string;
+  vatId?: string;
 }
 
 function mapGraphQLAddressToAddress(gqlAddress: any): Address {
   return {
     id: gqlAddress.id,
-    firstName: gqlAddress.firstName,
-    lastName: gqlAddress.lastName,
-    address1: gqlAddress.address,
-    address2: undefined,
-    city: gqlAddress.city,
-    province: gqlAddress.state,
-    zip: gqlAddress.postcode,
-    country: gqlAddress.country,
-    phone: gqlAddress.phone,
-    isDefault: gqlAddress.defaultAddress,
+    firstName: gqlAddress.firstName || '',
+    lastName: gqlAddress.lastName || '',
+    address1: gqlAddress.address || '',
+    address2: undefined, // Bagisto doesn't have address2
+    city: gqlAddress.city || '',
+    province: gqlAddress.state || gqlAddress.stateName || undefined,
+    zip: gqlAddress.postcode || '',
+    country: gqlAddress.country || gqlAddress.countryName || '',
+    phone: gqlAddress.phone || undefined,
+    isDefault: gqlAddress.defaultAddress || false,
+    companyName: gqlAddress.companyName || undefined,
+    email: gqlAddress.email || undefined,
+    vatId: gqlAddress.vatId || undefined,
   };
 }
 
-
 export interface Customer {
   id: string;
+
+  firstName: string;
+  lastName: string;
+  name?: string;
+
+  gender?: string;
+  dateOfBirth?: string;
+
   email: string;
-  firstName?: string;
-  lastName?: string;
-  displayName: string;
   phone?: string;
+
+  image?: string;
+  imageUrl?: string;
+
+  status?: boolean;
+  customerGroupId?: number;
+  channelId?: number;
+
+  subscribedToNewsLetter?: boolean;
+  isVerified?: boolean;
+  isSuspended?: boolean;
+
   defaultAddress?: Address;
   addresses?: Address[];
 }
 
-
 interface AuthState {
   accessToken: string;
-  expiresAt: string; // computed
+  expiresAt: string;
   customer: Customer;
 }
-
 
 interface GraphQLResponse {
   data?: any;
@@ -64,8 +84,6 @@ interface GraphQLResponse {
 class AuthService {
   private baseUrl: string;
   private headers: Record<string, string>;
-
-  
 
   constructor() {
     this.baseUrl = BAGISTO_CONFIG.baseUrl;
@@ -124,8 +142,6 @@ class AuthService {
         email,
         password,
         remember: true,
-        // deviceToken: GlobalData.fcmToken,
-        // deviceName: GlobalData.deviceName,
       };
       console.log("Base URL: " + this.baseUrl);
 
@@ -152,22 +168,17 @@ class AuthService {
         throw new Error('No access token received');
       }
 
-      // -------------------------------
-      // Build Customer
-      // -------------------------------
       const customer: Customer = {
         id: result.customer.id,
         email: result.customer.email,
-        displayName: result.customer.name,
+        firstName: result.customer.firstName,
+        lastName: result.customer.lastName,
         phone: result.customer.phone,
         defaultAddress: result.customer.defaultAddress
           ? mapGraphQLAddressToAddress(result.customer.defaultAddress)
           : undefined,
       };
 
-      // -------------------------------
-      // Compute expiresAt
-      // -------------------------------
       const expiresAt = new Date(
         Date.now() + result.expiresIn * 1000
       ).toISOString();
@@ -191,20 +202,36 @@ class AuthService {
       throw error;
     }
   }
+
   async signup(email: string, password: string, firstName: string, lastName: string): Promise<AuthState> {
     try {
-      console.log('Creating customer account for:', email);
-      
+      console.log('Signing up customer:', email);
+
       const query = `
-        mutation customerCreate($input: CustomerCreateInput!) {
-          customerCreate(input: $input) {
+        mutation CustomerSignUp($input: SignUpInput!) {
+          customerSignUp(input: $input) {
+            success
+            message
+            accessToken
+            tokenType
+            expiresIn
             customer {
               id
-            }
-            customerUserErrors {
-              code
-              field
-              message
+              name
+              email
+              phone
+              defaultAddress {
+                id
+                firstName
+                lastName
+                address
+                city
+                state
+                postcode
+                country
+                phone
+                defaultAddress
+              }
             }
           }
         }
@@ -212,11 +239,15 @@ class AuthService {
 
       const variables = {
         input: {
-          email,
-          password,
           firstName,
           lastName,
-          acceptsMarketing: false,
+          email,
+          password,
+          passwordConfirmation: password,
+          subscribedToNewsLetter: true,
+          agreement: true,
+          deviceToken: 'example-device-token',
+          deviceName: 'React Native App',
         },
       };
 
@@ -226,108 +257,191 @@ class AuthService {
         body: JSON.stringify({ query, variables }),
       });
 
-      const data = await response.json();
-      console.log('Signup response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      console.log('Signup response:', JSON.stringify(json, null, 2));
 
-      const result = data.data?.customerCreate;
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+      }
+
+      const result = json.data?.customerSignUp;
+
+      if (!result?.success) {
+        throw new Error(result?.message || 'Signup failed');
+      }
+
+      if (!result.accessToken) {
+        throw new Error('No access token received');
+      }
+
+      const customer: Customer = {
+        id: result.customer.id,
+        email: result.customer.email,
+        firstName: result.customer.firstName,
+        lastName: result.customer.lastName,
+        phone: result.customer.phone,
+        defaultAddress: result.customer.defaultAddress
+          ? mapGraphQLAddressToAddress(result.customer.defaultAddress)
+          : undefined,
+      };
+
+      const expiresAt = new Date(
+        Date.now() + result.expiresIn * 1000
+      ).toISOString();
+
+      const authState: AuthState = {
+        accessToken: result.accessToken,
+        expiresAt,
+        customer,
+      };
       
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Signup failed');
-      }
+      await AsyncStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify(authState)
+      );
 
-      if (!result?.customer?.id) {
-        throw new Error('Failed to create account');
-      }
+      console.log('Signup successful:', customer.email);
 
-      console.log('Account created, logging in...');
-      return await this.login(email, password);
+      return authState;
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
     }
   }
 
-  async getCustomer(accessToken: string): Promise<Customer> {
-    try {
-      const query = `
-        query getCustomer($customerAccessToken: String!) {
-          customer(customerAccessToken: $customerAccessToken) {
+  async getCustomer(): Promise<Customer> {
+    const auth = await this.getStoredAuth();
+    if (!auth) throw new Error('Not authenticated');
+
+    const query = `
+      query accountInfo {
+        accountInfo {
+          id
+          firstName
+          lastName
+          name
+          gender
+          dateOfBirth
+          email
+          phone
+          image
+          imageUrl
+          status
+          customerGroupId
+          subscribedToNewsLetter
+          isVerified
+          isSuspended
+          defaultAddress {
             id
-            email
             firstName
             lastName
+            address
+            city
+            state
+            postcode
+            country
             phone
-            displayName
+            defaultAddress
+          }
+          addresses {
+            id
+            firstName
+            lastName
+            address
+            city
+            state
+            postcode
+            country
+            phone
+            defaultAddress
+          }
+        }
+      }
+    `;
+
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: {
+        ...this.headers,
+        Authorization: `Bearer ${auth.accessToken}`,
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    const json = await response.json();
+    const account = json.data?.accountInfo;
+    if (!account) throw new Error('Account not found');
+
+    const customer: Customer = {
+      id: account.id,
+      firstName: account.firstName,
+      lastName: account.lastName,
+      name: account.name,
+      gender: account.gender,
+      dateOfBirth: account.dateOfBirth,
+      email: account.email,
+      phone: account.phone,
+      image: account.image,
+      imageUrl: account.imageUrl,
+      status: account.status,
+      customerGroupId: account.customerGroupId,
+      subscribedToNewsLetter: account.subscribedToNewsLetter,
+      isVerified: account.isVerified,
+      isSuspended: account.isSuspended,
+      defaultAddress: account.defaultAddress
+        ? mapGraphQLAddressToAddress(account.defaultAddress)
+        : undefined,
+      addresses: account.addresses?.map(mapGraphQLAddressToAddress),
+    };
+
+    await AsyncStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({ ...auth, customer })
+    );
+
+    return customer;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      console.log('Logging out...');
+
+      const query = `
+        mutation CustomerLogout {
+          customerLogout {
+            success
+            message
           }
         }
       `;
-
-      const variables = {
-        customerAccessToken: accessToken,
-      };
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.headers,
-        body: JSON.stringify({ query, variables }),
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${(await this.getStoredAuth())?.accessToken}`,
+        },
+        body: JSON.stringify({ query }),
       });
 
-      const data = await response.json();
-      console.log('Get customer response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      console.log('Logout response:', JSON.stringify(json, null, 2));
 
-      const customer = data.data?.customer;
-      
-      if (!customer) {
-        throw new Error('Customer not found');
+      if (json.errors?.length) {
+        console.error('GraphQL Errors:', json.errors);
       }
 
-      return {
-        id: customer.id,
-        email: customer.email,
-        firstName: customer.firstName || '',
-        lastName: customer.lastName || '',
-        phone: customer.phone || undefined,
-        displayName: customer.displayName,
-      };
-    } catch (error) {
-      console.error('Get customer error:', error);
-      throw error;
-    }
-  }
+      const result = json.data?.customerLogout;
 
-  async logout(accessToken: string): Promise<void> {
-    try {
-      console.log('Logging out...');
-      
-      const query = `
-        mutation customerAccessTokenDelete($customerAccessToken: String!) {
-          customerAccessTokenDelete(customerAccessToken: $customerAccessToken) {
-            deletedAccessToken
-            deletedCustomerAccessTokenId
-            userErrors {
-              field
-              message
-            }
-          }
-        }
-      `;
+      if (!result?.success) {
+        console.warn(result?.message || 'Logout failed on server');
+      }
 
-      const variables = {
-        customerAccessToken: accessToken,
-      };
-
-      await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: this.headers,
-        body: JSON.stringify({ query, variables }),
-      });
-
-      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-      console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
+    } finally {
       await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      console.log('Local auth cleared');
     }
   }
 
@@ -363,140 +477,156 @@ class AuthService {
     }
   }
 
-  async updateCustomer(accessToken: string, input: {
-    firstName?: string;
-    lastName?: string;
+  async updateAccount(input: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER' | string | undefined;
+    dateOfBirth?: string | null;
     phone?: string | null;
+    currentPassword?: string;
+    newPassword?: string;
+    newPasswordConfirmation?: string;
+    newsletterSubscriber?: boolean;
+    image?: string | null;
   }): Promise<Customer> {
     try {
-      console.log('Updating customer...', input);
-      
+      const authState = await this.getStoredAuth();
+      if (!authState) throw new Error('Not authenticated');
+
       const query = `
-        mutation customerUpdate($customerAccessToken: String!, $customer: CustomerUpdateInput!) {
-          customerUpdate(customerAccessToken: $customerAccessToken, customer: $customer) {
+        mutation updateAccount($input: UpdateAccountInput!) {
+          updateAccount(input: $input) {
+            success
+            message
             customer {
               id
+              name
               email
-              firstName
-              lastName
-              phone
-              displayName
-            }
-            customerUserErrors {
-              code
-              field
-              message
+              imageUrl
             }
           }
         }
       `;
 
-      const customerInput: any = {};
-      if (input.firstName !== undefined) customerInput.firstName = input.firstName;
-      if (input.lastName !== undefined) customerInput.lastName = input.lastName;
-      if (input.phone !== undefined) {
-        customerInput.phone = input.phone || '';
-      }
-
-      const variables = {
-        customerAccessToken: accessToken,
-        customer: customerInput,
-      };
+      const variables = { input };
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.headers,
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${authState.accessToken}`,
+        },
         body: JSON.stringify({ query, variables }),
       });
 
-      const data = await response.json();
-      console.log('Update customer response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      if (json.errors?.length) throw new Error(json.errors.map((e: any) => e.message).join(', '));
 
-      const result = data.data?.customerUpdate;
-      
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Update failed');
-      }
+      const result = json.data?.updateAccount;
+      if (!result?.success) throw new Error(result?.message || 'Update account failed');
 
-      const customer = result?.customer;
-      
-      if (!customer) {
-        throw new Error('Failed to update customer');
-      }
+      const updated = result.customer;
 
-      return {
-        id: customer.id,
-        email: customer.email,
-        firstName: customer.firstName || '',
-        lastName: customer.lastName || '',
-        phone: customer.phone || undefined,
-        displayName: customer.displayName,
+      const customer: Customer = {
+        id: updated.id,
+        email: updated.email,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        phone: updated.phone || undefined,
+        gender: updated.gender,
+        dateOfBirth: updated.dateOfBirth ?? undefined,
       };
+
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ ...authState, customer }));
+
+      return customer;
     } catch (error) {
-      console.error('Update customer error:', error);
+      console.error('Update account error:', error);
       throw error;
     }
   }
 
-  async getAddresses(accessToken: string): Promise<Address[]> {
+  async getAddresses(): Promise<Address[]> {
     try {
-      console.log('Fetching customer addresses...');
+      console.log('Fetching customer addresses (Bagisto)...');
       
+      const auth = await this.getStoredAuth();
+      if (!auth) throw new Error('Not authenticated');
+
       const query = `
-        query getCustomerAddresses($customerAccessToken: String!) {
-          customer(customerAccessToken: $customerAccessToken) {
-            addresses(first: 50) {
-              edges {
-                node {
-                  id
-                  firstName
-                  lastName
-                  address1
-                  address2
-                  city
-                  province
-                  zip
-                  country
-                  phone
-                }
-              }
+        query addresses {
+          addresses(
+            first: 11
+            page: 1
+            input: {}
+          ) {
+            paginatorInfo {
+              count
+              currentPage
+              lastPage
+              total
             }
-            defaultAddress {
+            data {
               id
+              parentAddressId
+              customerId
+              cartId
+              orderId
+              firstName
+              lastName
+              gender
+              companyName
+              address
+              city
+              state
+              stateName
+              country
+              countryName
+              postcode
+              email
+              phone
+              vatId
+              defaultAddress
+              useForShipping
             }
           }
         }
       `;
 
-      const variables = {
-        customerAccessToken: accessToken,
-      };
-
       const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.headers,
-        body: JSON.stringify({ query, variables }),
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        body: JSON.stringify({ query }),
       });
 
-      const data = await response.json();
-      console.log('Get addresses response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      console.log('Get addresses response:', JSON.stringify(json, null, 2));
 
-      const addresses = data.data?.customer?.addresses?.edges || [];
-      const defaultAddressId = data.data?.customer?.defaultAddress?.id;
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+      }
+
+      const addressesData = json.data?.addresses?.data || [];
       
-      return addresses.map(({ node }: any) => ({
-        id: node.id,
-        firstName: node.firstName || '',
-        lastName: node.lastName || '',
-        address1: node.address1 || '',
-        address2: node.address2 || undefined,
-        city: node.city || '',
-        province: node.province || undefined,
-        zip: node.zip || '',
-        country: node.country || '',
-        phone: node.phone || undefined,
-        isDefault: node.id === defaultAddressId,
+      return addressesData.map((address: any) => ({
+        id: address.id,
+        firstName: address.firstName || '',
+        lastName: address.lastName || '',
+        address1: address.address || '',
+        address2: undefined,
+        city: address.city || '',
+        province: address.state || address.stateName || undefined,
+        zip: address.postcode || '',
+        country: address.country || address.countryName || '',
+        phone: address.phone || undefined,
+        isDefault: address.defaultAddress || false,
+        companyName: address.companyName || undefined,
+        email: address.email || undefined,
+        vatId: address.vatId || undefined,
       }));
     } catch (error) {
       console.error('Get addresses error:', error);
@@ -504,209 +634,217 @@ class AuthService {
     }
   }
 
-  async addAddress(accessToken: string, address: Omit<Address, 'id'>): Promise<Address> {
+  async addAddress(address: Omit<Address, 'id'> & {
+    email: string;
+    companyName?: string;
+    vatId?: string;
+  }): Promise<Address> {
     try {
-      console.log('Adding customer address...', address);
-      
+      console.log('Adding customer address (Bagisto)...', address);
+
+      const auth = await this.getStoredAuth();
+      if (!auth) throw new Error('Not authenticated');
+
       const query = `
-        mutation customerAddressCreate($customerAccessToken: String!, $address: MailingAddressInput!) {
-          customerAddressCreate(customerAccessToken: $customerAccessToken, address: $address) {
-            customerAddress {
+        mutation createAddress($input: AddressInput!) {
+          createAddress(input: $input) {
+            success
+            message
+            address {
               id
+              companyName
               firstName
               lastName
-              address1
-              address2
-              city
-              province
-              zip
+              email
+              vatId
+              address
               country
+              state
+              stateName
+              city
+              postcode
               phone
-            }
-            customerUserErrors {
-              code
-              field
-              message
+              defaultAddress
             }
           }
         }
       `;
 
+      const customer = await this.getCustomer();
+
       const variables = {
-        customerAccessToken: accessToken,
-        address: {
+        input: {
+          email: customer.email,
+          companyName: address.companyName ?? null,
           firstName: address.firstName,
           lastName: address.lastName,
-          address1: address.address1,
-          address2: address.address2 || '',
-          city: address.city,
-          province: address.province || '',
-          zip: address.zip,
+          address: address.address1,
           country: address.country,
-          phone: address.phone || '',
+          state: address.province ?? '',
+          city: address.city,
+          postcode: address.zip,
+          phone: address.phone ?? '',
+          vatId: address.vatId ?? null,
+          defaultAddress: address.isDefault ?? false,
         },
       };
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.headers,
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
         body: JSON.stringify({ query, variables }),
       });
 
-      const data = await response.json();
-      console.log('Add address response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      console.log('Create address response:', JSON.stringify(json, null, 2));
 
-      const result = data.data?.customerAddressCreate;
-      
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Failed to add address');
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(', '));
       }
 
-      const newAddress = result?.customerAddress;
-      
-      if (!newAddress) {
-        throw new Error('Failed to add address');
+      const result = json.data?.createAddress;
+
+      if (!result?.success) {
+        throw new Error(result?.message || 'Failed to create address');
       }
 
-      return {
-        id: newAddress.id,
-        firstName: newAddress.firstName || '',
-        lastName: newAddress.lastName || '',
-        address1: newAddress.address1 || '',
-        address2: newAddress.address2 || undefined,
-        city: newAddress.city || '',
-        province: newAddress.province || undefined,
-        zip: newAddress.zip || '',
-        country: newAddress.country || '',
-        phone: newAddress.phone || undefined,
-      };
+      if (!result.address) {
+        throw new Error('Address was created but no address data returned');
+      }
+
+      return mapGraphQLAddressToAddress(result.address);
     } catch (error) {
       console.error('Add address error:', error);
       throw error;
     }
   }
 
-  async updateAddress(accessToken: string, addressId: string, address: Omit<Address, 'id'>): Promise<Address> {
+  async updateAddress(addressId: string, address: Omit<Address, 'id'>): Promise<Address> {
     try {
-      console.log('Updating customer address...', addressId, address);
-      
+      console.log('Updating customer address (Bagisto)...', addressId, address);
+
+      const auth = await this.getStoredAuth();
+      if (!auth) throw new Error('Not authenticated');
+
       const query = `
-        mutation customerAddressUpdate($customerAccessToken: String!, $id: ID!, $address: MailingAddressInput!) {
-          customerAddressUpdate(customerAccessToken: $customerAccessToken, id: $id, address: $address) {
-            customerAddress {
+        mutation updateAddress($id: ID!, $input: AddressInput!) {
+          updateAddress(id: $id, input: $input) {
+            success
+            message
+            address {
               id
+              companyName
               firstName
               lastName
-              address1
-              address2
-              city
-              province
-              zip
+              email
+              vatId
+              address
               country
+              state
+              stateName
+              city
+              postcode
               phone
-            }
-            customerUserErrors {
-              code
-              field
-              message
+              defaultAddress
             }
           }
         }
       `;
 
       const variables = {
-        customerAccessToken: accessToken,
         id: addressId,
-        address: {
+        input: {
+          companyName: address.companyName || null,
           firstName: address.firstName,
           lastName: address.lastName,
-          address1: address.address1,
-          address2: address.address2 || '',
-          city: address.city,
-          province: address.province || '',
-          zip: address.zip,
+          address: address.address1,
           country: address.country,
+          state: address.province || '',
+          city: address.city,
+          email: address.email || '',
+          postcode: address.zip,
           phone: address.phone || '',
+          vatId: address.vatId || null,
+          defaultAddress: address.isDefault || false,
         },
       };
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.headers,
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
         body: JSON.stringify({ query, variables }),
       });
 
-      const data = await response.json();
-      console.log('Update address response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      console.log('Update address response:', JSON.stringify(json, null, 2));
 
-      const result = data.data?.customerAddressUpdate;
-      
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Failed to update address');
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(', '));
       }
 
-      const updatedAddress = result?.customerAddress;
-      
-      if (!updatedAddress) {
-        throw new Error('Failed to update address');
+      const result = json.data?.updateAddress;
+
+      if (!result?.success) {
+        throw new Error(result?.message || 'Failed to update address');
       }
 
-      return {
-        id: updatedAddress.id,
-        firstName: updatedAddress.firstName || '',
-        lastName: updatedAddress.lastName || '',
-        address1: updatedAddress.address1 || '',
-        address2: updatedAddress.address2 || undefined,
-        city: updatedAddress.city || '',
-        province: updatedAddress.province || undefined,
-        zip: updatedAddress.zip || '',
-        country: updatedAddress.country || '',
-        phone: updatedAddress.phone || undefined,
-      };
+      if (!result.address) {
+        throw new Error('Address was updated but no address data returned');
+      }
+
+      return mapGraphQLAddressToAddress(result.address);
     } catch (error) {
       console.error('Update address error:', error);
       throw error;
     }
   }
 
-  async deleteAddress(accessToken: string, addressId: string): Promise<void> {
+  async deleteAddress(addressId: string): Promise<void> {
     try {
-      console.log('Deleting customer address...', addressId);
-      
+      console.log('Deleting customer address (Bagisto)...', addressId);
+
+      const auth = await this.getStoredAuth();
+      if (!auth) throw new Error('Not authenticated');
+
       const query = `
-        mutation customerAddressDelete($customerAccessToken: String!, $id: ID!) {
-          customerAddressDelete(customerAccessToken: $customerAccessToken, id: $id) {
-            deletedCustomerAddressId
-            customerUserErrors {
-              code
-              field
-              message
-            }
+        mutation deleteAddress($id: ID!) {
+          deleteAddress(id: $id) {
+            success
+            message
           }
         }
       `;
 
       const variables = {
-        customerAccessToken: accessToken,
         id: addressId,
       };
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: this.headers,
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
         body: JSON.stringify({ query, variables }),
       });
 
-      const data = await response.json();
-      console.log('Delete address response:', JSON.stringify(data, null, 2));
+      const json = await response.json();
+      console.log('Delete address response:', JSON.stringify(json, null, 2));
 
-      const result = data.data?.customerAddressDelete;
-      
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Failed to delete address');
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+      }
+
+      const result = json.data?.deleteAddress;
+
+      if (!result?.success) {
+        throw new Error(result?.message || 'Failed to delete address');
       }
 
       console.log('Address deleted successfully');
@@ -716,47 +854,40 @@ class AuthService {
     }
   }
 
-  async setDefaultAddress(accessToken: string, addressId: string): Promise<void> {
+  async setDefaultAddress(addressId: string): Promise<void> {
     try {
-      console.log('Setting default address...', addressId);
+      console.log('Setting default address (Bagisto)...', addressId);
+
+      const auth = await this.getStoredAuth();
+      if (!auth) throw new Error('Not authenticated');
+
+      // First, get all addresses to find the current one
+      const addresses = await this.getAddresses();
       
-      const query = `
-        mutation customerDefaultAddressUpdate($customerAccessToken: String!, $addressId: ID!) {
-          customerDefaultAddressUpdate(customerAccessToken: $customerAccessToken, addressId: $addressId) {
-            customer {
-              id
-            }
-            customerUserErrors {
-              code
-              field
-              message
-            }
-          }
-        }
-      `;
-
-      const variables = {
-        customerAccessToken: accessToken,
-        addressId: addressId,
-      };
-
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: this.headers,
-        body: JSON.stringify({ query, variables }),
-      });
-
-      const data = await response.json();
-      console.log('Set default address response:', JSON.stringify(data, null, 2));
-
-      const result = data.data?.customerDefaultAddressUpdate;
-      
-      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
-        const error = result.customerUserErrors[0];
-        throw new Error(error.message || 'Failed to set default address');
+      // Get the address to set as default
+      const addressToUpdate = addresses.find(addr => addr.id === addressId);
+      if (!addressToUpdate) {
+        throw new Error('Address not found');
       }
 
-      console.log('Default address set successfully');
+      // Update the address with isDefault: true
+      const updatedAddress = {
+        firstName: addressToUpdate.firstName,
+        lastName: addressToUpdate.lastName,
+        address1: addressToUpdate.address1,
+        address2: addressToUpdate.address2,
+        city: addressToUpdate.city,
+        province: addressToUpdate.province,
+        zip: addressToUpdate.zip,
+        country: addressToUpdate.country,
+        phone: addressToUpdate.phone,
+        companyName: addressToUpdate.companyName,
+        email: addressToUpdate.email,
+        vatId: addressToUpdate.vatId,
+        isDefault: true,
+      };
+
+      await this.updateAddress(addressId, updatedAddress);
     } catch (error) {
       console.error('Set default address error:', error);
       throw error;
