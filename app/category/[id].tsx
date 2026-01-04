@@ -13,48 +13,123 @@ import {
   ScrollView,
 } from 'react-native';
 import Colors from '@/constants/colors';
-import { useShopifyProductsByCollectionId } from '@/contexts/ShopifyContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/types/product';
 import { formatPrice } from '@/utils/currency';
 import { ShippingStrip } from '@/components/ShippingStrip';
+import { useProductsByCategory } from '../hooks/useProductsByCategory';
 
 export default function CategoryScreen() {
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
-  const { data: products, isLoading } = useShopifyProductsByCollectionId(id);
+  const { data, isLoading } = useProductsByCategory(id);
+  const products = data?.allProducts?.data || [];
+  
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
   const [selectedTag, setSelectedTag] = useState<string>('All');
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
 
+  // Extract tags from Bagisto product data
   const allTags = useMemo(() => {
-    if (!products) return ['All'];
+    if (!products || products.length === 0) return ['All'];
     const tags = new Set<string>();
-    products.forEach((product: Product) => {
-      product.tags?.forEach((tag: string) => tags.add(tag));
+    products.forEach((product: any) => {
+      // Bagisto might have tags in additionalData or as a separate field
+      // Adjust based on your actual data structure
+      if (product.tags) {
+        product.tags.forEach((tag: string) => tags.add(tag));
+      }
+      // You can also extract from additionalData if tags are stored there
+      product.additionalData?.forEach((item: any) => {
+        if (item.label.toLowerCase() === 'tags' || item.type === 'tags') {
+          const productTags = item.value.split(',').map((tag: string) => tag.trim());
+          productTags.forEach((tag: string) => tags.add(tag));
+        }
+      });
     });
-    return ['All', ...Array.from(tags).sort()];
+    return ['All', ...Array.from(tags).filter(Boolean).sort()];
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    if (!products || selectedTag === 'All') return products || [];
-    return products.filter((product: Product) => product.tags?.includes(selectedTag));
+    if (!products || selectedTag === 'All') return products;
+    
+    return products.filter((product: any) => {
+      // Check in tags array
+      if (product.tags?.includes(selectedTag)) return true;
+      
+      // Check in additionalData
+      const tagData = product.additionalData?.find(
+        (item: any) => item.label.toLowerCase() === 'tags' || item.type === 'tags'
+      );
+      if (tagData) {
+        const productTags = tagData.value.split(',').map((tag: string) => tag.trim());
+        return productTags.includes(selectedTag);
+      }
+      
+      return false;
+    });
   }, [products, selectedTag]);
 
-  const handleAddToCart = (product: Product) => {
-    addToCart(product, 1);
+  const handleAddToCart = (product: any) => {
+    // Convert Bagisto product to your Product type
+    const cartProduct: Product = {
+      id: product.id,
+      name: product.name,
+      description: product.shortDescription || product.description,
+      price: parseFloat(product.priceHtml?.finalPrice) || 0,
+      compareAtPrice: parseFloat(product.priceHtml?.regularPrice) || 0,
+      currencyCode: 'USD', // Adjust based on your currency
+      image: product.images?.[0]?.url || '',
+      images: product.images?.map((img: any) => img.url) || [],
+      brand: '', // Extract from additionalData if available
+      rating: product.averageRating || 0,
+      reviewCount: product.reviews?.length || 0,
+      inStock: product.isSaleable || true,
+      category: '', // You might need to extract this
+      tags: product.tags || [],
+      options: [], // Bagisto might have variants in a different structure
+      variants: [], // Adjust based on your Bagisto product structure
+    };
+    
+    addToCart(cartProduct, 1);
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 600);
   };
 
-  const renderProduct = (item: Product, index: number) => {
+  const toggleProductWishlist = (product: any) => {
+    const wishlistProduct: Product = {
+      id: product.id,
+      name: product.name,
+      description: product.shortDescription || product.description,
+      price: parseFloat(product.priceHtml?.finalPrice) || 0,
+      compareAtPrice: parseFloat(product.priceHtml?.regularPrice) || 0,
+      currencyCode: 'USD',
+      image: product.images?.[0]?.url || '',
+      images: product.images?.map((img: any) => img.url) || [],
+      brand: '',
+      rating: product.averageRating || 0,
+      reviewCount: product.reviews?.length || 0,
+      inStock: product.isSaleable || true,
+      category: '',
+      tags: product.tags || [],
+      options: [],
+      variants: [],
+    };
+    
+    toggleWishlist(wishlistProduct);
+  };
+
+  const renderProduct = (item: any, index: number) => {
+    const productPrice = parseFloat(item.priceHtml?.finalPrice) || 0;
+    const comparePrice = parseFloat(item.priceHtml?.regularPrice) || 0;
     const inWishlist = isInWishlist(item.id);
-    const hasDiscount = item.compareAtPrice && item.compareAtPrice > item.price;
+    const hasDiscount = comparePrice > productPrice;
     const discountPercentage = hasDiscount 
-      ? Math.round(((item.compareAtPrice! - item.price) / item.compareAtPrice!) * 100)
+      ? Math.round(((comparePrice - productPrice) / comparePrice) * 100)
       : 0;
     const isAdded = addedProductId === item.id;
+    const mainImage = item.images?.[0]?.url || '';
 
     return (
       <Pressable
@@ -62,7 +137,11 @@ export default function CategoryScreen() {
         onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
       >
         <View style={styles.imageContainer}>
-          <Image source={{ uri: item.image }} style={styles.productImage} />
+          {mainImage ? (
+            <Image source={{ uri: mainImage }} style={styles.productImage} />
+          ) : (
+            <View style={[styles.productImage, styles.placeholderImage]} />
+          )}
           {hasDiscount && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountBadgeText}>-{discountPercentage}%</Text>
@@ -72,7 +151,7 @@ export default function CategoryScreen() {
             style={styles.favoriteButton}
             onPress={(e) => {
               e.stopPropagation();
-              toggleWishlist(item);
+              toggleProductWishlist(item);
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -106,18 +185,28 @@ export default function CategoryScreen() {
           </Pressable>
         </View>
         <View style={styles.productInfo}>
-          <Text style={styles.brandText} numberOfLines={1}>{item.brand}</Text>
+          <Text style={styles.brandText} numberOfLines={1}>
+            {/* Extract brand from additionalData if available */}
+            {item.additionalData?.find((data: any) => data.label === 'Brand')?.value || ''}
+          </Text>
           <Text style={styles.productName} numberOfLines={2}>
             {item.name}
           </Text>
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>★ {item.rating}</Text>
+            <Text style={styles.ratingText}>★ {item.averageRating || 0}</Text>
+            {item.reviews?.length > 0 && (
+              <Text style={styles.reviewCount}>({item.reviews.length})</Text>
+            )}
           </View>
           <View style={styles.priceRow}>
             {hasDiscount && (
-              <Text style={styles.compareAtPriceText}>{formatPrice(item.compareAtPrice!, item.currencyCode)}</Text>
+              <Text style={styles.compareAtPriceText}>
+                {formatPrice(comparePrice, 'USD')}
+              </Text>
             )}
-            <Text style={styles.priceText}>{formatPrice(item.price, item.currencyCode)}</Text>
+            <Text style={styles.priceText}>
+              {formatPrice(productPrice, 'USD')}
+            </Text>
           </View>
         </View>
       </Pressable>
@@ -186,7 +275,7 @@ export default function CategoryScreen() {
             key={selectedTag}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No products found</Text>
+                <Text style={styles.emptyText}>No products found in this category</Text>
               </View>
             }
           />
@@ -246,6 +335,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  placeholderImage: {
+    backgroundColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   favoriteButton: {
     position: 'absolute' as const,
     top: 8,
@@ -303,11 +397,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    gap: 4,
   },
   ratingText: {
     fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.text,
+  },
+  reviewCount: {
+    fontSize: 11,
+    color: Colors.textSecondary,
   },
   priceRow: {
     flexDirection: 'row',

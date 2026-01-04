@@ -1,7 +1,7 @@
+// app/product/[id].tsx
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Heart, Minus, Plus, Star } from 'lucide-react-native';
-import React, { useRef, useState } from 'react';
-import { ProductVariant } from '@/types/product';
+import React, { useRef, useState, useMemo } from 'react';
 import {
   Dimensions,
   Platform,
@@ -16,44 +16,127 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
-import { useShopifyProduct, useShopifyProductsByCategory } from '@/contexts/ShopifyContext';
 import { formatPrice } from '@/utils/currency';
 import { ShippingStrip } from '@/components/ShippingStrip';
+import { useProductById } from '../hooks/useProductById';
+import { useProductsByCategory } from '../hooks/useProductsByCategory';
+import { Product } from '@/types/product';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Helper function to strip HTML tags
+const stripHtmlTags = (html: string): string => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+};
+
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: product, isLoading, error } = useShopifyProduct(id || '');
+  const { data: product, isLoading, error } = useProductById(id || '');
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(undefined);
   
-  const relatedProducts = useShopifyProductsByCategory(product?.category || '');
-  const filteredRelatedProducts = relatedProducts.filter(p => p.id !== id).slice(0, 5);
+  // Get category from additionalData
+  const categoryId = product?.additionalData?.find(
+    (item: any) => item.label === 'Category'
+  )?.value;
+  
+  // Fetch related products by category
+  const { data: categoryProductsData } = useProductsByCategory(categoryId || '');
+  
+  // Extract brand from additionalData
+  const brand = product?.additionalData?.find(
+    (item: any) => item.label === 'Brand'
+  )?.value || '';
 
-  console.log('ProductDetailScreen - ID:', id);
-  console.log('ProductDetailScreen - Loading:', isLoading);
-  console.log('ProductDetailScreen - Product:', product);
-  console.log('ProductDetailScreen - Error:', error);
+  // Extract price information
+  const price = parseFloat(product?.priceHtml?.finalPrice || '0');
+  const comparePrice = parseFloat(product?.priceHtml?.regularPrice || '0');
+  const hasDiscount = comparePrice > price;
+  const discountPercentage = hasDiscount 
+    ? Math.round(((comparePrice - price) / comparePrice) * 100)
+    : 0;
+
+  // Handle images
+  const images = product?.images?.map((img: any) => img.url) || [];
+
+  // Handle variants if available
+  const hasVariants = product?.configutableData?.attributes?.length > 0;
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+
+  // Get related products from multiple sources
+  const allRelatedProducts = useMemo(() => {
+    if (!product) return [];
+    
+    const relatedProductsFromAPI = product.relatedProducts || [];
+    const categoryRelatedProducts = categoryProductsData?.allProducts?.data || [];
+    
+    // Combine both sources, remove current product and duplicates
+    const combined = [...relatedProductsFromAPI, ...categoryRelatedProducts]
+      .filter((product: any, index: number, self: any[]) => 
+        product?.id && // Make sure product has ID
+        product.id !== id && // Remove current product
+        index === self.findIndex((p: any) => p?.id === product.id) // Remove duplicates
+      )
+      .slice(0, 8); // Limit to 8 products
+    
+    return combined;
+  }, [product, categoryProductsData, id]);
 
   React.useEffect(() => {
-    if (product?.variants && product.variants.length > 0) {
-      const firstVariant = product.variants.find((v: any) => v.availableForSale) || product.variants[0];
-      setSelectedVariant(firstVariant);
-      
+    // Initialize selected options if variants exist
+    if (hasVariants) {
       const initialOptions: Record<string, string> = {};
-      firstVariant.selectedOptions.forEach((opt: any) => {
-        initialOptions[opt.name] = opt.value;
+      product.configutableData.attributes.forEach((attr: any) => {
+        if (attr.options.length > 0) {
+          initialOptions[attr.code] = attr.options[0].id;
+        }
       });
       setSelectedOptions(initialOptions);
     }
   }, [product]);
+
+  const handleAddToCart = () => {
+    if (!product) return;
+
+    const cartProduct: Product = {
+      id: product.id,
+      name: product.name,
+      description: stripHtmlTags(product.shortDescription || product.description || ''),
+      price: price,
+      compareAtPrice: comparePrice,
+      currencyCode: 'USD',
+      image: images[0] || '',
+      images: images,
+      brand: brand,
+      rating: parseFloat(product.averageRating) || 0,
+      reviewCount: product.reviews?.length || 0,
+      inStock: product.isSaleable,
+      category: '',
+      tags: [],
+      options: product.configutableData?.attributes?.map((attr: any) => ({
+        id: attr.id,
+        name: attr.label,
+        values: attr.options.map((opt: any) => opt.label)
+      })) || [],
+      variants: product.variants || [],
+      selectedOptions: selectedOptions,
+    };
+
+    addToCart(cartProduct, quantity);
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
+  };
+
+  const handleScroll = (event: any) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / SCREEN_WIDTH);
+    setActiveImageIndex(index);
+  };
 
   if (isLoading) {
     return (
@@ -73,57 +156,10 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const handleAddToCart = () => {
-    if (selectedVariant) {
-      const productWithVariant = {
-        ...product,
-        price: selectedVariant.price,
-        variantId: selectedVariant.id,
-      };
-      addToCart(productWithVariant, quantity);
-    } else {
-      addToCart(product, quantity);
-    }
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
-  };
-
-  const handleOptionSelect = (optionName: string, value: string) => {
-    const newSelectedOptions = {
-      ...selectedOptions,
-      [optionName]: value,
-    };
-    setSelectedOptions(newSelectedOptions);
-
-    const variant = product.variants?.find((v: any) => {
-      return v.selectedOptions.every((opt: any) => 
-        newSelectedOptions[opt.name] === opt.value
-      );
-    });
-
-    if (variant) {
-      setSelectedVariant(variant);
-    }
-  };
-
-  const displayPrice = selectedVariant ? selectedVariant.price : product.price;
-  const displayCompareAtPrice = selectedVariant ? selectedVariant.compareAtPrice : product.compareAtPrice;
-  const displayCurrency = selectedVariant ? selectedVariant.currencyCode : product.currencyCode;
-  const isAvailable = selectedVariant ? selectedVariant.availableForSale : product.inStock;
-  const hasDiscount = displayCompareAtPrice && displayCompareAtPrice > displayPrice;
-  const discountPercentage = hasDiscount 
-    ? Math.round(((displayCompareAtPrice! - displayPrice) / displayCompareAtPrice!) * 100)
-    : 0;
-
-  const handleScroll = (event: any) => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / SCREEN_WIDTH);
-    setActiveImageIndex(index);
-  };
-
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Image Gallery */}
         <View style={styles.imageContainer}>
           <ScrollView
             ref={scrollViewRef}
@@ -134,20 +170,25 @@ export default function ProductDetailScreen() {
             scrollEventThrottle={16}
             style={styles.imageScrollView}
           >
-            {product.images.map((imageUrl: string, index: number) => (
-              <Image
-                key={index}
-                source={{ uri: imageUrl }}
-                style={styles.image}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                priority="high"
-              />
-            ))}
+            {images.length > 0 ? (
+              images.map((imageUrl: string, index: number) => (
+                <Image
+                  key={index}
+                  source={{ uri: imageUrl }}
+                  style={styles.image}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="high"
+                />
+              ))
+            ) : (
+              <View style={[styles.image, styles.placeholderImage]} />
+            )}
           </ScrollView>
-          {product.images.length > 1 && (
+          
+          {images.length > 1 && (
             <View style={styles.pagination}>
-              {product.images.map((_: string, index: number) => (
+              {images.map((_: string, index: number) => (
                 <View
                   key={index}
                   style={[
@@ -159,108 +200,129 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
+          {/* Header Actions */}
           <SafeAreaView style={styles.headerActions} edges={['top']}>
             <Pressable style={styles.actionButton} onPress={() => router.back()}>
               <ArrowLeft size={24} color={Colors.text} />
             </Pressable>
-            <Pressable 
-              style={styles.actionButton} 
-              onPress={() => product && toggleWishlist(product)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Heart 
-                size={26} 
-                color={product && isInWishlist(product.id) ? Colors.error : Colors.text}
-                fill={product && isInWishlist(product.id) ? Colors.error : 'transparent'}
-              />
-            </Pressable>
+            <View style={styles.headerRightActions}>
+              <Pressable 
+                style={styles.actionButton} 
+                onPress={() => toggleWishlist(product)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Heart 
+                  size={26} 
+                  color={isInWishlist(product.id) ? Colors.error : Colors.text}
+                  fill={isInWishlist(product.id) ? Colors.error : 'transparent'}
+                />
+              </Pressable>
+            </View>
           </SafeAreaView>
+
+          {/* Discount Badge */}
+          {hasDiscount && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountBadgeText}>-{discountPercentage}%</Text>
+            </View>
+          )}
         </View>
 
         <ShippingStrip />
 
+        {/* Product Details */}
         <View style={styles.detailsContainer}>
+          {/* Brand and Name */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.brand}>{product.brand}</Text>
+              {brand && <Text style={styles.brand}>{brand}</Text>}
               <Text style={styles.name}>{product.name}</Text>
             </View>
             <View style={styles.priceContainer}>
-              {displayCompareAtPrice && displayCompareAtPrice > displayPrice && (
-                <Text style={styles.compareAtPrice}>{formatPrice(displayCompareAtPrice, displayCurrency)}</Text>
-              )}
-              <Text style={styles.price}>{formatPrice(displayPrice, displayCurrency)}</Text>
               {hasDiscount && (
-                <View style={styles.priceBadge}>
-                  <Text style={styles.priceBadgeText}>-{discountPercentage}% OFF</Text>
-                </View>
+                <Text style={styles.compareAtPrice}>
+                  {formatPrice(comparePrice, 'USD')}
+                </Text>
               )}
+              <Text style={styles.price}>
+                {formatPrice(price, 'USD')}
+              </Text>
             </View>
           </View>
 
+          {/* Rating */}
           <View style={styles.ratingSection}>
             <View style={styles.ratingContainer}>
               <Star size={16} color={Colors.primary} fill={Colors.primary} />
-              <Text style={styles.ratingText}>{product.rating}</Text>
+              <Text style={styles.ratingText}>{product.averageRating || '0.0'}</Text>
             </View>
-            <Text style={styles.reviewCount}>({product.reviewCount} reviews)</Text>
+            <Text style={styles.reviewCount}>({product.reviews?.length || 0} reviews)</Text>
           </View>
 
-          {product.smellslike && (
-            <View style={styles.smellslikeContainer}>
-              <Text style={styles.smellslikeTitle}>Smells Like</Text>
-              <Text style={styles.smellslikeText}>{product.smellslike}</Text>
+          {/* SKU */}
+          {product.sku && (
+            <View style={styles.skuContainer}>
+              <Text style={styles.skuLabel}>SKU:</Text>
+              <Text style={styles.skuValue}>{product.sku}</Text>
             </View>
           )}
 
+          {/* Availability */}
+          <View style={styles.availabilityContainer}>
+            <View style={[
+              styles.availabilityDot,
+              { backgroundColor: product.isSaleable ? Colors.success : Colors.error }
+            ]} />
+            <Text style={styles.availabilityText}>
+              {product.isSaleable ? 'In Stock' : 'Out of Stock'}
+            </Text>
+          </View>
+
+          {/* Description */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.description}>{product.description}</Text>
+            <Text style={styles.description}>
+              {stripHtmlTags(product.shortDescription || product.description || 'No description available.')}
+            </Text>
           </View>
 
-          {product.options && product.options.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Options</Text>
-              {product.options.map((option: any) => (
-                <View key={option.id} style={styles.optionContainer}>
-                  <View style={styles.optionValues}>
-                    {option.values.map((value: string) => {
-                      const isSelected = selectedOptions[option.name] === value;
-                      return (
-                        <Pressable
-                          key={value}
-                          style={[
-                            styles.optionValue,
-                            isSelected && styles.optionValueSelected,
-                          ]}
-                          onPress={() => handleOptionSelect(option.name, value)}
-                        >
-                          <Text
-                            style={[
-                              styles.optionValueText,
-                              isSelected && styles.optionValueTextSelected,
-                            ]}
-                          >
-                            {value}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {(product.collectionName || product.category) && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Collection</Text>
-              <View style={styles.categoryTag}>
-                <Text style={styles.categoryText}>{product.collectionName || product.category}</Text>
+          {/* Variants */}
+          {hasVariants && product.configutableData.attributes.map((attribute: any) => (
+            <View key={attribute.id} style={styles.section}>
+              <Text style={styles.sectionTitle}>{attribute.label}</Text>
+              <View style={styles.optionValues}>
+                {attribute.options.map((option: any) => {
+                  const isSelected = selectedOptions[attribute.code] === option.id;
+                  return (
+                    <Pressable
+                      key={option.id}
+                      style={[
+                        styles.optionValue,
+                        isSelected && styles.optionValueSelected,
+                      ]}
+                      onPress={() => {
+                        setSelectedOptions(prev => ({
+                          ...prev,
+                          [attribute.code]: option.id
+                        }));
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.optionValueText,
+                          isSelected && styles.optionValueTextSelected,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
-          )}
+          ))}
 
+          {/* Quantity Selector */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quantity</Text>
             <View style={styles.quantitySelector}>
@@ -280,7 +342,45 @@ export default function ProductDetailScreen() {
             </View>
           </View>
 
-          {filteredRelatedProducts.length > 0 && (
+          {/* Additional Information */}
+          {product.additionalData?.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Additional Information</Text>
+              <View style={styles.additionalDataContainer}>
+                {product.additionalData.map((item: any) => (
+                  <View key={item.id} style={styles.additionalDataItem}>
+                    <Text style={styles.additionalDataLabel}>{item.label}:</Text>
+                    <Text style={styles.additionalDataValue}>{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Reviews */}
+          {product.reviews?.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Customer Reviews</Text>
+              {product.reviews.slice(0, 3).map((review: any) => (
+                <View key={review.id} style={styles.reviewItem}>
+                  <View style={styles.reviewHeader}>
+                    <Text style={styles.reviewAuthor}>{review.title}</Text>
+                    <View style={styles.reviewRating}>
+                      <Star size={14} color={Colors.primary} fill={Colors.primary} />
+                      <Text style={styles.reviewRatingText}>{review.rating}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.reviewComment}>{review.comment}</Text>
+                  <Text style={styles.reviewDate}>
+                    {new Date(review.createdAt).toLocaleDateString()}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Related Products */}
+          {allRelatedProducts.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Related Products</Text>
               <ScrollView
@@ -288,55 +388,85 @@ export default function ProductDetailScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.relatedScrollContent}
               >
-                {filteredRelatedProducts.map((relatedProduct) => (
-                  <Pressable
-                    key={relatedProduct.id}
-                    style={styles.relatedProductCard}
-                    onPress={() => {
-                      router.push(`/product/${encodeURIComponent(relatedProduct.id)}`);
-                    }}
-                  >
-                    <Image
-                      source={{ uri: relatedProduct.images[0] }}
-                      style={styles.relatedProductImage}
-                      contentFit="cover"
-                      cachePolicy="memory-disk"
-                    />
-                    <View style={styles.relatedProductInfo}>
-                      <Text style={styles.relatedProductName} numberOfLines={1}>
-                        {relatedProduct.name}
-                      </Text>
-                      <View style={styles.relatedPriceContainer}>
-                        {relatedProduct.compareAtPrice && relatedProduct.compareAtPrice > relatedProduct.price && (
-                          <Text style={styles.relatedCompareAtPrice}>
-                            {formatPrice(relatedProduct.compareAtPrice, relatedProduct.currencyCode)}
+                {allRelatedProducts.map((relatedProduct: any) => {
+                  const relatedPrice = parseFloat(relatedProduct.priceHtml?.finalPrice || '0');
+                  const relatedComparePrice = parseFloat(relatedProduct.priceHtml?.regularPrice || '0');
+                  const relatedHasDiscount = relatedComparePrice > relatedPrice;
+                  const relatedImage = relatedProduct.images?.[0]?.url || '';
+
+                  return (
+                    <Pressable
+                      key={relatedProduct.id}
+                      style={styles.relatedProductCard}
+                      onPress={() => {
+                        router.push(`/product/${encodeURIComponent(relatedProduct.id)}`);
+                      }}
+                    >
+                      {relatedImage ? (
+                        <Image
+                          source={{ uri: relatedImage }}
+                          style={styles.relatedProductImage}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                        />
+                      ) : (
+                        <View style={[styles.relatedProductImage, styles.placeholderImage]} />
+                      )}
+                      
+                      {relatedHasDiscount && (
+                        <View style={styles.relatedDiscountBadge}>
+                          <Text style={styles.relatedDiscountBadgeText}>
+                            -{Math.round(((relatedComparePrice - relatedPrice) / relatedComparePrice) * 100)}%
                           </Text>
-                        )}
-                        <Text style={styles.relatedProductPrice}>
-                          {formatPrice(relatedProduct.price, relatedProduct.currencyCode)}
+                        </View>
+                      )}
+                      
+                      <View style={styles.relatedProductInfo}>
+                        <Text style={styles.relatedProductName} numberOfLines={1}>
+                          {relatedProduct.name}
                         </Text>
+                        <View style={styles.relatedPriceContainer}>
+                          {relatedHasDiscount && (
+                            <Text style={styles.relatedCompareAtPrice}>
+                              {formatPrice(relatedComparePrice, 'USD')}
+                            </Text>
+                          )}
+                          <Text style={styles.relatedProductPrice}>
+                            {formatPrice(relatedPrice, 'USD')}
+                          </Text>
+                        </View>
+                        <View style={styles.relatedAvailability}>
+                          <View style={[
+                            styles.relatedAvailabilityDot,
+                            { backgroundColor: relatedProduct.isSaleable ? Colors.success : Colors.error }
+                          ]} />
+                          <Text style={styles.relatedAvailabilityText}>
+                            {relatedProduct.isSaleable ? 'In Stock' : 'Out of Stock'}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  </Pressable>
-                ))}
+                    </Pressable>
+                  );
+                })}
               </ScrollView>
             </View>
           )}
         </View>
       </ScrollView>
 
+      {/* Footer Add to Cart Button */}
       <SafeAreaView style={styles.footer} edges={['bottom']}>
         <Pressable
           style={[
             styles.addToCartButton,
             addedToCart && styles.addedToCartButton,
-            !isAvailable && styles.addToCartButtonDisabled,
+            !product.isSaleable && styles.addToCartButtonDisabled,
           ]}
           onPress={handleAddToCart}
-          disabled={!isAvailable}
+          disabled={!product.isSaleable}
         >
           <Text style={styles.addToCartButtonText}>
-            {!isAvailable ? 'Out of Stock' : addedToCart ? 'Added to Cart!' : 'Add to Cart'}
+            {!product.isSaleable ? 'Out of Stock' : addedToCart ? 'Added to Cart!' : 'Add to Cart'}
           </Text>
         </Pressable>
       </SafeAreaView>
@@ -367,8 +497,6 @@ const styles = StyleSheet.create({
     height: 380,
     backgroundColor: Colors.cardBackground,
     position: 'relative' as const,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
   },
   imageScrollView: {
     width: '100%',
@@ -378,6 +506,11 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: '100%',
     resizeMode: 'cover' as const,
+  },
+  placeholderImage: {
+    backgroundColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   pagination: {
     position: 'absolute' as const,
@@ -410,10 +543,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
+  headerRightActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   actionButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.white,
     justifyContent: 'center',
     alignItems: 'center',
@@ -422,6 +559,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  discountBadge: {
+    position: 'absolute' as const,
+    top: 20,
+    left: 20,
+    backgroundColor: Colors.error,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  discountBadgeText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '700' as const,
   },
   detailsContainer: {
     padding: 20,
@@ -434,6 +585,7 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+    marginRight: 16,
   },
   brand: {
     fontSize: 13,
@@ -450,7 +602,6 @@ const styles = StyleSheet.create({
     lineHeight: 32,
   },
   priceContainer: {
-    marginLeft: 16,
     alignItems: 'flex-end',
   },
   compareAtPrice: {
@@ -468,7 +619,7 @@ const styles = StyleSheet.create({
   ratingSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -485,6 +636,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textSecondary,
   },
+  skuContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  skuLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    marginRight: 8,
+  },
+  skuValue: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  availabilityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  availabilityText: {
+    fontSize: 14,
+    color: Colors.text,
+  },
   section: {
     marginBottom: 24,
   },
@@ -499,17 +680,30 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: Colors.text,
   },
-  categoryTag: {
-    alignSelf: 'flex-start' as const,
-    backgroundColor: Colors.cardBackground,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+  optionValues: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  categoryText: {
+  optionValue: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.cardBackground,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  optionValueSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  optionValueText: {
     fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.text,
+  },
+  optionValueTextSelected: {
+    color: Colors.white,
   },
   quantitySelector: {
     flexDirection: 'row',
@@ -531,6 +725,140 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     minWidth: 32,
     textAlign: 'center' as const,
+  },
+  additionalDataContainer: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+  },
+  additionalDataItem: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  additionalDataLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    width: 100,
+    marginRight: 12,
+  },
+  additionalDataValue: {
+    fontSize: 14,
+    color: Colors.text,
+    flex: 1,
+  },
+  reviewItem: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reviewAuthor: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  reviewRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reviewRatingText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginLeft: 4,
+  },
+  reviewComment: {
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  relatedScrollContent: {
+    gap: 12,
+  },
+  relatedProductCard: {
+    width: 140,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    position: 'relative' as const,
+  },
+  relatedProductImage: {
+    width: '100%',
+    height: 140,
+    resizeMode: 'cover' as const,
+  },
+  relatedDiscountBadge: {
+    position: 'absolute' as const,
+    top: 8,
+    left: 8,
+    backgroundColor: Colors.error,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  relatedDiscountBadgeText: {
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: '700' as const,
+  },
+  relatedProductInfo: {
+    padding: 10,
+  },
+  relatedProductName: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 4,
+    height: 32,
+  },
+  relatedPriceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
+  relatedCompareAtPrice: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    textDecorationLine: 'line-through' as const,
+  },
+  relatedProductPrice: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.primary,
+  },
+  relatedAvailability: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  relatedAvailabilityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  relatedAvailabilityText: {
+    fontSize: 10,
+    color: Colors.textSecondary,
   },
   footer: {
     padding: 20,
@@ -563,122 +891,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.textSecondary,
     opacity: 0.5,
   },
-  optionContainer: {
-    marginBottom: 16,
-  },
-  optionName: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    marginBottom: 10,
-  },
-  optionValues: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  optionValue: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: Colors.cardBackground,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  optionValueSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  optionValueText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
-  },
-  optionValueTextSelected: {
-    color: Colors.white,
-  },
   addToCartButtonText: {
     fontSize: 17,
     fontWeight: '700' as const,
     color: Colors.white,
-  },
-  smellslikeContainer: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start' as const,
-  },
-  smellslikeTitle: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    color: Colors.primary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-    marginRight: 8,
-  },
-  smellslikeText: {
-    fontSize: 13,
-    color: Colors.text,
-  },
-  relatedScrollContent: {
-    gap: 12,
-  },
-  relatedProductCard: {
-    width: 140,
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  relatedProductImage: {
-    width: '100%',
-    height: 140,
-    resizeMode: 'cover' as const,
-  },
-  relatedProductInfo: {
-    padding: 10,
-  },
-  relatedProductName: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  relatedPriceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  relatedCompareAtPrice: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.textSecondary,
-    textDecorationLine: 'line-through' as const,
-  },
-  relatedProductPrice: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.primary,
-  },
-
-  priceBadge: {
-    backgroundColor: Colors.error,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 8,
-    alignSelf: 'flex-end' as const,
-  },
-  priceBadgeText: {
-    color: Colors.white,
-    fontSize: 11,
-    fontWeight: '700' as const,
-    letterSpacing: 0.5,
   },
 });
