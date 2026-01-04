@@ -1,10 +1,10 @@
+// app/vendor/[name].tsx
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Heart, Plus, Check } from 'lucide-react-native';
 import React, { useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -12,57 +12,124 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import Colors from '@/constants/colors';
-import { useShopifyProductsByVendor } from '@/contexts/ShopifyContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useCart } from '@/contexts/CartContext';
-import { Product } from '@/types/product';
 import { formatPrice } from '@/utils/currency';
 import { ShippingStrip } from '@/components/ShippingStrip';
+import { useProductsByBrand } from '../hooks/useProductsByBrand';
 
 export default function VendorScreen() {
   const { name } = useLocalSearchParams<{ name: string }>();
-  const products = useShopifyProductsByVendor(name || '');
+  const { data: productsData, isLoading, error } = useProductsByBrand(name || '');
+  
+  // Extract products from GraphQL response
+  const products = useMemo(() => {
+    if (!productsData) return [];
+    return productsData.productsByAttribute?.data || [];
+  }, [productsData]);
+
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
   const [selectedTag, setSelectedTag] = useState<string>('All');
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
 
+  // Extract tags from categories
   const allTags = useMemo(() => {
     const tags = new Set<string>();
+    tags.add('All');
     products.forEach(product => {
-      product.tags?.forEach(tag => tags.add(tag));
+      if (product.categories?.length > 0) {
+        product.categories.forEach(cat => tags.add(cat.name));
+      }
     });
-    return ['All', ...Array.from(tags).sort()];
+    return Array.from(tags);
   }, [products]);
 
   const filteredProducts = useMemo(() => {
     if (selectedTag === 'All') return products;
-    return products.filter(product => product.tags?.includes(selectedTag));
+    return products.filter(product => 
+      product.categories?.some(cat => cat.name === selectedTag)
+    );
   }, [products, selectedTag]);
 
-  const handleAddToCart = (product: Product) => {
-    addToCart(product, 1);
+  // Helper functions to extract data from attribute values
+  const getProductPrice = (product) => {
+    if (!product.attributeValues) return 0;
+    const priceAttr = product.attributeValues.find(
+      attr => attr.attribute?.code === 'price'
+    );
+    return priceAttr?.floatValue || 0;
+  };
+
+  const getProductComparePrice = (product) => {
+    if (!product.attributeValues) return null;
+    const comparePriceAttr = product.attributeValues.find(
+      attr => attr.attribute?.code === 'special_price'
+    );
+    return comparePriceAttr?.floatValue || null;
+  };
+
+  const handleAddToCart = (product) => {
+    const price = getProductPrice(product);
+    const comparePrice = getProductComparePrice(product);
+    
+    const cartProduct = {
+      id: product.id,
+      name: product.name,
+      price: price,
+      compareAtPrice: comparePrice,
+      currencyCode: 'USD',
+      image: product.images?.[0]?.url || '',
+      brand: name || 'Brand',
+      sku: product.sku || '',
+      rating: 4.5,
+      reviewCount: 0,
+      inStock: true,
+    };
+    
+    addToCart(cartProduct, 1);
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 600);
   };
 
-  const renderProduct = (item: Product, index: number) => {
-    const inWishlist = isInWishlist(item.id);
-    const hasDiscount = item.compareAtPrice && item.compareAtPrice > item.price;
+  const renderProduct = (product, index: number) => {
+    const inWishlist = isInWishlist(product.id);
+    const price = getProductPrice(product);
+    const comparePrice = getProductComparePrice(product);
+    const hasDiscount = comparePrice && comparePrice > price;
     const discountPercentage = hasDiscount 
-      ? Math.round(((item.compareAtPrice! - item.price) / item.compareAtPrice!) * 100)
+      ? Math.round(((comparePrice - price) / comparePrice) * 100)
       : 0;
-    const isAdded = addedProductId === item.id;
+    const isAdded = addedProductId === product.id;
+    const firstImage = product.images?.[0]?.url;
 
     return (
       <Pressable
         style={styles.productCard}
-        onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
+        onPress={() => router.push({ 
+          pathname: '/product/[id]', 
+          params: { 
+            id: product.id, 
+            name: product.name,
+          } 
+        })}
       >
         <View style={styles.imageContainer}>
-          <Image source={{ uri: item.image }} style={styles.productImage} />
-          {hasDiscount && (
+          {firstImage ? (
+            <Image
+              source={{ uri: firstImage }}
+              style={styles.productImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+          ) : (
+            <View style={styles.noImagePlaceholder}>
+              <Text style={styles.placeholderText}>No Image</Text>
+            </View>
+          )}
+          {hasDiscount && discountPercentage > 0 && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountBadgeText}>-{discountPercentage}%</Text>
             </View>
@@ -71,7 +138,15 @@ export default function VendorScreen() {
             style={styles.favoriteButton}
             onPress={(e) => {
               e.stopPropagation();
-              toggleWishlist(item);
+              toggleWishlist({
+                id: product.id,
+                name: product.name,
+                price: price,
+                compareAtPrice: comparePrice,
+                currencyCode: 'USD',
+                image: firstImage || '',
+                brand: name || 'Brand',
+              });
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -85,7 +160,7 @@ export default function VendorScreen() {
             style={[styles.addToCartButton, isAdded && styles.addToCartButtonSuccess]}
             onPress={(e) => {
               e.stopPropagation();
-              handleAddToCart(item);
+              handleAddToCart(product);
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -105,30 +180,83 @@ export default function VendorScreen() {
           </Pressable>
         </View>
         <View style={styles.productInfo}>
-          <Text style={styles.brandText} numberOfLines={1}>{item.brand}</Text>
+          <Text style={styles.brandText} numberOfLines={1}>
+            {name || 'Brand'}
+          </Text>
           <Text style={styles.productName} numberOfLines={2}>
-            {item.name}
+            {product.name}
           </Text>
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>★ {item.rating}</Text>
+            <Text style={styles.ratingText}>★ 4.5</Text>
           </View>
           <View style={styles.priceRow}>
-            {hasDiscount && (
-              <Text style={styles.compareAtPriceText}>{formatPrice(item.compareAtPrice!, item.currencyCode)}</Text>
+            {hasDiscount && comparePrice && (
+              <Text style={styles.compareAtPriceText}>
+                {formatPrice(comparePrice, 'USD')}
+              </Text>
             )}
-            <Text style={styles.priceText}>{formatPrice(item.price, item.currencyCode)}</Text>
+            <Text style={styles.priceText}>
+              {formatPrice(price, 'USD')}
+            </Text>
           </View>
         </View>
       </Pressable>
     );
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ShippingStrip />
+        <Stack.Screen 
+          options={{ 
+            title: name || 'Brand',
+            headerStyle: {
+              backgroundColor: Colors.background,
+            },
+            headerTintColor: Colors.text,
+            headerShadowVisible: false,
+          }} 
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading products...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    console.error('Error in VendorScreen:', error);
+    return (
+      <View style={styles.container}>
+        <ShippingStrip />
+        <Stack.Screen 
+          options={{ 
+            title: name || 'Brand',
+            headerStyle: {
+              backgroundColor: Colors.background,
+            },
+            headerTintColor: Colors.text,
+            headerShadowVisible: false,
+          }} 
+        />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load products</Text>
+          <Text style={styles.errorSubText}>Please try again later</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ShippingStrip />
       <Stack.Screen 
         options={{ 
-          title: name || 'Vendor',
+          title: name || 'Brand',
           headerStyle: {
             backgroundColor: Colors.background,
           },
@@ -138,9 +266,8 @@ export default function VendorScreen() {
       />
       
       {products.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading products...</Text>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No products found for this brand</Text>
         </View>
       ) : (
         <View style={styles.contentContainer}>
@@ -184,7 +311,7 @@ export default function VendorScreen() {
             key={selectedTag}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No products found</Text>
+                <Text style={styles.emptyText}>No products found for this category</Text>
               </View>
             }
           />
@@ -214,6 +341,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textSecondary,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: Colors.error,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorSubText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
   listContent: {
     padding: 20,
   },
@@ -242,6 +386,17 @@ const styles = StyleSheet.create({
   productImage: {
     width: '100%',
     height: '100%',
+  },
+  noImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.lightGray,
+  },
+  placeholderText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
   },
   favoriteButton: {
     position: 'absolute' as const,
