@@ -45,7 +45,7 @@ const DEFAULT_SECTIONS: HomepageSection[] = [
   },
   {
     id: 'all-products',
-    type: 'featured',
+    type: 'featured', 
     title: 'All Products',
     enabled: true,
   },

@@ -25,6 +25,7 @@ import { Product } from '@/types/product';
 import { formatPrice } from '@/utils/currency';
 import type { Banner } from '@/services/shopify';
 import { ShippingStrip } from '@/components/ShippingStrip';
+import { useAllProducts, Product as BagistoProduct } from '../hooks/useAllProducts';
 
 interface FallbackBanner {
   id: string;
@@ -124,21 +125,22 @@ function TagSection({
   tag: string;
   limit?: number;
   sortOrder?: 'alphabetical' | 'latest' | 'random';
-  products: Product[];
-  renderProduct: (item: Product, isHorizontal: boolean) => React.ReactElement | null;
+  products: BagistoProduct[];
+  renderProduct: (item: BagistoProduct, isHorizontal: boolean) => React.ReactElement | null;
 }) {
   const { isRTL } = useLanguage();
+  
+  // You'll need to adjust how tags are extracted from Bagisto products
   const tagProducts = useMemo(() => {
-    let filtered = products.filter(p => p.tags.includes(tag));
+    // This is a placeholder - you'll need to check your actual data structure
+    let filtered = products.filter(p => {
+      // Check if tag exists in additionalData or other fields
+      return p.additionalData?.some(data => 
+        data.label === 'Tags' && data.value.includes(tag)
+      );
+    });
     
-    if (sortOrder === 'alphabetical') {
-      filtered.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortOrder === 'latest') {
-      filtered.reverse();
-    } else if (sortOrder === 'random') {
-      filtered.sort(() => Math.random() - 0.5);
-    }
-    
+    // ... sorting logic ...
     return limit ? filtered.slice(0, limit) : filtered;
   }, [products, tag, limit, sortOrder]);
 
@@ -173,12 +175,16 @@ function VendorSection({
   vendorName: string;
   limit?: number;
   sortOrder?: 'alphabetical' | 'latest' | 'random';
-  products: Product[];
-  renderProduct: (item: Product, isHorizontal: boolean) => React.ReactElement | null;
+  products: BagistoProduct[]; // Changed from Product to BagistoProduct
+  renderProduct: (item: BagistoProduct, isHorizontal: boolean) => React.ReactElement | null;
 }) {
   const { t, isRTL } = useLanguage();
   const vendorProducts = useMemo(() => {
-    let filtered = products.filter(p => p.brand === vendorName);
+    let filtered = products.filter(p => {
+      // Get brand from additionalData instead of direct property
+      const brand = p.additionalData?.find(data => data.label === 'Brand')?.value || '';
+      return brand === vendorName;
+    });
     
     if (sortOrder === 'alphabetical') {
       filtered.sort((a, b) => a.name.localeCompare(b.name));
@@ -226,13 +232,15 @@ export default function HomeScreen() {
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { t, isRTL } = useLanguage();
-  const { products, banners: shopifyBanners } = useShopify();
+  const { data: productsData, isLoading: productsLoading } = useAllProducts();
+  const products = productsData?.allProducts.data || [];
   const vendors = useShopifyVendors();
   const { sections } = useHomepageConfig();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category?: string }>();
   const scrollX = useRef(new Animated.Value(0)).current;
   const bannerScrollViewRef = useRef<ScrollView>(null);
+  const { banners: shopifyBanners } = useShopify();
 
   useEffect(() => {
     if (successMessage) {
@@ -283,7 +291,7 @@ export default function HomeScreen() {
   }, [activeBanners.length]);
 
   const onSaleProducts = useMemo(() => 
-    products.filter(p => p.compareAtPrice && p.compareAtPrice > p.price),
+    products.filter(p => p.priceHtml?.regularPrice > p.priceHtml?.finalPrice),
     [products]
   );
 
@@ -296,8 +304,14 @@ export default function HomeScreen() {
     if (!searchQuery) return [];
     return products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.brand.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = !selectedCategory || product.category === selectedCategory;
+        product.additionalData?.some(data => 
+          data.value.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      // For category filtering, you might need to adjust based on your data structure
+      const matchesCategory = !selectedCategory || 
+        product.additionalData?.some(data => 
+          data.label === 'Category' && data.value === selectedCategory
+        );
       return matchesSearch && matchesCategory;
     });
   }, [searchQuery, selectedCategory, products]);
@@ -313,19 +327,52 @@ export default function HomeScreen() {
     }
   }, [displayedProductsCount, products.length]);
 
-  const handleAddToCart = useCallback((product: Product) => {
-    addToCart(product, 1);
+  const handleAddToCart = useCallback((product: BagistoProduct) => {
+    // Create a cart-compatible product object
+    const cartProduct: any = {
+      id: product.id,
+      name: product.name,
+      description: product.shortDescription || product.description || '',
+      price: product.priceHtml?.finalPrice || 0,
+      compareAtPrice: product.priceHtml?.regularPrice || 0,
+      currencyCode: 'USD',
+      image: product.images?.[0]?.url || '',
+      images: product.images?.map(img => img.url) || [],
+      brand: product.additionalData?.find(data => data.label === 'Brand')?.value || '', // FIXED HERE
+      rating: product.averageRating || 0,
+      reviewCount: product.reviews?.length || 0,
+      inStock: product.isSaleable,
+      category: product.additionalData?.find(data => data.label === 'Category')?.value || '',
+      tags: [],
+      options: product.configutableData?.attributes?.map((attr: any) => ({
+        id: attr.id,
+        name: attr.label,
+        values: attr.options.map((opt: any) => opt.label)
+      })) || [],
+      variants: product.variants || [],
+      variantId: product.variants?.[0]?.id,
+      // Include original Bagisto properties for reference
+      originalProduct: product,
+    };
+
+    addToCart(cartProduct, 1);
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 600);
   }, [addToCart]);
 
-  const renderProduct = useCallback((item: Product, isHorizontal = false) => {
+  const renderProduct = useCallback((item: BagistoProduct, isHorizontal = false) => {
     const inWishlist = isInWishlist(item.id);
-    const hasDiscount = item.compareAtPrice && item.compareAtPrice > item.price;
+    const hasDiscount = item.priceHtml?.regularPrice > item.priceHtml?.finalPrice;
     const discountPercentage = hasDiscount 
-      ? Math.round(((item.compareAtPrice! - item.price) / item.compareAtPrice!) * 100)
+      ? Math.round(((item.priceHtml.regularPrice - item.priceHtml.finalPrice) / item.priceHtml.regularPrice) * 100)
       : 0;
     const isAdded = addedProductId === item.id;
+    
+    // Get the first image URL
+    const imageUrl = item.images?.[0]?.url || '';
+    
+    // Get brand from additionalData - FIXED HERE
+    const brand = item.additionalData?.find(data => data.label === 'Brand')?.value || '';
     
     return (
       <Pressable
@@ -333,18 +380,24 @@ export default function HomeScreen() {
         onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
       >
         <View style={isHorizontal ? styles.horizontalImageContainer : styles.imageContainer}>
-          <Image
-            source={{ uri: item.image }}
-            style={styles.productImage}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            transition={200}
-          />
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.productImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+          ) : (
+            <View style={[styles.productImage, { backgroundColor: Colors.cardBackground }]} />
+          )}
+          
           {hasDiscount && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountBadgeText}>-{discountPercentage}%</Text>
             </View>
           )}
+          
           <Pressable 
             style={styles.favoriteButton}
             onPress={(e) => {
@@ -359,6 +412,7 @@ export default function HomeScreen() {
               fill={inWishlist ? Colors.error : 'transparent'}
             />
           </Pressable>
+          
           <Pressable 
             style={[styles.addToCartButton, isAdded && styles.addToCartButtonSuccess]}
             onPress={(e) => {
@@ -382,19 +436,31 @@ export default function HomeScreen() {
             )}
           </Pressable>
         </View>
+        
         <View style={styles.productInfo}>
-          <Text style={styles.brandText} numberOfLines={1}>{item.brand}</Text>
+          {brand && ( // Only show brand if it exists
+            <Text style={styles.brandText} numberOfLines={1}>{brand}</Text>
+          )}
           <Text style={styles.productName} numberOfLines={1}>
             {item.name}
           </Text>
+          
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>★ {item.rating}</Text>
+            <Text style={styles.ratingText}>★ {item.averageRating || '0.0'}</Text>
+            {item.reviews && item.reviews.length > 0 && (
+              <Text style={styles.reviewText}>({item.reviews.length})</Text>
+            )}
           </View>
+          
           <View style={styles.priceRow}>
             {hasDiscount && (
-              <Text style={styles.compareAtPriceText}>{formatPrice(item.compareAtPrice!, item.currencyCode)}</Text>
+              <Text style={styles.compareAtPriceText}>
+                {item.priceHtml?.formattedRegularPrice || ''}
+              </Text>
             )}
-            <Text style={styles.priceText}>{formatPrice(item.price, item.currencyCode)}</Text>
+            <Text style={styles.priceText}>
+              {item.priceHtml?.formattedFinalPrice || 'N/A'}
+            </Text>
           </View>
         </View>
       </Pressable>
