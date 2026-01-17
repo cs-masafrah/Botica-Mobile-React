@@ -1,3 +1,5 @@
+// types/product.ts
+
 export interface BagistoPriceHtml {
   id: string;
   type: string;
@@ -89,7 +91,6 @@ export interface BagistoProduct {
   percentageRating: number;
   reviews: BagistoReview[];
   priceHtml: BagistoPriceHtml;
-  price: number;
   additionalData?: AdditionalData[];
   configurableData?: ConfigurableData;
 }

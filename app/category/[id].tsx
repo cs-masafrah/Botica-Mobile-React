@@ -20,6 +20,25 @@ import { formatPrice } from '@/utils/currency';
 import { ShippingStrip } from '@/components/ShippingStrip';
 import { useProductsByCategory } from '../hooks/useProductsByCategory';
 
+// Helper functions to extract data from BagistoProduct
+const getProductBrand = (product: any): string => {
+  return product.additionalData?.find((data: any) => data.label === 'Brand')?.value || '';
+};
+
+const getProductCategory = (product: any): string => {
+  return product.additionalData?.find((data: any) => data.label === 'Category')?.value || '';
+};
+
+const getProductTags = (product: any): string[] => {
+  const tagsData = product.additionalData?.find(
+    (data: any) => data.label.toLowerCase() === 'tags' || data.type === 'tags'
+  );
+  if (tagsData?.value) {
+    return tagsData.value.split(',').map((tag: string) => tag.trim());
+  }
+  return product.tags || [];
+};
+
 export default function CategoryScreen() {
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
   const { data, isLoading } = useProductsByCategory(id);
@@ -35,61 +54,50 @@ export default function CategoryScreen() {
     if (!products || products.length === 0) return ['All'];
     const tags = new Set<string>();
     products.forEach((product: any) => {
-      // Bagisto might have tags in additionalData or as a separate field
-      // Adjust based on your actual data structure
-      if (product.tags) {
-        product.tags.forEach((tag: string) => tags.add(tag));
-      }
-      // You can also extract from additionalData if tags are stored there
-      product.additionalData?.forEach((item: any) => {
-        if (item.label.toLowerCase() === 'tags' || item.type === 'tags') {
-          const productTags = item.value.split(',').map((tag: string) => tag.trim());
-          productTags.forEach((tag: string) => tags.add(tag));
-        }
+      // Get tags using helper function
+      const productTags = getProductTags(product);
+      productTags.forEach((tag: string) => {
+        if (tag) tags.add(tag);
       });
     });
-    return ['All', ...Array.from(tags).filter(Boolean).sort()];
+    return ['All', ...Array.from(tags).sort()];
   }, [products]);
 
   const filteredProducts = useMemo(() => {
     if (!products || selectedTag === 'All') return products;
     
     return products.filter((product: any) => {
-      // Check in tags array
-      if (product.tags?.includes(selectedTag)) return true;
-      
-      // Check in additionalData
-      const tagData = product.additionalData?.find(
-        (item: any) => item.label.toLowerCase() === 'tags' || item.type === 'tags'
-      );
-      if (tagData) {
-        const productTags = tagData.value.split(',').map((tag: string) => tag.trim());
-        return productTags.includes(selectedTag);
-      }
-      
-      return false;
+      const productTags = getProductTags(product);
+      return productTags.includes(selectedTag);
     });
   }, [products, selectedTag]);
 
   const handleAddToCart = (product: any) => {
-    // Convert Bagisto product to your Product type
-    const cartProduct: Product = {
+    // Convert Bagisto product to cart product format
+    const cartProduct: any = {
       id: product.id,
       name: product.name,
-      description: product.shortDescription || product.description,
-      price: parseFloat(product.priceHtml?.finalPrice) || 0,
-      compareAtPrice: parseFloat(product.priceHtml?.regularPrice) || 0,
-      currencyCode: 'USD', // Adjust based on your currency
+      description: product.shortDescription || product.description || '',
+      price: product.priceHtml?.finalPrice || 0,
+      compareAtPrice: product.priceHtml?.regularPrice || 0,
+      currencyCode: 'USD',
       image: product.images?.[0]?.url || '',
       images: product.images?.map((img: any) => img.url) || [],
-      brand: '', // Extract from additionalData if available
+      brand: getProductBrand(product),
       rating: product.averageRating || 0,
       reviewCount: product.reviews?.length || 0,
-      inStock: product.isSaleable || true,
-      category: '', // You might need to extract this
-      tags: product.tags || [],
-      options: [], // Bagisto might have variants in a different structure
-      variants: [], // Adjust based on your Bagisto product structure
+      inStock: product.isSaleable,
+      category: getProductCategory(product),
+      tags: getProductTags(product),
+      options: product.configutableData?.attributes?.map((attr: any) => ({
+        id: attr.id,
+        name: attr.label,
+        values: attr.options.map((opt: any) => opt.label)
+      })) || [],
+      variants: product.variants || [],
+      variantId: product.variants?.[0]?.id,
+      // Include original Bagisto properties
+      originalProduct: product,
     };
     
     addToCart(cartProduct, 1);
@@ -98,31 +106,43 @@ export default function CategoryScreen() {
   };
 
   const toggleProductWishlist = (product: any) => {
-    const wishlistProduct: Product = {
+    // Create a product object that matches what WishlistContext expects
+    const wishlistProduct: any = {
       id: product.id,
       name: product.name,
-      description: product.shortDescription || product.description,
-      price: parseFloat(product.priceHtml?.finalPrice) || 0,
-      compareAtPrice: parseFloat(product.priceHtml?.regularPrice) || 0,
+      description: product.shortDescription || product.description || '',
+      price: product.priceHtml?.finalPrice || 0,
+      compareAtPrice: product.priceHtml?.regularPrice || 0,
       currencyCode: 'USD',
       image: product.images?.[0]?.url || '',
       images: product.images?.map((img: any) => img.url) || [],
-      brand: '',
+      brand: getProductBrand(product),
       rating: product.averageRating || 0,
       reviewCount: product.reviews?.length || 0,
-      inStock: product.isSaleable || true,
-      category: '',
-      tags: product.tags || [],
-      options: [],
-      variants: [],
+      inStock: product.isSaleable,
+      category: getProductCategory(product),
+      tags: getProductTags(product),
+      options: product.configutableData?.attributes?.map((attr: any) => ({
+        id: attr.id,
+        name: attr.label,
+        values: attr.options.map((opt: any) => opt.label)
+      })) || [],
+      variants: product.variants || [],
+      variantId: product.variants?.[0]?.id,
+      // Include Bagisto-specific properties
+      type: product.type,
+      sku: product.sku,
+      priceHtml: product.priceHtml,
+      additionalData: product.additionalData,
+      configutableData: product.configutableData,
     };
     
     toggleWishlist(wishlistProduct);
   };
 
   const renderProduct = (item: any, index: number) => {
-    const productPrice = parseFloat(item.priceHtml?.finalPrice) || 0;
-    const comparePrice = parseFloat(item.priceHtml?.regularPrice) || 0;
+    const productPrice = item.priceHtml?.finalPrice || 0;
+    const comparePrice = item.priceHtml?.regularPrice || 0;
     const inWishlist = isInWishlist(item.id);
     const hasDiscount = comparePrice > productPrice;
     const discountPercentage = hasDiscount 
@@ -130,6 +150,7 @@ export default function CategoryScreen() {
       : 0;
     const isAdded = addedProductId === item.id;
     const mainImage = item.images?.[0]?.url || '';
+    const brand = getProductBrand(item);
 
     return (
       <Pressable
@@ -185,10 +206,11 @@ export default function CategoryScreen() {
           </Pressable>
         </View>
         <View style={styles.productInfo}>
-          <Text style={styles.brandText} numberOfLines={1}>
-            {/* Extract brand from additionalData if available */}
-            {item.additionalData?.find((data: any) => data.label === 'Brand')?.value || ''}
-          </Text>
+          {brand && (
+            <Text style={styles.brandText} numberOfLines={1}>
+              {brand}
+            </Text>
+          )}
           <Text style={styles.productName} numberOfLines={2}>
             {item.name}
           </Text>
@@ -201,11 +223,11 @@ export default function CategoryScreen() {
           <View style={styles.priceRow}>
             {hasDiscount && (
               <Text style={styles.compareAtPriceText}>
-                {formatPrice(comparePrice, 'USD')}
+                {item.priceHtml?.formattedRegularPrice || formatPrice(comparePrice, 'USD')}
               </Text>
             )}
             <Text style={styles.priceText}>
-              {formatPrice(productPrice, 'USD')}
+              {item.priceHtml?.formattedFinalPrice || formatPrice(productPrice, 'USD')}
             </Text>
           </View>
         </View>
