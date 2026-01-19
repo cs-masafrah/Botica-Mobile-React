@@ -3,11 +3,12 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
-import { useAllProducts } from '@/hooks/useAllProducts';
+import { useAllProducts } from '../../app/hooks/useAllProducts';
 import { Theme, ThemeFilter } from '@/types/theme';
 import ProductCard from '../ProductCard';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Colors from '@/constants/colors';
+import { Product } from '@/types/product';
 
 interface ProductCarouselThemeProps {
   theme: Theme;
@@ -17,7 +18,7 @@ interface ProductCarouselThemeProps {
 const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, locale = 'en' }) => {
   const { t, isRTL } = useLanguage();
   const { data: productsData } = useAllProducts();
-  const products = productsData?.allProducts.data || [];
+  const products: Product[] = productsData?.allProducts.data || [];
 
   const translation = useMemo(() => {
     return theme.translations?.find(t => t.localeCode === locale) || 
@@ -33,12 +34,13 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
     
     filters.forEach((filter: ThemeFilter) => {
       if (filter.key === 'new' && filter.value === '1') {
-        // Show new products - in Bagisto, this might be by creation date
+        // Show new products - you might need to adjust this based on your data
+        // Assuming newer products have higher IDs or timestamps
         filtered = filtered.sort((a, b) => 
-          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          parseInt(b.id) - parseInt(a.id)
         );
       } else if (filter.key === 'featured' && filter.value === '1') {
-        // Show featured products - you need to check your product structure
+        // Show featured products
         filtered = filtered.filter(p => 
           p.additionalData?.some(data => 
             data.label === 'Is Featured' && data.value === '1'
@@ -53,12 +55,10 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
               ? a.name.localeCompare(b.name)
               : b.name.localeCompare(a.name)
           );
-        } else if (field === 'price') {
-          filtered.sort((a, b) => 
-            order === 'asc'
-              ? (a.priceHtml?.finalPrice || 0) - (b.priceHtml?.finalPrice || 0)
-              : (b.priceHtml?.finalPrice || 0) - (a.priceHtml?.finalPrice || 0)
-          );
+        } else if (filter.value === 'name-asc') {
+          filtered.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (filter.value === 'name-desc') {
+          filtered.sort((a, b) => b.name.localeCompare(a.name));
         }
       }
     });
@@ -78,7 +78,7 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
         <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
           {title}
         </Text>
-        <Pressable onPress={() => router.push('/products')}>
+        <Pressable onPress={() => router.push('/(tabs)')}>
           <Text style={styles.seeAllText}>{t('seeAll')}</Text>
         </Pressable>
       </View>
@@ -124,7 +124,6 @@ const styles = StyleSheet.create({
   },
   productContainer: {
     marginRight: 12,
-    width: 150,
   },
 });
 

@@ -1,3 +1,4 @@
+// app/vendor/_layout.tsx - Updated
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -8,7 +9,6 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { CartContext } from '@/contexts/CartContext';
 import { HomepageConfigContext } from '@/contexts/HomepageConfigContext';
 import { LanguageContext } from '@/contexts/LanguageContext';
-import { ShopifyContext } from '@/contexts/ShopifyContext';
 import { WishlistContext } from '@/contexts/WishlistContext';
 import { FloatingCart } from '@/components/FloatingCart';
 import { preloadImages, extractImageUrls } from '@/utils/imagePreloader';
@@ -171,15 +171,15 @@ export default function RootLayout() {
         <LanguageContext>
           <AuthContext>
             <AddressContext>
-              <ShopifyContext>
-                <HomepageConfigContext>
-                  <CartContext>
-                    <WishlistContext>
-                      <RootLayoutNav />
-                    </WishlistContext>
-                  </CartContext>
-                </HomepageConfigContext>
-              </ShopifyContext>
+              {/* REMOVED: <ShopifyContext> */}
+              <HomepageConfigContext>
+                <CartContext>
+                  <WishlistContext>
+                    <RootLayoutNav />
+                  </WishlistContext>
+                </CartContext>
+              </HomepageConfigContext>
+              {/* REMOVED: </ShopifyContext> */}
             </AddressContext>
           </AuthContext>
         </LanguageContext>

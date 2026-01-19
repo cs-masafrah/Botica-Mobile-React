@@ -1,6 +1,6 @@
 // components/themes/ThemeFactory.tsx
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native'; // Add Text import
 import { Theme, ThemeType } from '@/types/theme';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -17,7 +17,7 @@ interface ThemeFactoryProps {
 }
 
 const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
-  const { currentLocale } = useLanguage();
+  const { locale } = useLanguage();
 
   const componentMap: Record<ThemeType, React.ComponentType<any>> = {
     product_carousel: ProductCarouselTheme,
@@ -32,12 +32,16 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
 
   if (!ThemeComponent) {
     console.warn(`No component found for theme type: ${theme.type}`);
-    return null;
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Theme type &quot;{theme.type}&quot; not supported</Text>
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
-      <ThemeComponent theme={theme} locale={currentLocale} />
+      <ThemeComponent theme={theme} locale={locale} />
     </View>
   );
 };
@@ -45,6 +49,11 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
 const styles = StyleSheet.create({
   container: {
     marginBottom: 8,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    textAlign: 'center',
   },
 });
 

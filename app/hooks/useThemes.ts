@@ -1,4 +1,4 @@
-// hooks/useThemes.ts
+// hooks/useThemes.ts - UPDATED VERSION
 import { useQuery } from '@tanstack/react-query';
 import { request, gql } from 'graphql-request';
 import { BAGISTO_CONFIG } from '@/constants/bagisto';
@@ -62,7 +62,7 @@ export const useThemes = () => {
     queryKey: ['themeCustomization'],
     queryFn: async () => {
       try {
-        console.log('📡 Fetching theme customization...');
+        console.log('📡 Fetching theme customization from:', GRAPHQL_ENDPOINT);
         
         const data = await request<ThemeCustomizationResponse>(
           GRAPHQL_ENDPOINT, 
@@ -70,20 +70,21 @@ export const useThemes = () => {
         );
 
         console.log(`✅ Theme customization fetched: ${data.themeCustomization.length} themes`);
+        console.log('📊 Theme types:', data.themeCustomization.map(t => t.type));
         
-        // Sort themes by ID (or we could use name) to maintain consistent order
-        // In a real app, you might want to add sortOrder field in the API
+        // Add sortOrder based on ID for now
         const sortedThemes = data.themeCustomization
           .map((theme, index) => ({
             ...theme,
-            sortOrder: index, // Use index as temporary sort order
+            sortOrder: parseInt(theme.id) || index,
           }))
           .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
         return sortedThemes;
       } catch (error: any) {
         console.error('❌ Error fetching theme customization:', error.message || error);
-        throw error;
+        // Return empty array instead of throwing error
+        return [];
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

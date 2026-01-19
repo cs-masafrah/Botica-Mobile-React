@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCategories } from '@/hooks/useCategories';
+import { useCategories } from '../../app/hooks/useCategories';
 import { Theme, ThemeFilter } from '@/types/theme';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Colors from '@/constants/colors';

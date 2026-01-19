@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { Theme, ThemeLink } from '@/types/theme';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Colors from '@/constants/colors';
-import { router } from 'expo-router';
+import { router, Href } from 'expo-router';
 
 interface FooterLinksThemeProps {
   theme: Theme;
@@ -33,9 +33,12 @@ const FooterLinksTheme: React.FC<FooterLinksThemeProps> = ({ theme, locale = 'en
       // Handle internal navigation
       if (link.url.includes('/page/')) {
         const slug = link.url.split('/page/')[1];
-        router.push({ pathname: '/page/[slug]', params: { slug } });
+        const pageHref = `/page/${slug}` as Href<string>;
+        router.push(pageHref);
       } else if (link.url.includes('/contact-us')) {
-        router.push('/contact');
+        Linking.openURL(link.url).catch(err => 
+          console.error('Failed to open URL:', err)
+        );
       } else {
         Linking.openURL(link.url).catch(err => 
           console.error('Failed to open URL:', err)
