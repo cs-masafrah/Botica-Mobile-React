@@ -43,7 +43,7 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
     console.warn(`❌ No component found for theme type: ${theme.type}`);
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Theme type "{theme.type}" not supported</Text>
+        <Text style={styles.errorText}>Theme type &quot;{theme.type}&quot; not supported</Text>
       </View>
     );
   }
