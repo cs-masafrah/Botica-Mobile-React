@@ -58,9 +58,13 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, lo
     // Apply parent_id filter if present
     if (filtersObj.parent_id) {
       console.log(`   Filter by parent_id: ${filtersObj.parent_id}`);
+      // Assuming your categories have a parentId field
       categories = categories.filter(cat => {
-        // You'll need to check your category structure for parent relationship
-        return true; // Implement based on your data structure
+        // Check if the category matches the parent filter
+        // This depends on your category structure
+        // If you don't have parent info in the category, you might need to adjust
+        return cat.parentId === filtersObj.parent_id || 
+              cat.id === filtersObj.parent_id; // Show the parent itself
       });
     }
 

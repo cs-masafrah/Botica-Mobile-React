@@ -36,7 +36,7 @@ export default function HomeScreen() {
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { t, isRTL, locale } = useLanguage();
   const { data: themes, isLoading: themesLoading, refetch: refetchThemes } = useThemes();
-  const { data: productsData } = useAllProducts();
+  const { data: productsData } = useAllProducts([], { enabled: !themesLoading });
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category?: string }>();
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
