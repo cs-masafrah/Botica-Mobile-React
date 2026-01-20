@@ -20,6 +20,8 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
   const { data: productsData } = useAllProducts();
   const products: Product[] = productsData?.allProducts.data || [];
 
+  console.log(`🔍 [ProductCarouselTheme] Theme: ${theme.name}, Products: ${products.length}`);
+
   const translation = useMemo(() => {
     return theme.translations?.find(t => t.localeCode === locale) || 
            theme.translations?.[0];
@@ -28,17 +30,25 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
   const title = translation?.options?.title || theme.name;
   const filters = translation?.options?.filters || [];
   
+  console.log(`   Title: "${title}", Filters:`, filters);
+
   // Apply filters from theme options
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
     
+    console.log(`   Initial products: ${filtered.length}`);
+
     filters.forEach((filter: ThemeFilter) => {
+
+      console.log(`   Applying filter: ${filter.key} = ${filter.value}`);
+
       if (filter.key === 'new' && filter.value === '1') {
         // Show new products - you might need to adjust this based on your data
         // Assuming newer products have higher IDs or timestamps
         filtered = filtered.sort((a, b) => 
           parseInt(b.id) - parseInt(a.id)
         );
+        console.log(`   Sorted by new (ID descending)`);
       } else if (filter.key === 'featured' && filter.value === '1') {
         // Show featured products
         filtered = filtered.filter(p => 
@@ -46,6 +56,7 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
             data.label === 'Is Featured' && data.value === '1'
           )
         );
+        console.log(`   Filtered featured: ${filtered.length} products`);
       } else if (filter.key === 'sort') {
         // Apply sorting
         const [field, order] = filter.value.split('-');
@@ -70,7 +81,12 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
     return filtered.slice(0, limit);
   }, [products, filters]);
 
-  if (!filteredProducts.length) return null;
+  if (!filteredProducts.length) {
+    console.log(`❌ [ProductCarouselTheme] No filtered products for "${title}". Returning null.`);
+    return null;
+  }
+
+  console.log(`✅ [ProductCarouselTheme] Rendering "${title}" with ${filteredProducts.length} products`);
 
   return (
     <View style={styles.container}>

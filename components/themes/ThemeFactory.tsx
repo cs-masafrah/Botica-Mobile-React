@@ -1,6 +1,6 @@
-// components/themes/ThemeFactory.tsx
+// components/themes/ThemeFactory.tsx - DEBUG VERSION
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Text } from 'react-native'; // Add Text import
+import { View, StyleSheet, Text } from 'react-native';
 import { Theme, ThemeType } from '@/types/theme';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -18,6 +18,15 @@ interface ThemeFactoryProps {
 
 const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
   const { locale } = useLanguage();
+  
+  console.log(`🔍 [ThemeFactory] Processing theme: ${theme.id} - ${theme.type} - "${theme.name}"`);
+  
+  const translation = useMemo(() => {
+    const t = theme.translations?.find(t => t.localeCode === locale) || theme.translations?.[0];
+    console.log(`   Translation for ${locale}:`, t?.options ? 'Found' : 'Not found');
+    console.log(`   Options:`, JSON.stringify(t?.options, null, 2));
+    return t;
+  }, [theme.translations, locale]);
 
   const componentMap: Record<ThemeType, React.ComponentType<any>> = {
     product_carousel: ProductCarouselTheme,
@@ -31,13 +40,15 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
   const ThemeComponent = componentMap[theme.type];
 
   if (!ThemeComponent) {
-    console.warn(`No component found for theme type: ${theme.type}`);
+    console.warn(`❌ No component found for theme type: ${theme.type}`);
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Theme type &quot;{theme.type}&quot; not supported</Text>
+        <Text style={styles.errorText}>Theme type "{theme.type}" not supported</Text>
       </View>
     );
   }
+
+  console.log(`   ✅ Will render ${theme.type} component`);
 
   return (
     <View style={styles.container}>
