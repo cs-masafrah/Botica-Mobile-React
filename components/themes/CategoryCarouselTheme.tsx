@@ -26,6 +26,8 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, lo
   const { data: allCategories } = useCategories();
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
+  console.log(`🔍 [CategoryCarouselTheme] Theme: ${theme.name}, All categories: ${allCategories?.length || 0}`);
+
   const translation = useMemo(() => {
     return theme.translations?.find(t => t.localeCode === locale) || 
            theme.translations?.[0];
@@ -34,8 +36,14 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, lo
   const title = translation?.options?.title || theme.name;
   const filters = translation?.options?.filters || [];
 
+  console.log(`   Title: "${title}", Filters:`, filters);
+
   useEffect(() => {
-    if (!allCategories) return;
+    if (!allCategories) {
+      console.log(`   No categories loaded yet`);
+      setFilteredCategories([]);
+      return;
+    }
 
     let categories = [...allCategories];
     const filtersObj: Record<string, string> = {};
@@ -44,8 +52,12 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, lo
       filtersObj[filter.key] = filter.value;
     });
 
+    console.log(`   Raw categories: ${categories.length}`);
+    console.log(`   Filter object:`, filtersObj);
+    
     // Apply parent_id filter if present
     if (filtersObj.parent_id) {
+      console.log(`   Filter by parent_id: ${filtersObj.parent_id}`);
       categories = categories.filter(cat => {
         // You'll need to check your category structure for parent relationship
         return true; // Implement based on your data structure
@@ -55,20 +67,29 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, lo
     // Apply limit if present
     if (filtersObj.limit) {
       const limit = parseInt(filtersObj.limit, 10);
+      console.log(`   Apply limit: ${limit}`);
       categories = categories.slice(0, limit);
     }
 
     // Apply sort if present
     if (filtersObj.sort === 'asc') {
+      console.log(`   Sort ascending`);
       categories.sort((a, b) => a.name.localeCompare(b.name));
     } else if (filtersObj.sort === 'desc') {
+      console.log(`   Sort descending`);
       categories.sort((a, b) => b.name.localeCompare(a.name));
     }
 
+    console.log(`   Final categories: ${categories.length}`);
     setFilteredCategories(categories);
   }, [allCategories, filters]);
 
-  if (!filteredCategories.length) return null;
+  if (!filteredCategories.length) {
+    console.log(`❌ [CategoryCarouselTheme] No categories to display for "${title}". Returning null.`);
+    return null;
+  }
+
+  console.log(`✅ [CategoryCarouselTheme] Rendering "${title}" with ${filteredCategories.length} categories`);
 
   return (
     <View style={styles.container}>
