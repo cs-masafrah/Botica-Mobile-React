@@ -103,22 +103,22 @@ export default function ProductDetailScreen() {
   const handleAddToCart = () => {
     if (!product) return;
 
-    const cartProduct: Product = {
+    const cartProduct: any = {
       id: product.id,
       name: product.name,
       description: stripHtmlTags(product.shortDescription || product.description || ''),
-      price: price,
-      compareAtPrice: comparePrice,
+      price: product.priceHtml?.finalPrice || 0,
+      compareAtPrice: product.priceHtml?.regularPrice || 0,
       currencyCode: 'USD',
       image: images[0] || '',
       images: images,
       brand: brand,
-      rating: parseFloat(product.averageRating) || 0,
+      rating: product.averageRating || 0,
       reviewCount: product.reviews?.length || 0,
       inStock: product.isSaleable,
       category: '',
       tags: [],
-      options: product.configutableData?.attributes?.map((attr: any) => ({
+      options: (product as any).configutableData?.attributes?.map((attr: any) => ({
         id: attr.id,
         name: attr.label,
         values: attr.options.map((opt: any) => opt.label)
