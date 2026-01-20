@@ -3,12 +3,11 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
-import { useAllProducts } from '../../app/hooks/useAllProducts';
-import { Theme, ThemeFilter } from '@/types/theme';
+import { useFilteredProducts } from '../../app/hooks/useFilteredProducts';
+import { Theme } from '@/types/theme';
 import ProductCard from '../ProductCard';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Colors from '@/constants/colors';
-import { Product } from '@/types/product';
 
 interface ProductCarouselThemeProps {
   theme: Theme;
@@ -17,11 +16,8 @@ interface ProductCarouselThemeProps {
 
 const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, locale = 'en' }) => {
   const { t, isRTL } = useLanguage();
-  const { data: productsData } = useAllProducts();
-  const products: Product[] = productsData?.allProducts.data || [];
-
-  console.log(`🔍 [ProductCarouselTheme] Theme: ${theme.name}, Products: ${products.length}`);
-
+  
+  // Get filters from theme
   const translation = useMemo(() => {
     return theme.translations?.find(t => t.localeCode === locale) || 
            theme.translations?.[0];
@@ -30,60 +26,51 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
   const title = translation?.options?.title || theme.name;
   const filters = translation?.options?.filters || [];
   
-  console.log(`   Title: "${title}", Filters:`, filters);
+  console.log(`🔍 [ProductCarouselTheme] Theme: ${theme.name}, Title: "${title}"`);
+  console.log(`   Filters:`, filters);
+  
+  // Use filtered products hook with theme filters
+  const { data: filteredProducts = [], isLoading } = useFilteredProducts(filters);
+  
+  console.log(`   Filtered products count: ${filteredProducts.length}`);
+  console.log(`   Loading state: ${isLoading}`);
 
-  // Apply filters from theme options
-  const filteredProducts = useMemo(() => {
-    let filtered = [...products];
-    
-    console.log(`   Initial products: ${filtered.length}`);
-
-    filters.forEach((filter: ThemeFilter) => {
-
-      console.log(`   Applying filter: ${filter.key} = ${filter.value}`);
-
-      if (filter.key === 'new' && filter.value === '1') {
-        // Show new products - you might need to adjust this based on your data
-        // Assuming newer products have higher IDs or timestamps
-        filtered = filtered.sort((a, b) => 
-          parseInt(b.id) - parseInt(a.id)
-        );
-        console.log(`   Sorted by new (ID descending)`);
-      } else if (filter.key === 'featured' && filter.value === '1') {
-        // Show featured products
-        filtered = filtered.filter(p => 
-          p.additionalData?.some(data => 
-            data.label === 'Is Featured' && data.value === '1'
-          )
-        );
-        console.log(`   Filtered featured: ${filtered.length} products`);
-      } else if (filter.key === 'sort') {
-        // Apply sorting
-        const [field, order] = filter.value.split('-');
-        if (field === 'name') {
-          filtered.sort((a, b) => 
-            order === 'asc' 
-              ? a.name.localeCompare(b.name)
-              : b.name.localeCompare(a.name)
-          );
-        } else if (filter.value === 'name-asc') {
-          filtered.sort((a, b) => a.name.localeCompare(b.name));
-        } else if (filter.value === 'name-desc') {
-          filtered.sort((a, b) => b.name.localeCompare(a.name));
-        }
-      }
-    });
-    
-    // Apply limit if specified
-    const limitFilter = filters.find(f => f.key === 'limit');
-    const limit = limitFilter ? parseInt(limitFilter.value, 10) : 10;
-    
-    return filtered.slice(0, limit);
-  }, [products, filters]);
+  if (isLoading) {
+    console.log(`   ⏳ Loading products for "${title}"...`);
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
+            {title}
+          </Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>{t('loading')}...</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!filteredProducts.length) {
-    console.log(`❌ [ProductCarouselTheme] No filtered products for "${title}". Returning null.`);
-    return null;
+    console.log(`❌ [ProductCarouselTheme] No products found for "${title}". Filters:`, filters);
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
+            {title}
+          </Text>
+        </View>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>{t('noProductsFound')}</Text>
+          <Text style={styles.emptySubText}>
+            {filters.length > 0 
+              ? `No products match the current filters`
+              : `No products available in this category`
+            }
+          </Text>
+        </View>
+      </View>
+    );
   }
 
   console.log(`✅ [ProductCarouselTheme] Rendering "${title}" with ${filteredProducts.length} products`);
@@ -102,13 +89,15 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
         data={filteredProducts}
         renderItem={({ item }) => (
           <View style={styles.productContainer}>
-            <ProductCard product={item} />
+            <ProductCard product={item as any} />
           </View>
         )}
         keyExtractor={item => item.id}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        snapToInterval={150} // Optional: for better scrolling
+        decelerationRate="fast"
       />
     </View>
   );
@@ -117,6 +106,8 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
 const styles = StyleSheet.create({
   container: {
     marginVertical: 20,
+    backgroundColor: Colors.background,
+    minHeight: 250,
   },
   header: {
     flexDirection: 'row',
@@ -137,9 +128,39 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 16,
+    paddingRight: 8, // Extra padding for last item
   },
   productContainer: {
     marginRight: 12,
+    width: 150, // Fixed width for consistent layout
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.cardBackground,
+    marginHorizontal: 16,
+    borderRadius: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
 });
 
