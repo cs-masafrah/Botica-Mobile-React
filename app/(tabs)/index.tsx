@@ -269,7 +269,14 @@ export default function HomeScreen() {
     }
 
     console.log('📊 Available themes:', themes?.length || 0);
-    console.log('📊 Theme details:', themes?.map(t => ({ id: t.id, type: t.type, name: t.name })));
+    console.log('📊 Theme details with sortOrder:', 
+      themes?.map(t => ({ 
+        id: t.id, 
+        type: t.type, 
+        name: t.name, 
+        sortOrder: t.sortOrder 
+      }))
+    );
 
     if (!themes || themes.length === 0) {
       return (
@@ -282,8 +289,10 @@ export default function HomeScreen() {
       );
     }
 
+    // The themes are already sorted by sortOrder in the hook
+    // Just map over them in the order they come
     return themes.map((theme) => {
-      console.log(`🎨 Rendering theme: ${theme.id} - ${theme.type} - ${theme.name}`);
+      console.log(`🎨 Rendering theme (sortOrder: ${theme.sortOrder}): ${theme.id} - ${theme.type} - ${theme.name}`);
       return <ThemeFactory key={theme.id} theme={theme} />;
     });
   };

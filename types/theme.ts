@@ -53,6 +53,7 @@ export interface Theme {
   id: string;
   type: ThemeType;
   name: string;
+  
   translations: ThemeTranslation[];
   // We'll add a calculated sortOrder based on ID or name
   sortOrder?: number;
