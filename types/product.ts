@@ -70,28 +70,19 @@ export interface ConfigurableData {
   variantPrices: VariantPrice[];
 }
 
-export interface BagistoProduct {
+
+// types/product.ts
+
+export interface CartItem {
   id: string;
-  type: string;
-  isInWishlist: boolean;
-  isInSale: boolean;
-  isSaleable: boolean;
-  name: string;
-  shareURL: string;
-  urlKey: string;
-  shortDescription: string;
-  description: string;
-  sku: string;
-  parentId: string | null;
-  variants: BagistoVariant[];
-  images: BagistoImage[];
-  averageRating: number;
-  percentageRating: number;
-  reviews: BagistoReview[];
-  priceHtml: BagistoPriceHtml;
-  price: number;
-  additionalData?: AdditionalData[];
-  configurableData?: ConfigurableData;
+  quantity: number;
+  product: Product;
+  formattedPrice?: {
+    price: number;
+    total: number;
+    taxAmount: number;
+    discountAmount: number;
+  };
 }
 
 export type Product = BagistoProduct;

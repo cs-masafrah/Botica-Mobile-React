@@ -1,8 +1,7 @@
-// app/hooks/useBrands.js
+// app/hooks/useBrands.ts
 import { useQuery } from "@tanstack/react-query";
 import { request, gql } from "graphql-request";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
-import { Platform } from "react-native";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
@@ -20,9 +19,31 @@ const GET_BRANDS = gql`
   }
 `;
 
-const fetchBrands = async () => {
+interface BrandRawData {
+  value: string;
+  label: string;
+  product_count: number;
+  option_id: number;
+  image_url?: string;
+}
+
+interface BrandData {
+  name: string;
+  count: number;
+  image?: string;
+  value: string;
+  option_id: number;
+}
+
+interface BrandResponse {
+  attributeValuesWithCounts: {
+    values: BrandRawData[];
+  };
+}
+
+const fetchBrands = async (): Promise<BrandRawData[]> => {
   try {
-    const data = await request(GRAPHQL_ENDPOINT, GET_BRANDS);
+    const data = await request<BrandResponse>(GRAPHQL_ENDPOINT, GET_BRANDS);
     return data.attributeValuesWithCounts.values;
   } catch (error) {
     console.error("Error fetching brands:", error);
@@ -34,7 +55,7 @@ export const useBrands = () => {
   return useQuery({
     queryKey: ["brands"],
     queryFn: fetchBrands,
-    select: (data) =>
+    select: (data: BrandRawData[]): BrandData[] =>
       data.map((brand) => ({
         name: brand.label,
         count: brand.product_count,

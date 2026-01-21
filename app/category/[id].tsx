@@ -1,3 +1,4 @@
+// app/category/[id].tsx
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Heart, Plus, Check } from 'lucide-react-native';
 import React, { useState, useMemo } from 'react';
@@ -15,18 +16,16 @@ import {
 import Colors from '@/constants/colors';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useCart } from '@/contexts/CartContext';
-import { Product } from '@/types/product';
 import { formatPrice } from '@/utils/currency';
 import { ShippingStrip } from '@/components/ShippingStrip';
-import { useProductsByCategory } from '../hooks/useProductsByCategory';
+import { useBagistoProductsByCategory } from '../hooks/useBagistoProductsByCategory';
 
 // Helper functions to extract data from BagistoProduct
 const getProductBrand = (product: any): string => {
-  return product.additionalData?.find((data: any) => data.label === 'Brand')?.value || '';
-};
-
-const getProductCategory = (product: any): string => {
-  return product.additionalData?.find((data: any) => data.label === 'Category')?.value || '';
+  return product.brand || 
+    product.additionalData?.find((data: any) => 
+      data.label === 'Brand' || data.code === 'brand'
+    )?.value || '';
 };
 
 const getProductTags = (product: any): string[] => {
@@ -41,7 +40,7 @@ const getProductTags = (product: any): string[] => {
 
 export default function CategoryScreen() {
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
-  const { data, isLoading } = useProductsByCategory(id);
+  const { data, isLoading } = useBagistoProductsByCategory(id);
   const products = data?.allProducts?.data || [];
   
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -78,26 +77,25 @@ export default function CategoryScreen() {
       id: product.id,
       name: product.name,
       description: product.shortDescription || product.description || '',
-      price: product.priceHtml?.finalPrice || 0,
-      compareAtPrice: product.priceHtml?.regularPrice || 0,
+      price: parseFloat(product.priceHtml?.finalPrice || '0'),
+      compareAtPrice: parseFloat(product.priceHtml?.regularPrice || '0'),
       currencyCode: 'USD',
       image: product.images?.[0]?.url || '',
       images: product.images?.map((img: any) => img.url) || [],
       brand: getProductBrand(product),
       rating: product.averageRating || 0,
-      reviewCount: product.reviews?.length || 0,
+      reviewCount: product.reviewCount || 0,
       inStock: product.isSaleable,
-      category: getProductCategory(product),
+      category: product.categories?.[0]?.name || '',
       tags: getProductTags(product),
       options: product.configutableData?.attributes?.map((attr: any) => ({
         id: attr.id,
         name: attr.label,
-        values: attr.options.map((opt: any) => opt.label)
+        values: attr.options?.map((opt: any) => opt.label) || []
       })) || [],
       variants: product.variants || [],
       variantId: product.variants?.[0]?.id,
-      // Include original Bagisto properties
-      originalProduct: product,
+      productId: product.id,
     };
     
     addToCart(cartProduct, 1);
@@ -111,21 +109,21 @@ export default function CategoryScreen() {
       id: product.id,
       name: product.name,
       description: product.shortDescription || product.description || '',
-      price: product.priceHtml?.finalPrice || 0,
-      compareAtPrice: product.priceHtml?.regularPrice || 0,
+      price: parseFloat(product.priceHtml?.finalPrice || '0'),
+      compareAtPrice: parseFloat(product.priceHtml?.regularPrice || '0'),
       currencyCode: 'USD',
       image: product.images?.[0]?.url || '',
       images: product.images?.map((img: any) => img.url) || [],
       brand: getProductBrand(product),
       rating: product.averageRating || 0,
-      reviewCount: product.reviews?.length || 0,
+      reviewCount: product.reviewCount || 0,
       inStock: product.isSaleable,
-      category: getProductCategory(product),
+      category: product.categories?.[0]?.name || '',
       tags: getProductTags(product),
       options: product.configutableData?.attributes?.map((attr: any) => ({
         id: attr.id,
         name: attr.label,
-        values: attr.options.map((opt: any) => opt.label)
+        values: attr.options?.map((opt: any) => opt.label) || []
       })) || [],
       variants: product.variants || [],
       variantId: product.variants?.[0]?.id,
@@ -141,8 +139,8 @@ export default function CategoryScreen() {
   };
 
   const renderProduct = (item: any, index: number) => {
-    const productPrice = item.priceHtml?.finalPrice || 0;
-    const comparePrice = item.priceHtml?.regularPrice || 0;
+    const productPrice = parseFloat(item.priceHtml?.finalPrice || '0');
+    const comparePrice = parseFloat(item.priceHtml?.regularPrice || '0');
     const inWishlist = isInWishlist(item.id);
     const hasDiscount = comparePrice > productPrice;
     const discountPercentage = hasDiscount 
@@ -215,19 +213,19 @@ export default function CategoryScreen() {
             {item.name}
           </Text>
           <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>★ {item.averageRating || 0}</Text>
-            {item.reviews?.length > 0 && (
-              <Text style={styles.reviewCount}>({item.reviews.length})</Text>
+            <Text style={styles.ratingText}>★ {item.averageRating?.toFixed(1) || 0}</Text>
+            {item.reviewCount > 0 && (
+              <Text style={styles.reviewCount}>({item.reviewCount})</Text>
             )}
           </View>
           <View style={styles.priceRow}>
             {hasDiscount && (
               <Text style={styles.compareAtPriceText}>
-                {item.priceHtml?.formattedRegularPrice || formatPrice(comparePrice, 'USD')}
+                {formatPrice(comparePrice, 'USD')}
               </Text>
             )}
             <Text style={styles.priceText}>
-              {item.priceHtml?.formattedFinalPrice || formatPrice(productPrice, 'USD')}
+              {formatPrice(productPrice, 'USD')}
             </Text>
           </View>
         </View>

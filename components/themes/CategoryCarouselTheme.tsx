@@ -1,5 +1,5 @@
 // components/themes/CategoryCarouselTheme.tsx
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
@@ -19,7 +19,7 @@ interface Category {
   name: string;
   image: string;
   slug?: string;
-  parentId?: string; // Added this since filter is looking for it
+  parentId?: string;
 }
 
 const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, locale = 'en' }) => {
@@ -27,88 +27,62 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, lo
   const { data: allCategories } = useCategories();
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
-  console.log(`🔍 [CategoryCarouselTheme] Theme: ${theme.name}, All categories: ${allCategories?.length || 0}`);
+  // Extract static values ONCE on component mount
+  const { title, filters, themeName } = useMemo(() => {
+    const translation = theme.translations?.find(t => t.localeCode === locale) || 
+                       theme.translations?.[0];
+    return {
+      title: translation?.options?.title || theme.name,
+      filters: translation?.options?.filters || [],
+      themeName: theme.name
+    };
+  }, [theme.translations, theme.name, locale]); // These should be stable
 
-  const translation = useMemo(() => {
-    return theme.translations?.find(t => t.localeCode === locale) || 
-           theme.translations?.[0];
-  }, [theme.translations, locale]);
-
-  const title = translation?.options?.title || theme.name;
-  const filters = translation?.options?.filters || [];
-
-  console.log(`   Title: "${title}", Filters:`, filters);
-
+  // Filter categories - only run when allCategories changes
   useEffect(() => {
-    if (!allCategories) {
-      console.log(`   No categories loaded yet`);
+    if (!allCategories || allCategories.length === 0) {
       setFilteredCategories([]);
       return;
     }
 
-    console.log(`   Raw categories: ${allCategories.length}`);
+    let result = [...allCategories];
     
-    // Start with all categories
-    let categories = [...allCategories];
-    
-    // Parse filters into an object for easier access
+    // Parse filters
     const filtersObj: Record<string, string> = {};
     filters.forEach((filter: ThemeFilter) => {
       filtersObj[filter.key] = filter.value;
     });
 
-    console.log(`   Filter object:`, filtersObj);
-    
-    // DEBUG: Log what each category looks like
-    console.log('   Category details:');
-    allCategories.forEach((cat: Category, index: number) => {
-      console.log(`     [${index}] ${cat.name} (ID: ${cat.id}) - parentId: ${cat.parentId || 'none'}`);
-    });
-    
-    // Handle parent_id filter - FIXED LOGIC
-    if (filtersObj.parent_id) {
-      console.log(`   Filter by parent_id: ${filtersObj.parent_id}`);
-      
-      // Since your categories might not have parentId, we need to handle this differently
-      // Based on your logs, parent_id=1 likely means "show all child categories of Root"
-      // But since your categories array doesn't have parentId, we'll show all categories
-      
-      if (filtersObj.parent_id === '1') {
-        console.log('   parent_id=1 detected - showing all non-root categories');
-        // Keep all categories (they're already children of Root)
-        // No filtering needed since "Root" is already filtered out in useCategories hook
-      } else {
-        // For other parent IDs, try to filter if parentId exists
-        categories = categories.filter((cat: Category) => {
-          return cat.parentId === filtersObj.parent_id;
-        });
-      }
+    // Apply parent_id filter
+    if (filtersObj.parent_id && filtersObj.parent_id !== '1') {
+      result = result.filter((cat: Category) => {
+        return cat.parentId === filtersObj.parent_id;
+      });
     }
 
-    // Apply limit if present
+    // Apply limit
     if (filtersObj.limit) {
       const limit = parseInt(filtersObj.limit, 10);
-      console.log(`   Apply limit: ${limit}`);
-      categories = categories.slice(0, limit);
+      result = result.slice(0, limit);
     }
 
-    // Apply sort if present
+    // Apply sort
     if (filtersObj.sort === 'asc') {
-      console.log(`   Sort ascending`);
-      categories.sort((a, b) => a.name.localeCompare(b.name));
+      result.sort((a, b) => a.name.localeCompare(b.name));
     } else if (filtersObj.sort === 'desc') {
-      console.log(`   Sort descending`);
-      categories.sort((a, b) => b.name.localeCompare(a.name));
+      result.sort((a, b) => b.name.localeCompare(a.name));
     }
 
-    console.log(`   Final categories after filtering: ${categories.length}`);
-    setFilteredCategories(categories);
-  }, [allCategories, filters]);
+    // Use a simple comparison instead of JSON.stringify for better performance
+    const shouldUpdate = filteredCategories.length !== result.length || 
+                         filteredCategories.some((cat, idx) => cat.id !== result[idx]?.id);
+    
+    if (shouldUpdate) {
+      setFilteredCategories(result);
+    }
+  }, [allCategories]); // Only depend on allCategories, not filters
 
   if (!filteredCategories.length) {
-    console.log(`❌ [CategoryCarouselTheme] No categories to display for "${title}".`);
-    
-    // Show a debug view instead of returning null
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -116,25 +90,14 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, lo
             {title}
           </Text>
         </View>
-        <View style={styles.debugContainer}>
-          <Text style={styles.debugText}>
-            No categories matching filters. Debug Info:
-          </Text>
-          <Text style={styles.debugText}>
-            • All categories: {allCategories?.length || 0}
-          </Text>
-          <Text style={styles.debugText}>
-            • Filters: {JSON.stringify(filters)}
-          </Text>
-          <Text style={styles.debugText}>
-            • Available categories: {allCategories?.map(c => c.name).join(', ') || 'none'}
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>
+            No categories to display
           </Text>
         </View>
       </View>
     );
   }
-
-  console.log(`✅ [CategoryCarouselTheme] Rendering "${title}" with ${filteredCategories.length} categories`);
 
   return (
     <View style={styles.container}>
@@ -229,20 +192,14 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: 'center',
   },
-  // Debug styles
-  debugContainer: {
-    backgroundColor: '#fff3cd',
-    borderWidth: 1,
-    borderColor: '#ffc107',
-    borderRadius: 8,
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 8,
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  debugText: {
-    fontSize: 12,
-    color: '#856404',
-    marginBottom: 4,
+  emptyStateText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
 });
 
