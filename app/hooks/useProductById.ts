@@ -1,7 +1,12 @@
-// app/hooks/useProductById.js
+// hooks/useProductById.ts (wrapper for the JS version)
 import { useQuery } from "@tanstack/react-query";
 import { request, gql } from "graphql-request";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
+import {
+  Product,
+  ProductByIdResponse,
+  FilterHomeCategoriesInput,
+} from "../types/bagisto";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
@@ -10,7 +15,7 @@ const GET_PRODUCT_BY_ID = gql`
     allProducts(input: $input) {
       paginatorInfo {
         count
-        currentPage
+      currentPage
         lastPage
         total
       }
@@ -326,8 +331,12 @@ const GET_PRODUCT_BY_ID = gql`
   }
 `;
 
-export const useProductById = (productId) => {
-  return useQuery({
+interface ProductByIdVariables {
+  input: FilterHomeCategoriesInput[];
+}
+
+export const useProductById = (productId?: string) => {
+  return useQuery<Product | null>({
     queryKey: ["product", productId],
     queryFn: async () => {
       if (!productId) {
@@ -338,20 +347,22 @@ export const useProductById = (productId) => {
       try {
         console.log("Fetching product by ID:", productId);
 
-        const input = [
+        const input: FilterHomeCategoriesInput[] = [
           { key: "id", value: productId },
           { key: "status", value: "1" },
         ];
 
-        const data = await request(GRAPHQL_ENDPOINT, GET_PRODUCT_BY_ID, {
-          input,
-        });
+        const data = await request<ProductByIdResponse>(
+          GRAPHQL_ENDPOINT,
+          GET_PRODUCT_BY_ID,
+          { input },
+        );
 
         console.log("Product data received:", data);
 
         // Return the first product from the array
         return data?.allProducts?.data?.[0] || null;
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching product by ID:", error);
         return null;
       }

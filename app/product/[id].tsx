@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,9 +19,8 @@ import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { formatPrice } from '@/utils/currency';
 import { ShippingStrip } from '@/components/ShippingStrip';
-import { useProductById } from '../hooks/useProductById';
-import { useProductsByCategory } from '../hooks/useProductsByCategory';
-import { Product } from '@/types/product';
+import { useBagistoProductById } from '../hooks/useBagistoProductById';
+import { useBagistoProductsByCategory } from '../hooks/useBagistoProductsByCategory';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -30,28 +30,49 @@ const stripHtmlTags = (html: string): string => {
   return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 };
 
+// Helper to get brand from product
+const getBrand = (product: any): string => {
+  return product?.brand || 
+    product?.additionalData?.find((item: any) => 
+      item.label === 'Brand' || item.code === 'brand'
+    )?.value || '';
+};
+
+// Helper to get category ID from product
+const getCategoryId = (product: any): string => {
+  return product?.categories?.[0]?.id || '';
+};
+
+// Helper to get tags from product
+const getTags = (product: any): string[] => {
+  const tagsData = product?.additionalData?.find(
+    (data: any) => data.label.toLowerCase() === 'tags' || data.type === 'tags'
+  );
+  if (tagsData?.value) {
+    return tagsData.value.split(',').map((tag: string) => tag.trim());
+  }
+  return product?.tags || [];
+};
+
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: product, isLoading, error } = useProductById(id || '');
+  const { data: product, isLoading, error } = useBagistoProductById(id);
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const scrollViewRef = useRef<ScrollView>(null);
   
-  // Get category from additionalData
-  const categoryId = product?.additionalData?.find(
-    (item: any) => item.label === 'Category'
-  )?.value;
+  // Get category ID for related products
+  const categoryId = getCategoryId(product);
   
   // Fetch related products by category
-  const { data: categoryProductsData } = useProductsByCategory(categoryId || '');
+  const { data: categoryProductsData } = useBagistoProductsByCategory(categoryId);
   
-  // Extract brand from additionalData
-  const brand = product?.additionalData?.find(
-    (item: any) => item.label === 'Brand'
-  )?.value || '';
+  // Extract brand
+  const brand = getBrand(product);
 
   // Extract price information
   const price = parseFloat(product?.priceHtml?.finalPrice || '0');
@@ -66,7 +87,6 @@ export default function ProductDetailScreen() {
 
   // Handle variants if available
   const hasVariants = product?.configutableData?.attributes?.length > 0;
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
 
   // Get related products from multiple sources
   const allRelatedProducts = useMemo(() => {
@@ -87,44 +107,72 @@ export default function ProductDetailScreen() {
     return combined;
   }, [product, categoryProductsData, id]);
 
+  // Initialize selected options for variants
   React.useEffect(() => {
-    // Initialize selected options if variants exist
-    if (hasVariants) {
+    if (hasVariants && product?.configutableData?.attributes) {
       const initialOptions: Record<string, string> = {};
       product.configutableData.attributes.forEach((attr: any) => {
-        if (attr.options.length > 0) {
+        if (attr.options?.length > 0) {
           initialOptions[attr.code] = attr.options[0].id;
         }
       });
       setSelectedOptions(initialOptions);
     }
-  }, [product]);
+  }, [product, hasVariants]);
+
+  // Get selected variant based on selected options
+  const getSelectedVariant = useMemo(() => {
+    if (!product?.variants || !hasVariants) return null;
+    
+    return product.variants.find((variant: any) => {
+      return product.configutableData.attributes.every((attr: any) => {
+        const selectedOptionId = selectedOptions[attr.code];
+        const selectedOption = attr.options.find((opt: any) => opt.id === selectedOptionId);
+        const variantAttribute = variant.selectedOptions.find(
+          (opt: any) => opt.name === attr.code
+        );
+        return variantAttribute?.value === selectedOption?.label;
+      });
+    });
+  }, [product, selectedOptions, hasVariants]);
 
   const handleAddToCart = () => {
     if (!product) return;
 
+    // Use selected variant if available, otherwise use main product
+    const selectedVariant = getSelectedVariant;
+    const productToAdd = selectedVariant || product;
+
     const cartProduct: any = {
-      id: product.id,
+      id: productToAdd.id,
       name: product.name,
       description: stripHtmlTags(product.shortDescription || product.description || ''),
-      price: product.priceHtml?.finalPrice || 0,
-      compareAtPrice: product.priceHtml?.regularPrice || 0,
+      price: parseFloat(productToAdd.price || product.priceHtml?.finalPrice || '0'),
+      compareAtPrice: parseFloat(productToAdd.compareAtPrice || product.priceHtml?.regularPrice || '0'),
       currencyCode: 'USD',
-      image: images[0] || '',
+      image: selectedVariant?.image || images[0] || '',
       images: images,
       brand: brand,
       rating: product.averageRating || 0,
-      reviewCount: product.reviews?.length || 0,
-      inStock: product.isSaleable,
-      category: '',
-      tags: [],
-      options: (product as any).configutableData?.attributes?.map((attr: any) => ({
+      reviewCount: product.reviewCount || 0,
+      inStock: productToAdd.availableForSale ?? product.isSaleable,
+      category: product.category || '',
+      tags: getTags(product),
+      options: product.configutableData?.attributes?.map((attr: any) => ({
         id: attr.id,
         name: attr.label,
         values: attr.options.map((opt: any) => opt.label)
       })) || [],
       variants: product.variants || [],
       selectedOptions: selectedOptions,
+      // Bagisto specific fields for GraphQL API
+      productId: product.id,
+      selectedConfigurableOption: selectedVariant?.id,
+      configurableParams: hasVariants ? Object.entries(selectedOptions).map(([code, optionId]) => {
+        const attr = product.configutableData.attributes.find((a: any) => a.code === code);
+        const option = attr?.options.find((opt: any) => opt.id === optionId);
+        return { [code]: option?.label };
+      }) : undefined,
     };
 
     addToCart(cartProduct, quantity);
@@ -140,8 +188,23 @@ export default function ProductDetailScreen() {
 
   if (isLoading) {
     return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading product...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Loading...</Text>
+        <Text style={styles.errorTitle}>Error Loading Product</Text>
+        <Text style={styles.errorText}>
+          {error instanceof Error ? error.message : 'Failed to load product'}
+        </Text>
+        <Pressable style={styles.retryButton} onPress={() => router.back()}>
+          <Text style={styles.retryButtonText}>Go Back</Text>
+        </Pressable>
       </View>
     );
   }
@@ -149,12 +212,18 @@ export default function ProductDetailScreen() {
   if (!product) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Product not found</Text>
-        <Text style={[styles.errorText, { fontSize: 12, marginTop: 8 }]}>ID: {id}</Text>
-        {error && <Text style={[styles.errorText, { fontSize: 12, marginTop: 8 }]}>{String(error)}</Text>}
+        <Text style={styles.errorTitle}>Product Not Found</Text>
+        <Text style={styles.errorText}>The product you're looking for doesn't exist.</Text>
+        <Pressable style={styles.retryButton} onPress={() => router.back()}>
+          <Text style={styles.retryButtonText}>Go Back</Text>
+        </Pressable>
       </View>
     );
   }
+
+  const isProductAvailable = getSelectedVariant 
+    ? getSelectedVariant.availableForSale 
+    : product.isSaleable;
 
   return (
     <View style={styles.container}>
@@ -230,34 +299,49 @@ export default function ProductDetailScreen() {
 
         <ShippingStrip />
 
-        {/* Product Details */}
-        <View style={styles.detailsContainer}>
-          {/* Brand and Name */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              {brand && <Text style={styles.brand}>{brand}</Text>}
-              <Text style={styles.name}>{product.name}</Text>
-            </View>
-            <View style={styles.priceContainer}>
-              {hasDiscount && (
-                <Text style={styles.compareAtPrice}>
-                  {formatPrice(comparePrice, 'USD')}
-                </Text>
-              )}
-              <Text style={styles.price}>
-                {formatPrice(price, 'USD')}
-              </Text>
-            </View>
-          </View>
+{/* Product Details */}
+<View style={styles.detailsContainer}>
+  {/* Brand and Name */}
+  <View style={styles.header}>
+    <View style={styles.headerLeft}>
+      {brand && <Text style={styles.brand}>{brand}</Text>}
+      <Text style={styles.name}>{product.name}</Text>
+    </View>
+    <View style={styles.priceContainer}>
+      {hasDiscount && (
+        <Text style={styles.compareAtPrice}>
+          {formatPrice(comparePrice, 'USD')}
+        </Text>
+      )}
+      <Text style={styles.price}>
+        {formatPrice(price, 'USD')}
+      </Text>
+    </View>
+  </View>
 
-          {/* Rating */}
-          <View style={styles.ratingSection}>
-            <View style={styles.ratingContainer}>
-              <Star size={16} color={Colors.primary} fill={Colors.primary} />
-              <Text style={styles.ratingText}>{product.averageRating || '0.0'}</Text>
-            </View>
-            <Text style={styles.reviewCount}>({product.reviews?.length || 0} reviews)</Text>
-          </View>
+{/* Rating */}
+<View style={styles.ratingSection}>
+  <View style={styles.ratingContainer}>
+    <Star size={16} color={Colors.primary} fill={Colors.primary} />
+    <Text style={styles.ratingText}>
+      {(() => {
+        // Safely handle averageRating
+        const rating = product?.averageRating;
+        if (rating === null || rating === undefined) {
+          return '0.0';
+        }
+        // Convert to number if it's a string
+        const numericRating = typeof rating === 'string' ? parseFloat(rating) : rating;
+        // Ensure it's a number and has toFixed method
+        if (typeof numericRating === 'number' && !isNaN(numericRating)) {
+          return numericRating.toFixed(1);
+        }
+        return '0.0';
+      })()}
+    </Text>
+  </View>
+  <Text style={styles.reviewCount}>({product.reviewCount || 0} reviews)</Text>
+</View>
 
           {/* SKU */}
           {product.sku && (
@@ -271,10 +355,10 @@ export default function ProductDetailScreen() {
           <View style={styles.availabilityContainer}>
             <View style={[
               styles.availabilityDot,
-              { backgroundColor: product.isSaleable ? Colors.success : Colors.error }
+              { backgroundColor: isProductAvailable ? Colors.success : Colors.error }
             ]} />
             <Text style={styles.availabilityText}>
-              {product.isSaleable ? 'In Stock' : 'Out of Stock'}
+              {isProductAvailable ? 'In Stock' : 'Out of Stock'}
             </Text>
           </View>
 
@@ -291,7 +375,7 @@ export default function ProductDetailScreen() {
             <View key={attribute.id} style={styles.section}>
               <Text style={styles.sectionTitle}>{attribute.label}</Text>
               <View style={styles.optionValues}>
-                {attribute.options.map((option: any) => {
+                {attribute.options?.map((option: any) => {
                   const isSelected = selectedOptions[attribute.code] === option.id;
                   return (
                     <Pressable
@@ -327,10 +411,11 @@ export default function ProductDetailScreen() {
             <Text style={styles.sectionTitle}>Quantity</Text>
             <View style={styles.quantitySelector}>
               <Pressable
-                style={styles.quantityButton}
+                style={[styles.quantityButton, quantity <= 1 && styles.quantityButtonDisabled]}
                 onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
               >
-                <Minus size={20} color={Colors.text} />
+                <Minus size={20} color={quantity <= 1 ? Colors.textSecondary : Colors.text} />
               </Pressable>
               <Text style={styles.quantityText}>{quantity}</Text>
               <Pressable
@@ -364,12 +449,15 @@ export default function ProductDetailScreen() {
               {product.reviews.slice(0, 3).map((review: any) => (
                 <View key={review.id} style={styles.reviewItem}>
                   <View style={styles.reviewHeader}>
-                    <Text style={styles.reviewAuthor}>{review.title}</Text>
+                    <Text style={styles.reviewAuthor}>{review.name || 'Anonymous'}</Text>
                     <View style={styles.reviewRating}>
                       <Star size={14} color={Colors.primary} fill={Colors.primary} />
                       <Text style={styles.reviewRatingText}>{review.rating}</Text>
                     </View>
                   </View>
+                  {review.title && (
+                    <Text style={styles.reviewTitle}>{review.title}</Text>
+                  )}
                   <Text style={styles.reviewComment}>{review.comment}</Text>
                   <Text style={styles.reviewDate}>
                     {new Date(review.createdAt).toLocaleDateString()}
@@ -393,6 +481,7 @@ export default function ProductDetailScreen() {
                   const relatedComparePrice = parseFloat(relatedProduct.priceHtml?.regularPrice || '0');
                   const relatedHasDiscount = relatedComparePrice > relatedPrice;
                   const relatedImage = relatedProduct.images?.[0]?.url || '';
+                  const relatedBrand = getBrand(relatedProduct);
 
                   return (
                     <Pressable
@@ -422,7 +511,12 @@ export default function ProductDetailScreen() {
                       )}
                       
                       <View style={styles.relatedProductInfo}>
-                        <Text style={styles.relatedProductName} numberOfLines={1}>
+                        {relatedBrand && (
+                          <Text style={styles.relatedProductBrand} numberOfLines={1}>
+                            {relatedBrand}
+                          </Text>
+                        )}
+                        <Text style={styles.relatedProductName} numberOfLines={2}>
                           {relatedProduct.name}
                         </Text>
                         <View style={styles.relatedPriceContainer}>
@@ -460,13 +554,13 @@ export default function ProductDetailScreen() {
           style={[
             styles.addToCartButton,
             addedToCart && styles.addedToCartButton,
-            !product.isSaleable && styles.addToCartButtonDisabled,
+            !isProductAvailable && styles.addToCartButtonDisabled,
           ]}
           onPress={handleAddToCart}
-          disabled={!product.isSaleable}
+          disabled={!isProductAvailable}
         >
           <Text style={styles.addToCartButtonText}>
-            {!product.isSaleable ? 'Out of Stock' : addedToCart ? 'Added to Cart!' : 'Add to Cart'}
+            {!isProductAvailable ? 'Out of Stock' : addedToCart ? 'Added to Cart!' : 'Add to Cart'}
           </Text>
         </Pressable>
       </SafeAreaView>
@@ -482,15 +576,46 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  errorContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.background,
   },
-  errorText: {
-    fontSize: 18,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
     color: Colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: Colors.background,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: Colors.error,
+    marginBottom: 12,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    textAlign: 'center' as const,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
   imageContainer: {
     width: '100%',
@@ -718,6 +843,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  quantityButtonDisabled: {
+    opacity: 0.5,
+  },
   quantityText: {
     fontSize: 18,
     fontWeight: '700' as const,
@@ -774,6 +902,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginLeft: 4,
   },
+  reviewTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 8,
+  },
   reviewComment: {
     fontSize: 14,
     color: Colors.text,
@@ -820,6 +954,14 @@ const styles = StyleSheet.create({
   },
   relatedProductInfo: {
     padding: 10,
+  },
+  relatedProductBrand: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   relatedProductName: {
     fontSize: 13,

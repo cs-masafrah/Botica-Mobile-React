@@ -1,325 +1,514 @@
 import createContextHook from '@nkzw/create-context-hook';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CartItem, Product, ShippingRate, ShippingDiscount } from '@/types/product';
-import { shopifyService } from '@/services/shopify';
-import { APP_CURRENCY, convertCurrency } from '@/utils/currency';
+import { Alert } from 'react-native';
+import { CartItem, Product, ShippingRate } from '@/types/product';
+import { APP_CURRENCY } from '@/utils/currency';
+import { bagistoService } from '@/services/bagisto';
+import { checkoutService } from '@/services/CheckoutService';
+import { orderService } from '@/services/OrderService';
+import { 
+  extractBagistoPrice, 
+  extractBagistoImage, 
+  extractBagistoCurrency,
+  extractCartTotals,
+  parseCurrencyString 
+} from '@/utils/bagistoHelpers';
 
-const CART_STORAGE_KEY = '@beauty_cart';
-const CART_CURRENCY = APP_CURRENCY;
+interface ShippingAddress {
+  companyName?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  address: string;
+  city: string;
+  country: string;
+  state?: string;
+  postcode: string;
+  phone: string;
+  useForShipping?: boolean;
+  defaultAddress?: boolean;
+  saveAddress?: boolean;
+}
 
 export const [CartContext, useCart] = createContextHook(() => {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [cartDetails, setCartDetails] = useState<any>(null);
   const [selectedShippingRate, setSelectedShippingRate] = useState<ShippingRate | null>(null);
-  const [shippingDiscounts, setShippingDiscounts] = useState<ShippingDiscount[]>([]);
-  const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
+  const [shippingMethods, setShippingMethods] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [lastLoadTime, setLastLoadTime] = useState<number>(0);
+  const [hasError, setHasError] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Add refresh key for forced reloads
 
-  const loadCart = useCallback(async () => {
+  const loadCart = useCallback(async (forceRefresh: boolean = false) => {
     try {
-      const stored = await AsyncStorage.getItem(CART_STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setItems(parsed);
-          } else {
-            console.warn('Invalid cart format, clearing storage');
-            await AsyncStorage.removeItem(CART_STORAGE_KEY);
-          }
-        } catch (parseError) {
-          console.error('Failed to parse cart data:', parseError);
-          console.log('Clearing corrupted cart data');
-          await AsyncStorage.removeItem(CART_STORAGE_KEY);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load cart:', error);
-    } finally {
-      setIsLoaded(true);
-    }
-  }, []);
-
-  const saveCart = useCallback(async () => {
-    try {
-      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-    } catch (error) {
-      console.error('Failed to save cart:', error);
-    }
-  }, [items]);
-
-  useEffect(() => {
-    loadCart();
-  }, [loadCart]);
-
-  useEffect(() => {
-    const loadDiscounts = async () => {
-      setIsLoadingDiscounts(true);
-      try {
-        const discounts = await shopifyService.getShippingDiscounts();
-        console.log('[CartContext] ✅ Loaded shipping discounts:', discounts.length);
-        setShippingDiscounts(discounts);
-      } catch {
-        console.log('[CartContext] ℹ️  No shipping discounts configured. Continuing without discounts.');
-        setShippingDiscounts([]);
-      } finally {
-        setIsLoadingDiscounts(false);
-      }
-    };
-    
-    loadDiscounts();
-  }, []);
-
-  useEffect(() => {
-    if (isLoaded) {
-      saveCart();
-    }
-  }, [items, isLoaded, saveCart]);
-
-  const addToCart = useCallback((product: Product, quantity: number = 1) => {
-    console.log('[CartContext] addToCart called:', { productId: product.id, productName: product.name, quantity });
-    setItems((prevItems) => {
-      console.log('[CartContext] Current cart items:', prevItems.length);
-      const existingItem = prevItems.find(item => {
-        const isSameId = item.product.id === product.id;
-        const isSameVariantId = product.variantId && item.product.variantId === product.variantId;
-        return isSameId || isSameVariantId;
+      setIsLoading(true);
+      setHasError(false);
+      console.log('🛒 [CART] Loading cart from Bagisto...');
+      
+      const bagistoCart = await bagistoService.getCartDetails();
+      
+      console.log('🛒 [CART] Cart response:', {
+        id: bagistoCart?.id,
+        itemsCount: bagistoCart?.itemsCount,
+        itemsQty: bagistoCart?.itemsQty,
+        itemsLength: bagistoCart?.items?.length,
       });
       
-      if (existingItem) {
-        console.log('[CartContext] Item exists, updating quantity from', existingItem.quantity, 'to', existingItem.quantity + quantity);
-        return prevItems.map(item => {
-          const isSameId = item.product.id === product.id;
-          const isSameVariantId = product.variantId && item.product.variantId === product.variantId;
-          return (isSameId || isSameVariantId)
-            ? { ...item, quantity: item.quantity + quantity }
-            : item;
-        });
+      setCartDetails(bagistoCart);
+      
+      // Check if cart is empty
+      if (!bagistoCart || !bagistoCart.items || bagistoCart.items.length === 0) {
+        console.log('🛒 [CART] Cart is empty');
+        setItems([]);
+        setLastLoadTime(Date.now());
+        return;
       }
       
-      console.log('[CartContext] Adding new item to cart');
-      const newItems = [...prevItems, { product, quantity }];
-      console.log('[CartContext] New cart items count:', newItems.length);
-      return newItems;
-    });
-    setSuccessMessage('Product successfully added to cart');
-    setTimeout(() => setSuccessMessage(null), 1200);
-  }, []);
-
-  const addMultipleToCart = useCallback((items: { product: Product; quantity: number }[]) => {
-    console.log('[CartContext] addMultipleToCart called with', items.length, 'items');
-    console.log('[CartContext] Items details:', items.map(i => ({ name: i.product.name, qty: i.quantity })));
-    
-    return new Promise<void>((resolve) => {
-      setItems((prevItems) => {
-        console.log('[CartContext] Current cart before update:', prevItems.length, 'items');
-        let updatedItems = [...prevItems];
-        
-        for (const { product, quantity } of items) {
-          console.log('[CartContext] Processing product:', product.name, 'variantId:', product.variantId);
-          const existingIndex = updatedItems.findIndex(item => {
-            const isSameId = item.product.id === product.id;
-            const isSameVariantId = product.variantId && item.product.variantId === product.variantId;
-            return isSameId || isSameVariantId;
+      // Convert Bagisto cart items to local format
+      const convertedItems: CartItem[] = bagistoCart.items
+        .filter(item => item && item.id)
+        .map((item) => {
+          const price = extractBagistoPrice(item);
+          const imageUrl = extractBagistoImage(item);
+          const currencyCode = extractBagistoCurrency(item);
+          
+          console.log(`📦 [CART ITEM] ${item.name}:`, {
+            rawPrice: item.formattedPrice?.price,
+            extractedPrice: price,
+            quantity: item.quantity,
+            total: price * (item.quantity || 1),
+            hasImage: !!imageUrl,
+            currency: currencyCode,
           });
           
-          if (existingIndex !== -1) {
-            console.log('[CartContext] Found existing item at index', existingIndex, 'updating quantity');
-            updatedItems[existingIndex] = {
-              ...updatedItems[existingIndex],
-              quantity: updatedItems[existingIndex].quantity + quantity
-            };
-          } else {
-            console.log('[CartContext] Adding as new item');
-            updatedItems.push({ product, quantity });
-          }
-        }
-        
-        console.log('[CartContext] Updated cart items count:', updatedItems.length);
-        console.log('[CartContext] Updated cart details:', updatedItems.map(i => ({ name: i.product.name, qty: i.quantity })));
-        
-        setTimeout(() => {
-          console.log('[CartContext] Resolving promise after state update');
-          resolve();
-        }, 100);
-        
-        return updatedItems;
+          // Calculate total for this item
+          const itemTotal = price * (item.quantity || 1);
+          
+          // Create cart item
+          const cartItem: CartItem = {
+            id: item.id.toString(),
+            quantity: item.quantity || 1,
+            product: {
+              id: item.product?.id?.toString() || item.id.toString(),
+              productId: item.product?.id?.toString() || item.id.toString(),
+              name: item.name || item.product?.name || 'Product',
+              price: price,
+              currencyCode: currencyCode,
+              image: imageUrl,
+              variantId: item.product?.id?.toString() || item.id.toString(),
+              inStock: true,
+              brand: item.product?.sku || '',
+              type: item.product?.type || item.type || 'simple',
+              sku: item.product?.sku || item.sku || '',
+              // Bagisto specific fields
+              selectedConfigurableOption: item.selectedConfigurableOption,
+              selectedOptions: item.selectedOptions || {},
+            },
+            formattedPrice: {
+              price: price,
+              total: itemTotal,
+              taxAmount: 0,
+              discountAmount: 0,
+              currency: currencyCode,
+            },
+          };
+          
+          return cartItem;
+        });
+      
+      console.log('✅ [CART] Successfully converted items:', {
+        totalItems: convertedItems.length,
+        totalPrice: convertedItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0),
+        items: convertedItems.map(item => ({
+          name: item.product.name.substring(0, 20),
+          price: item.product.price,
+          quantity: item.quantity,
+          total: item.product.price * item.quantity,
+        }))
       });
-    });
+      
+      setItems(convertedItems);
+      setLastLoadTime(Date.now());
+      setHasError(false);
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to load cart:', {
+        message: error.message,
+        stack: error.stack?.split('\n')[0]
+      });
+      setHasError(true);
+      setItems([]);
+      setCartDetails(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const removeFromCart = useCallback((productId: string) => {
-    setItems((prevItems) => prevItems.filter(item => item.product.id !== productId));
-  }, []);
+  // Initial cart load
+  useEffect(() => {
+    console.log('🛒 [CART] Initial cart load');
+    loadCart();
+  }, [loadCart, refreshKey]); // Add refreshKey dependency
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  // Add to cart
+  const addToCart = useCallback(async (product: Product, quantity: number = 1, selectedOptions?: Record<string, string>) => {
+    try {
+      setIsLoading(true);
+      console.log('➕ [CART] Adding product to cart:', {
+        productId: product.productId || product.id,
+        productName: product.name,
+        quantity,
+        selectedOptions,
+        price: product.price
+      });
+      
+      // Prepare input
+      const input: any = {
+        productId: product.productId || product.id,
+        quantity: quantity,
+      };
+      
+      // Handle configurable options
+      if (selectedOptions && Object.keys(selectedOptions).length > 0) {
+        console.log('🔄 [CART] Selected options found:', selectedOptions);
+        
+        // Convert to superAttribute format
+        input.superAttribute = Object.entries(selectedOptions).map(([attributeCode, optionValue]) => ({
+          attributeCode,
+          attributeOptionId: optionValue
+        }));
+      }
+      
+      // Handle selected variant ID
+      if (product.selectedConfigurableOption) {
+        input.selectedConfigurableOption = product.selectedConfigurableOption;
+      }
+      
+      console.log('🔄 [CART] GraphQL input:', JSON.stringify(input, null, 2));
+      
+      const result = await bagistoService.addToCart(input);
+      
+      // Reload cart
+      await loadCart();
+      
+      console.log('✅ [CART] Product added successfully');
+      
+      return {
+        success: true,
+        message: result.message || `${product.name} added to cart`,
+        product,
+        quantity
+      };
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to add to cart:', {
+        error: error.message,
+        fullError: error
+      });
+      
+      return {
+        success: false,
+        message: error.message || 'Failed to add to cart',
+        product,
+        quantity,
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadCart]);
+
+  // Update quantity - FIXED VERSION
+  const updateQuantity = useCallback(async (cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      await removeFromCart(cartItemId);
       return;
     }
-    
-    setItems((prevItems) =>
-      prevItems.map(item =>
-        item.product.id === productId
-          ? { ...item, quantity }
-          : item
-      )
-    );
-  }, [removeFromCart]);
 
-  const clearCart = useCallback(() => {
-    setItems([]);
-  }, []);
-
-  const getDiscountThreshold = useCallback(
-    (discount: ShippingDiscount) =>
-      convertCurrency(discount.minimumOrderAmount, discount.currencyCode, CART_CURRENCY),
-    [],
-  );
-
-  const subtotal = useMemo(
-    () => {
-      const total = items.reduce((sum, item) => {
-        const lineTotal = item.product.price * item.quantity;
-        const converted = convertCurrency(
-          lineTotal,
-          item.product.currencyCode || CART_CURRENCY,
-          CART_CURRENCY,
-        );
-        console.log(`[CartContext] 🧮 Line item: ${item.product.name} x${item.quantity} = ${lineTotal} ${item.product.currencyCode} → ${converted} ${CART_CURRENCY}`);
-        return sum + converted;
-      }, 0);
-      console.log(`[CartContext] 🧮 Subtotal: ${total} ${CART_CURRENCY}`);
-      return total;
-    },
-    [items],
-  );
-  
-  const applicableShippingDiscount = useMemo(() => {
-    console.log('[CartContext] 🎁 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('[CartContext] 🎁 DISCOUNT ELIGIBILITY CHECK');
-    console.log('[CartContext] 🎁 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
-    if (shippingDiscounts.length === 0) {
-      console.log('[CartContext] 🎁 ❌ No shipping discounts configured in Shopify');
-      console.log('[CartContext] 🎁 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      return null;
-    }
-    
-    if (subtotal === 0) {
-      console.log('[CartContext] 🎁 ❌ Cart subtotal is 0');
-      console.log('[CartContext] 🎁 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      return null;
-    }
-    
-    console.log(`[CartContext] 🎁 Current cart subtotal: ${subtotal.toFixed(2)} ${CART_CURRENCY}`);
-    console.log(`[CartContext] 🎁 Available shipping discounts: ${shippingDiscounts.length}`);
-    console.log('[CartContext] 🎁');
-    
-    const applicableDiscounts = shippingDiscounts.filter(discount => {
-      const normalizedMinimum = getDiscountThreshold(discount);
-      const isApplicable = subtotal >= normalizedMinimum;
+    try {
+      setIsLoading(true);
+      console.log('🔄 [CART] Updating quantity:', cartItemId, quantity);
       
-      console.log(`[CartContext] 🎁   Discount: "${discount.title}"`);
-      console.log(`[CartContext] 🎁     Code: ${discount.code}`);
-      console.log(`[CartContext] 🎁     Minimum required: ${discount.minimumOrderAmount.toFixed(2)} ${discount.currencyCode} → ${normalizedMinimum.toFixed(2)} ${CART_CURRENCY}`);
-      console.log(`[CartContext] 🎁     Cart subtotal: ${subtotal.toFixed(2)} ${CART_CURRENCY}`);
-      console.log(`[CartContext] 🎁     Eligible: ${isApplicable ? '✅ YES' : '❌ NO'}`);
-      console.log('[CartContext] 🎁');
+      // Update via Bagisto
+      const result = await bagistoService.updateCartItem([
+        { id: cartItemId, quantity }
+      ]);
       
-      return isApplicable;
+      console.log('✅ [CART] Update result:', result);
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to update quantity');
+      }
+      
+      // Force reload cart
+      await loadCart();
+      
+      console.log('✅ [CART] Quantity updated successfully');
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to update quantity:', error.message);
+      
+      // Update local state as fallback
+      const itemIndex = items.findIndex(item => item.id === cartItemId);
+      if (itemIndex >= 0) {
+        const updatedItems = [...items];
+        updatedItems[itemIndex] = {
+          ...updatedItems[itemIndex],
+          quantity: quantity
+        };
+        setItems(updatedItems);
+        console.log('🔄 [CART] Updated local state as fallback');
+      }
+      
+      Alert.alert(
+        'Sync Issue',
+        'Quantity updated locally. Please refresh cart to sync with server.'
+      );
+      
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [items, loadCart, removeFromCart]);
+
+  // In CartContext.tsx, update the removeFromCart function:
+
+const removeFromCart = useCallback(async (cartItemId: string) => {
+  try {
+    setIsLoading(true);
+    console.log('🗑️ [CART] Removing from cart:', cartItemId);
+    
+    const result = await bagistoService.removeFromCart(cartItemId);
+    
+    console.log('✅ [CART] Remove result:', {
+      success: result.success,
+      message: result.message,
+      remainingItems: result.cart?.itemsCount,
     });
     
-    if (applicableDiscounts.length === 0) {
-      console.log('[CartContext] 🎁 ❌ No discounts meet the minimum order amount');
-      const nextDiscount = shippingDiscounts
-        .map(d => ({ discount: d, threshold: getDiscountThreshold(d) }))
-        .filter(e => subtotal < e.threshold)
-        .sort((a, b) => a.threshold - b.threshold)[0];
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to remove item');
+    }
+    
+    // Update local state immediately
+    setItems(prevItems => prevItems.filter(item => item.id !== cartItemId));
+    
+    // Also update cart details if available in response
+    if (result.cart) {
+      setCartDetails(result.cart);
+    } else {
+      // Force reload cart to get updated state
+      await loadCart();
+    }
+    
+    console.log('✅ [CART] Item removed successfully');
+    
+  } catch (error: any) {
+    console.error('❌ [CART] Failed to remove from cart:', error.message);
+    
+    Alert.alert(
+      'Remove Failed',
+      error.message || 'Could not remove item from cart. Please try again.'
+    );
+    
+    throw error;
+  } finally {
+    setIsLoading(false);
+  }
+}, [loadCart]);
+
+  // Apply coupon
+  const applyCoupon = useCallback(async (code: string) => {
+    try {
+      setIsLoading(true);
+      console.log('🎫 [CART] Applying coupon:', code);
       
-      if (nextDiscount) {
-        const remaining = nextDiscount.threshold - subtotal;
-        console.log(`[CartContext] 🎁 💡 Add ${remaining.toFixed(2)} ${CART_CURRENCY} more for "${nextDiscount.discount.title}"`);
+      const result = await bagistoService.applyCoupon(code);
+      
+      console.log('✅ [CART] Apply coupon result:', result);
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to apply coupon');
       }
-      console.log('[CartContext] 🎁 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      return null;
+      
+      await loadCart();
+      console.log('✅ [CART] Coupon applied successfully');
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to apply coupon:', error.message);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
-    
-    applicableDiscounts.sort(
-      (a, b) => getDiscountThreshold(b) - getDiscountThreshold(a),
-    );
-    const discount = applicableDiscounts[0];
-    
-    console.log('[CartContext] 🎁 ✅✅✅ FREE SHIPPING DISCOUNT QUALIFIED! ✅✅✅');
-    console.log(`[CartContext] 🎁   Title: ${discount.title}`);
-    console.log(`[CartContext] 🎁   Code: ${discount.code}`);
-    console.log(`[CartContext] 🎁   Minimum: ${discount.minimumOrderAmount.toFixed(2)} ${discount.currencyCode}`);
-    console.log(`[CartContext] 🎁   Your subtotal: ${subtotal.toFixed(2)} ${CART_CURRENCY}`);
-    console.log('[CartContext] 🎁 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
-    return discount;
-  }, [shippingDiscounts, subtotal, getDiscountThreshold]);
-  
-  const shippingCost = useMemo(() => {
-    console.log('[CartContext] 🚢 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('[CartContext] 🚢 SHIPPING COST CALCULATION');
-    console.log('[CartContext] 🚢 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
-    if (!selectedShippingRate) {
-      console.log('[CartContext] 🚢 ❌ No shipping rate selected');
-      console.log('[CartContext] 🚢 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      return 0;
-    }
-    
-    const baseShippingCost = convertCurrency(
-      selectedShippingRate.price,
-      selectedShippingRate.currencyCode,
-      CART_CURRENCY
-    );
-    
-    console.log(`[CartContext] 🚢 Selected shipping rate: ${selectedShippingRate.title}`);
-    console.log(`[CartContext] 🚢 Original price: ${selectedShippingRate.price.toFixed(2)} ${selectedShippingRate.currencyCode}`);
-    console.log(`[CartContext] 🚢 Converted price: ${baseShippingCost.toFixed(2)} ${CART_CURRENCY}`);
-    console.log('[CartContext] 🚢');
-    
-    if (applicableShippingDiscount) {
-      console.log('[CartContext] 🚢 🎉 FREE SHIPPING DISCOUNT APPLIED!');
-      console.log(`[CartContext] 🚢   Discount: ${applicableShippingDiscount.title}`);
-      console.log(`[CartContext] 🚢   Original shipping: ${baseShippingCost.toFixed(2)} ${CART_CURRENCY}`);
-      console.log(`[CartContext] 🚢   Final shipping: 0.00 ${CART_CURRENCY}`);
-      console.log(`[CartContext] 🚢   You saved: ${baseShippingCost.toFixed(2)} ${CART_CURRENCY}`);
-      console.log('[CartContext] 🚢 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      return 0;
-    }
-    
-    console.log(`[CartContext] 🚢 No discount applied`);
-    console.log(`[CartContext] 🚢 Final shipping cost: ${baseShippingCost.toFixed(2)} ${CART_CURRENCY}`);
-    console.log('[CartContext] 🚢 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    return baseShippingCost;
-  }, [selectedShippingRate, applicableShippingDiscount]);
+  }, [loadCart]);
 
-  const total = useMemo(() => {
-    const calculatedTotal = subtotal + shippingCost;
-    console.log('[CartContext] 💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('[CartContext] 💰 FINAL TOTAL CALCULATION');
-    console.log('[CartContext] 💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`[CartContext] 💰 Subtotal:          ${subtotal.toFixed(2)} ${CART_CURRENCY}`);
-    console.log(`[CartContext] 💰 Shipping:          ${shippingCost.toFixed(2)} ${CART_CURRENCY}`);
-    if (applicableShippingDiscount) {
-      console.log(`[CartContext] 💰 Discount Applied:  ${applicableShippingDiscount.title}`);
+  // Remove coupon
+  const removeCoupon = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      console.log('🎫 [CART] Removing coupon');
+      
+      const result = await bagistoService.removeCoupon();
+      
+      console.log('✅ [CART] Remove coupon result:', result);
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to remove coupon');
+      }
+      
+      await loadCart();
+      console.log('✅ [CART] Coupon removed successfully');
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to remove coupon:', error.message);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
-    console.log(`[CartContext] 💰 ─────────────────────────────────`);
-    console.log(`[CartContext] 💰 TOTAL:             ${calculatedTotal.toFixed(2)} ${CART_CURRENCY}`);
-    console.log('[CartContext] 💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    return calculatedTotal;
-  }, [subtotal, shippingCost, applicableShippingDiscount]);
-  
-  const itemCount = useMemo(
-    () => items.reduce((sum, item) => sum + item.quantity, 0),
-    [items],
-  );
+  }, [loadCart]);
 
+  // Get shipping methods
+  const getShippingMethods = useCallback(async (shippingMethod?: string) => {
+    try {
+      setIsLoading(true);
+      console.log('🚚 [CART] Getting shipping methods');
+      
+      const result = await bagistoService.getPaymentMethods(shippingMethod);
+      
+      console.log('✅ [CART] Shipping methods result:', result);
+      
+      setShippingMethods(result.shippingMethods || []);
+      setPaymentMethods(result.paymentMethods || []);
+      
+      console.log('✅ [CART] Shipping methods loaded');
+      return result;
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to get shipping methods:', error.message);
+      return { shippingMethods: [], paymentMethods: [] };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Save checkout addresses
+  const saveCheckoutAddresses = useCallback(async (billing: any, shipping: any) => {
+    try {
+      setIsLoading(true);
+      console.log('🏠 [CART] Saving checkout addresses');
+      
+      const result = await bagistoService.saveCheckoutAddresses({
+        billing,
+        shipping,
+      });
+      
+      console.log('✅ [CART] Addresses result:', result);
+      
+      setShippingMethods(result.shippingMethods || []);
+      setPaymentMethods(result.paymentMethods || []);
+      
+      console.log('✅ [CART] Addresses saved');
+      return result;
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to save addresses:', error.message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Save payment
+  const savePayment = useCallback(async (method: string) => {
+    try {
+      setIsLoading(true);
+      console.log('💳 [CART] Saving payment method:', method);
+      
+      const result = await bagistoService.savePayment(method);
+      
+      console.log('✅ [CART] Payment saved:', result);
+      return result;
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to save payment:', error.message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch orders
+  const fetchOrders = useCallback(async (params?: any) => {
+    try {
+      setIsLoading(true);
+      console.log('📋 [CART] Fetching orders...');
+      
+      const result = await orderService.getOrdersList(params);
+      console.log('✅ [CART] Orders loaded:', result.data.length);
+      return result;
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to fetch orders:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch order detail
+  const fetchOrderDetail = useCallback(async (orderId: string) => {
+    try {
+      setIsLoading(true);
+      console.log('📋 [CART] Fetching order detail...');
+      
+      const result = await orderService.getOrderDetail(orderId);
+      console.log('✅ [CART] Order detail loaded');
+      return result;
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to fetch order detail:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Place order
+  const placeOrder = useCallback(async (paymentDetails?: any) => {
+    try {
+      setIsLoading(true);
+      console.log('🛍️ [CART] Placing order...');
+      
+      const response = await checkoutService.placeOrder({
+        isPaymentCompleted: true,
+        paymentMethod: 'cashondelivery',
+        ...paymentDetails,
+      });
+      
+      if (!response.success) {
+        throw new Error(response.redirectUrl || 'Failed to place order');
+      }
+      
+      // Clear cart after successful order
+      setItems([]);
+      setCartDetails(null);
+      
+      console.log('✅ [CART] Order placed:', response.order.incrementId);
+      
+      return {
+        orderId: response.order.id,
+        orderName: response.order.incrementId,
+        redirectUrl: response.redirectUrl,
+      };
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Failed to place order:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Complete checkout
   const completeCheckout = useCallback(async (shippingInfo: {
     fullName: string;
     phone: string;
@@ -332,105 +521,206 @@ export const [CartContext, useCart] = createContextHook(() => {
     }
 
     try {
-      console.log('[CartContext] 🛍️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('[CartContext] 🛍️ CHECKOUT PROCESS STARTING');
-      console.log('[CartContext] 🛍️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
-      const originalShippingCost = selectedShippingRate
-        ? convertCurrency(selectedShippingRate.price, selectedShippingRate.currencyCode, CART_CURRENCY)
-        : 0;
-      
-      const finalShippingCost = applicableShippingDiscount && originalShippingCost > 0 ? 0 : originalShippingCost;
-      
-      console.log(`[CartContext] 🛍️ Items in cart: ${items.length}`);
-      console.log(`[CartContext] 🛍️ Subtotal: ${subtotal.toFixed(2)} ${CART_CURRENCY}`);
-      console.log(`[CartContext] 🛍️ Selected shipping rate: ${selectedShippingRate?.title || 'None'}`);
-      console.log(`[CartContext] 🛍️ Original shipping cost: ${originalShippingCost.toFixed(2)} ${CART_CURRENCY}`);
-      console.log(`[CartContext] 🛍️ Applicable discount: ${applicableShippingDiscount?.title || 'None'}`);
-      console.log(`[CartContext] 🛍️ Discount code: ${applicableShippingDiscount?.code || 'N/A'}`);
-      console.log(`[CartContext] 🛍️ Final shipping cost: ${finalShippingCost.toFixed(2)} ${CART_CURRENCY}`);
-      console.log(`[CartContext] 🛍️ Total: ${total.toFixed(2)} ${CART_CURRENCY}`);
-      console.log(`[CartContext] 🛍️ Will send discount code to Shopify: ${!!applicableShippingDiscount ? 'YES' : 'NO'}`);
-      console.log('[CartContext] 🛍️');
-      
-      const unavailableItems = items.filter(item => !item.product.variantId || !item.product.inStock);
-      if (unavailableItems.length > 0) {
-        const productNames = unavailableItems.map(item => item.product.name).join(', ');
-        throw new Error(`Some products cannot be purchased: ${productNames}. Please remove them from your cart.`);
-      }
+      console.log('🛍️ [CART] Starting checkout process...');
       
       const [firstName, ...lastNameParts] = shippingInfo.fullName.split(' ');
       const lastName = lastNameParts.join(' ') || firstName;
       
-      const lineItems = items.map(item => ({
-        variantId: item.product.variantId!,
-        quantity: item.quantity,
-      }));
-
-      const orderPayload = {
-        lineItems,
-        customer: {
-          email: shippingInfo.email,
-          firstName,
-          lastName,
-        },
-        shippingAddress: {
-          firstName,
-          lastName,
-          address1: shippingInfo.address,
-          city: shippingInfo.city,
-          phone: shippingInfo.phone,
-          country: 'US',
-        },
-        shippingLine: selectedShippingRate ? {
-          title: applicableShippingDiscount && originalShippingCost > 0 
-            ? `${selectedShippingRate.title} (Free Shipping Applied)` 
-            : selectedShippingRate.title,
-          price: finalShippingCost,
-          code: selectedShippingRate.id,
-        } : undefined,
-        discountCodes: applicableShippingDiscount ? [applicableShippingDiscount.code] : undefined,
+      const billingAddress: ShippingAddress = {
+        firstName,
+        lastName,
+        email: shippingInfo.email,
+        address: shippingInfo.address,
+        city: shippingInfo.city,
+        country: 'US',
+        state: '',
+        postcode: '',
+        phone: shippingInfo.phone,
+        useForShipping: true,
+        defaultAddress: false,
+        saveAddress: false,
       };
       
-      console.log('[CartContext] 🛍️ Order payload:', JSON.stringify(orderPayload, null, 2));
-      console.log('[CartContext] 🛍️ Creating order in Shopify...');
+      const addressResponse = await saveCheckoutAddresses(
+        billingAddress,
+        billingAddress
+      );
       
-      const result = await shopifyService.createOrder(orderPayload);
+      if (addressResponse.shippingMethods.length > 0) {
+        const firstMethod = addressResponse.shippingMethods[0].methods[0];
+        // Handle shipping method selection if needed
+      }
       
-      console.log('[CartContext] 🛍️ ✅ Order created successfully!');
-      console.log(`[CartContext] 🛍️ Order ID: ${result.orderId}`);
-      console.log(`[CartContext] 🛍️ Order Name: ${result.orderName}`);
-      console.log('[CartContext] 🛍️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      await savePayment('cashondelivery');
       
-      clearCart();
+      const orderResult = await placeOrder();
       
-      return result;
-    } catch (error) {
-      console.error('[CartContext] 🛍️ ❌ Checkout error:', error);
+      console.log('✅ [CART] Order placed successfully');
+      return orderResult;
+      
+    } catch (error: any) {
+      console.error('❌ [CART] Checkout error:', error.message);
       throw error;
     }
-  }, [items, clearCart, selectedShippingRate, applicableShippingDiscount, subtotal, total]);
+  }, [items, saveCheckoutAddresses, savePayment, placeOrder]);
+
+  // Calculate totals
+  const subtotal = useMemo(() => {
+    const cartTotals = extractCartTotals(cartDetails);
+    return cartTotals.subtotal;
+  }, [cartDetails]);
+
+  const total = useMemo(() => {
+    const cartTotals = extractCartTotals(cartDetails);
+    return cartTotals.grandTotal;
+  }, [cartDetails]);
+
+  const tax = useMemo(() => {
+    const cartTotals = extractCartTotals(cartDetails);
+    return cartTotals.tax;
+  }, [cartDetails]);
+
+  const discount = useMemo(() => {
+    const cartTotals = extractCartTotals(cartDetails);
+    return cartTotals.discount;
+  }, [cartDetails]);
+
+  const shippingCost = useMemo(() => {
+    if (!selectedShippingRate) return 0;
+    return selectedShippingRate.price || 0;
+  }, [selectedShippingRate]);
+
+  const itemCount = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity, 0),
+    [items]
+  );
+
+  // Clear cart
+  const clearCart = useCallback(async () => {
+    try {
+      setItems([]);
+      setCartDetails(null);
+      setSelectedShippingRate(null);
+      setShippingMethods([]);
+      setPaymentMethods([]);
+      setHasError(false);
+      await bagistoService.clearCartStorage();
+      console.log('🛒 [CART] Cart cleared');
+    } catch (error) {
+      console.error('❌ [CART] Failed to clear cart:', error);
+    }
+  }, []);
+
+  // Debug cart
+  const debugCart = useCallback(async () => {
+    console.log('🔍 [CART DEBUG] Current state:', {
+      itemsCount: items.length,
+      items: items.map(item => ({
+        id: item.id,
+        name: item.product.name,
+        price: item.product.price,
+        quantity: item.quantity,
+        total: item.product.price * item.quantity
+      })),
+      isLoading,
+      hasError,
+      cartDetails: {
+        id: cartDetails?.id,
+        itemsCount: cartDetails?.itemsCount,
+        itemsQty: cartDetails?.itemsQty,
+        itemsLength: cartDetails?.items?.length,
+        formattedPrice: cartDetails?.formattedPrice,
+      },
+      totals: extractCartTotals(cartDetails),
+      lastLoadTime: new Date(lastLoadTime).toLocaleTimeString()
+    });
+    
+    // Test Bagisto service directly
+    const testResult = await bagistoService.testCartConnection();
+    console.log('🔍 [CART DEBUG] Bagisto test:', testResult);
+  }, [items, isLoading, hasError, cartDetails, lastLoadTime]);
+
+  // Force refresh cart
+  const forceRefreshCart = useCallback(async () => {
+    console.log('🔄 [CART] Force refreshing cart...');
+    setRefreshKey(prev => prev + 1);
+    await loadCart();
+  }, [loadCart]);
 
   return useMemo(() => ({
+    // State
     items,
+    cartDetails,
+    isLoading,
+    hasError,
+    selectedShippingRate,
+    setSelectedShippingRate,
+    shippingMethods,
+    paymentMethods,
+    lastLoadTime,
+    
+    // Cart operations
     addToCart,
-    addMultipleToCart,
-    removeFromCart,
     updateQuantity,
+    removeFromCart,
+    applyCoupon,
+    removeCoupon,
+    loadCart,
     clearCart,
+    debugCart,
+    forceRefreshCart,
+    
+    // Checkout operations
+    saveCheckoutAddresses,
+    savePayment,
+    placeOrder,
+    completeCheckout,
+
+    fetchOrders,
+    fetchOrderDetail,
+
+    // Totals
+    subtotal,
+    shippingCost,
+    total,
+    tax,
+    discount,
+    itemCount,
+    
+    // For compatibility with existing components
+    currencyCode: APP_CURRENCY,
+    shippingDiscounts: [],
+    applicableShippingDiscount: null,
+    getDiscountThreshold: () => 0,
+  }), [
+    items,
+    cartDetails,
+    isLoading,
+    hasError,
+    selectedShippingRate,
+    shippingMethods,
+    paymentMethods,
+    lastLoadTime,
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    applyCoupon,
+    removeCoupon,
+    loadCart,
+    clearCart,
+    debugCart,
+    forceRefreshCart,
+    saveCheckoutAddresses,
+    savePayment,
+    placeOrder,
     completeCheckout,
     subtotal,
     shippingCost,
     total,
+    tax,
+    discount,
     itemCount,
-    isLoaded,
-    successMessage,
-    selectedShippingRate,
-    setSelectedShippingRate,
-    shippingDiscounts,
-    applicableShippingDiscount,
-    isLoadingDiscounts,
-    currencyCode: CART_CURRENCY,
-    getDiscountThreshold,
-  }), [items, addToCart, addMultipleToCart, removeFromCart, updateQuantity, clearCart, completeCheckout, subtotal, shippingCost, total, itemCount, isLoaded, successMessage, selectedShippingRate, shippingDiscounts, applicableShippingDiscount, isLoadingDiscounts, getDiscountThreshold]);
+    fetchOrders,
+    fetchOrderDetail,
+  ]);
 });

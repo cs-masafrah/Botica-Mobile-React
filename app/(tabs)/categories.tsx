@@ -17,8 +17,8 @@ import { Image } from 'expo-image';
 import Colors from '@/constants/colors';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ShippingStrip } from '@/components/ShippingStrip';
-import { useBrands } from '../hooks/useBrands';
-import { useCategories } from '../hooks/useCategories'; // Import the new hook
+import { useBrands } from '../hooks/useBrands'; // Change this to absolute path
+import { useCategories } from '../hooks/useCategories'; // Change this to absolute path
 
 // Helper function to get icon component
 const getIconComponent = (iconName: string) => {
