@@ -12,6 +12,7 @@ import { LanguageContext } from '@/contexts/LanguageContext';
 import { WishlistContext } from '@/contexts/WishlistContext';
 import { FloatingCart } from '@/components/FloatingCart';
 import { preloadImages, extractImageUrls } from '@/utils/imagePreloader';
+import { Alert } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 

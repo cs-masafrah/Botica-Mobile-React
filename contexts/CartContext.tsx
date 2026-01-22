@@ -152,72 +152,161 @@ export const [CartContext, useCart] = createContextHook(() => {
     loadCart();
   }, [loadCart, refreshKey]); // Add refreshKey dependency
 
-  // Add to cart
-  const addToCart = useCallback(async (product: Product, quantity: number = 1, selectedOptions?: Record<string, string>) => {
-    try {
-      setIsLoading(true);
-      console.log('➕ [CART] Adding product to cart:', {
-        productId: product.productId || product.id,
-        productName: product.name,
-        quantity,
-        selectedOptions,
-        price: product.price
-      });
+/// Add to cart
+const addToCart = useCallback(async (product: Product, quantity: number = 1, selectedOptions?: Record<string, string>) => {
+  try {
+    setIsLoading(true);
+    console.log('➕ [CART] Adding product to cart:', {
+      productId: product.productId || product.id,
+      productName: product.name,
+      quantity,
+      selectedOptions,
+      price: product.price
+    });
+    
+    // Prepare input matching GraphQL schema
+    const input: any = {
+      productId: product.productId || product.id,
+      quantity: quantity,
+      isBuyNow: false, // Set to false as in your query
+    };
+    
+    // Handle configurable options for variants
+    if (selectedOptions && Object.keys(selectedOptions).length > 0) {
+      console.log('🔄 [CART] Selected options found:', selectedOptions);
       
-      // Prepare input
-      const input: any = {
-        productId: product.productId || product.id,
-        quantity: quantity,
-      };
-      
-      // Handle configurable options
-      if (selectedOptions && Object.keys(selectedOptions).length > 0) {
-        console.log('🔄 [CART] Selected options found:', selectedOptions);
-        
-        // Convert to superAttribute format
-        input.superAttribute = Object.entries(selectedOptions).map(([attributeCode, optionValue]) => ({
-          attributeCode,
-          attributeOptionId: optionValue
-        }));
-      }
-      
-      // Handle selected variant ID
-      if (product.selectedConfigurableOption) {
-        input.selectedConfigurableOption = product.selectedConfigurableOption;
-      }
-      
-      console.log('🔄 [CART] GraphQL input:', JSON.stringify(input, null, 2));
-      
-      const result = await bagistoService.addToCart(input);
-      
-      // Reload cart
-      await loadCart();
-      
-      console.log('✅ [CART] Product added successfully');
-      
-      return {
-        success: true,
-        message: result.message || `${product.name} added to cart`,
-        product,
-        quantity
-      };
-      
-    } catch (error: any) {
-      console.error('❌ [CART] Failed to add to cart:', {
-        error: error.message,
-        fullError: error
-      });
-      
-      return {
-        success: false,
-        message: error.message || 'Failed to add to cart',
-        product,
-        quantity,
-      };
-    } finally {
-      setIsLoading(false);
+      // Convert to superAttribute format (Bagisto expects this format)
+      input.superAttribute = Object.entries(selectedOptions).map(([attributeCode, optionValue]) => ({
+        attributeCode,
+        attributeOptionId: optionValue
+      }));
     }
-  }, [loadCart]);
+    
+    // Handle selected variant ID if available
+    if (product.selectedConfigurableOption) {
+      input.selectedConfigurableOption = product.selectedConfigurableOption;
+    }
+    
+    // If variantId is provided, use it as selectedConfigurableOption
+    if (product.variantId && !input.selectedConfigurableOption) {
+      input.selectedConfigurableOption = product.variantId;
+    }
+    
+    console.log('🔄 [CART] GraphQL input:', JSON.stringify(input, null, 2));
+    
+    const result = await bagistoService.addToCart(input);
+    
+    // Log the response for debugging
+    console.log('📨 [CART] Add to cart response:', {
+      success: result.success,
+      message: result.message,
+      cartId: result.cart?.id,
+      itemsCount: result.cart?.itemsCount,
+      items: result.cart?.items?.length || 0
+    });
+    
+    if (result.success && result.cart) {
+      console.log('✅ [CART] Product added successfully!');
+      
+      // Log the added item details
+      if (result.cart?.items && result.cart.items.length > 0) {
+        const latestItem = result.cart.items[result.cart.items.length - 1];
+        console.log('📦 [CART] Added item details:', {
+          productName: latestItem.product.name,
+          quantity: latestItem.quantity,
+          price: latestItem.product.price,
+          total: latestItem.quantity * latestItem.product.price,
+          images: latestItem.product.images?.length || 0
+        });
+      }
+      
+      // Update cartDetails state with the new cart data
+      setCartDetails(result.cart);
+      
+      // Convert and update items state
+      if (result.cart.items && result.cart.items.length > 0) {
+        const convertedItems: CartItem[] = result.cart.items
+          .filter(item => item && item.id)
+          .map((item) => {
+            const price = extractBagistoPrice(item);
+            const imageUrl = extractBagistoImage(item);
+            const currencyCode = extractBagistoCurrency(item);
+            
+            // Calculate total for this item
+            const itemTotal = price * (item.quantity || 1);
+            
+            // Create cart item
+            const cartItem: CartItem = {
+              id: item.id.toString(),
+              quantity: item.quantity || 1,
+              product: {
+                id: item.product?.id?.toString() || item.id.toString(),
+                productId: item.product?.id?.toString() || item.id.toString(),
+                name: item.name || item.product?.name || 'Product',
+                price: price,
+                currencyCode: currencyCode,
+                image: imageUrl,
+                variantId: item.product?.id?.toString() || item.id.toString(),
+                inStock: true,
+                brand: item.product?.sku || '',
+                type: item.product?.type || item.type || 'simple',
+                sku: item.product?.sku || item.sku || '',
+                // Bagisto specific fields
+                selectedConfigurableOption: item.selectedConfigurableOption,
+                selectedOptions: item.selectedOptions || {},
+              },
+              formattedPrice: {
+                price: price,
+                total: itemTotal,
+                taxAmount: 0,
+                discountAmount: 0,
+              },
+            };
+            
+            return cartItem;
+          });
+        
+        console.log('🔄 [CART] Updated local items state:', {
+          itemsCount: convertedItems.length,
+          totalItems: convertedItems.reduce((sum, item) => sum + item.quantity, 0)
+        });
+        
+        setItems(convertedItems);
+      }
+    }
+    
+    // Always reload cart to ensure we have the latest state
+    await loadCart(true);
+    
+    console.log('✅ [CART] Product added successfully and cart reloaded');
+    
+    return {
+      success: true,
+      message: result.message || `${product.name} added to cart`,
+      product,
+      quantity,
+      cart: result.cart,
+      cartItems: result.cart?.items || []
+    };
+    
+  } catch (error: any) {
+    console.error('❌ [CART] Failed to add to cart:', {
+      error: error.message,
+      productId: product.productId || product.id,
+      productName: product.name,
+      stack: error.stack
+    });
+    
+    return {
+      success: false,
+      message: error.message || 'Failed to add to cart',
+      product,
+      quantity,
+    };
+  } finally {
+    setIsLoading(false);
+  }
+}, [loadCart, setCartDetails, setItems, setIsLoading]);
 
   // Update quantity - FIXED VERSION
   const updateQuantity = useCallback(async (cartItemId: string, quantity: number) => {
@@ -270,7 +359,7 @@ export const [CartContext, useCart] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [items, loadCart, removeFromCart]);
+  }, [items, loadCart]);
 
   // In CartContext.tsx, update the removeFromCart function:
 
@@ -565,25 +654,54 @@ const removeFromCart = useCallback(async (cartItemId: string) => {
   }, [items, saveCheckoutAddresses, savePayment, placeOrder]);
 
   // Calculate totals
-  const subtotal = useMemo(() => {
-    const cartTotals = extractCartTotals(cartDetails);
-    return cartTotals.subtotal;
-  }, [cartDetails]);
+  // const subtotal = useMemo(() => {
+  //   const cartTotals = extractCartTotals(cartDetails);
+  //   return cartTotals.subtotal;
+  // }, [cartDetails]);
 
-  const total = useMemo(() => {
-    const cartTotals = extractCartTotals(cartDetails);
-    return cartTotals.grandTotal;
-  }, [cartDetails]);
+  // const total = useMemo(() => {
+  //   const cartTotals = extractCartTotals(cartDetails);
+  //   return cartTotals.grandTotal;
+  // }, [cartDetails]);
 
-  const tax = useMemo(() => {
-    const cartTotals = extractCartTotals(cartDetails);
-    return cartTotals.tax;
-  }, [cartDetails]);
+  // const tax = useMemo(() => {
+  //   const cartTotals = extractCartTotals(cartDetails);
+  //   return cartTotals.tax;
+  // }, [cartDetails]);
 
-  const discount = useMemo(() => {
-    const cartTotals = extractCartTotals(cartDetails);
-    return cartTotals.discount;
-  }, [cartDetails]);
+  // const discount = useMemo(() => {
+  //   const cartTotals = extractCartTotals(cartDetails);
+  //   return cartTotals.discount;
+  // }, [cartDetails]);
+
+  // Calculate totals - FIXED VERSION
+const subtotal = useMemo(() => {
+  const cartTotals = extractCartTotals(cartDetails);
+  console.log('🧮 [CART] subtotal calculation:', {
+    raw: cartTotals,
+    subTotal: cartTotals.subTotal, // camelCase
+    cartDetailsKeys: cartDetails ? Object.keys(cartDetails) : []
+  });
+  return cartTotals.subTotal; // camelCase
+}, [cartDetails]);
+
+const total = useMemo(() => {
+  const cartTotals = extractCartTotals(cartDetails);
+  console.log('🧮 [CART] total calculation:', cartTotals.grandTotal);
+  return cartTotals.grandTotal;
+}, [cartDetails]);
+
+const tax = useMemo(() => {
+  const cartTotals = extractCartTotals(cartDetails);
+  console.log('🧮 [CART] tax calculation:', cartTotals.tax);
+  return cartTotals.tax;
+}, [cartDetails]);
+
+const discount = useMemo(() => {
+  const cartTotals = extractCartTotals(cartDetails);
+  console.log('🧮 [CART] discount calculation:', cartTotals.discount);
+  return cartTotals.discount;
+}, [cartDetails]);
 
   const shippingCost = useMemo(() => {
     if (!selectedShippingRate) return 0;

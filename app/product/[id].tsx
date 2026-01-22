@@ -21,6 +21,7 @@ import { formatPrice } from '@/utils/currency';
 import { ShippingStrip } from '@/components/ShippingStrip';
 import { useBagistoProductById } from '../hooks/useBagistoProductById';
 import { useBagistoProductsByCategory } from '../hooks/useBagistoProductsByCategory';
+import { Alert } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -136,49 +137,90 @@ export default function ProductDetailScreen() {
     });
   }, [product, selectedOptions, hasVariants]);
 
-  const handleAddToCart = () => {
-    if (!product) return;
+  // const handleAddToCart = () => {
+  //   if (!product) return;
 
-    // Use selected variant if available, otherwise use main product
-    const selectedVariant = getSelectedVariant;
-    const productToAdd = selectedVariant || product;
+  //   // Use selected variant if available, otherwise use main product
+  //   const selectedVariant = getSelectedVariant;
+  //   const productToAdd = selectedVariant || product;
 
-    const cartProduct: any = {
-      id: productToAdd.id,
-      name: product.name,
-      description: stripHtmlTags(product.shortDescription || product.description || ''),
-      price: parseFloat(productToAdd.price || product.priceHtml?.finalPrice || '0'),
-      compareAtPrice: parseFloat(productToAdd.compareAtPrice || product.priceHtml?.regularPrice || '0'),
-      currencyCode: 'USD',
-      image: selectedVariant?.image || images[0] || '',
-      images: images,
-      brand: brand,
-      rating: product.averageRating || 0,
-      reviewCount: product.reviewCount || 0,
-      inStock: productToAdd.availableForSale ?? product.isSaleable,
-      category: product.category || '',
-      tags: getTags(product),
-      options: product.configutableData?.attributes?.map((attr: any) => ({
-        id: attr.id,
-        name: attr.label,
-        values: attr.options.map((opt: any) => opt.label)
-      })) || [],
-      variants: product.variants || [],
-      selectedOptions: selectedOptions,
-      // Bagisto specific fields for GraphQL API
-      productId: product.id,
-      selectedConfigurableOption: selectedVariant?.id,
-      configurableParams: hasVariants ? Object.entries(selectedOptions).map(([code, optionId]) => {
-        const attr = product.configutableData.attributes.find((a: any) => a.code === code);
-        const option = attr?.options.find((opt: any) => opt.id === optionId);
-        return { [code]: option?.label };
-      }) : undefined,
-    };
+  //   const cartProduct: any = {
+  //     id: productToAdd.id,
+  //     name: product.name,
+  //     description: stripHtmlTags(product.shortDescription || product.description || ''),
+  //     price: parseFloat(productToAdd.price || product.priceHtml?.finalPrice || '0'),
+  //     compareAtPrice: parseFloat(productToAdd.compareAtPrice || product.priceHtml?.regularPrice || '0'),
+  //     currencyCode: 'USD',
+  //     image: selectedVariant?.image || images[0] || '',
+  //     images: images,
+  //     brand: brand,
+  //     rating: product.averageRating || 0,
+  //     reviewCount: product.reviewCount || 0,
+  //     inStock: productToAdd.availableForSale ?? product.isSaleable,
+  //     category: product.category || '',
+  //     tags: getTags(product),
+  //     options: product.configutableData?.attributes?.map((attr: any) => ({
+  //       id: attr.id,
+  //       name: attr.label,
+  //       values: attr.options.map((opt: any) => opt.label)
+  //     })) || [],
+  //     variants: product.variants || [],
+  //     selectedOptions: selectedOptions,
+  //     // Bagisto specific fields for GraphQL API
+  //     productId: product.id,
+  //     selectedConfigurableOption: selectedVariant?.id,
+  //     configurableParams: hasVariants ? Object.entries(selectedOptions).map(([code, optionId]) => {
+  //       const attr = product.configutableData.attributes.find((a: any) => a.code === code);
+  //       const option = attr?.options.find((opt: any) => opt.id === optionId);
+  //       return { [code]: option?.label };
+  //     }) : undefined,
+  //   };
 
-    addToCart(cartProduct, quantity);
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+  //   addToCart(cartProduct, quantity);
+  //   setAddedToCart(true);
+  //   setTimeout(() => setAddedToCart(false), 2000);
+  // };
+
+  const handleAddToCart = async () => {
+  if (!product) return;
+
+  // Use selected variant if available, otherwise use main product
+  const selectedVariant = getSelectedVariant;
+  const productToAdd = selectedVariant || product;
+
+  // Prepare product for Bagisto GraphQL API
+  const bagistoProduct: any = {
+    // Basic required fields
+    id: product.id,
+    productId: product.id,
+    name: product.name,
+    price: parseFloat(productToAdd.price || product.priceHtml?.finalPrice || '0'),
+    
+    // Bagisto specific fields
+    selectedConfigurableOption: selectedVariant?.id,
+    variantId: selectedVariant?.id,
   };
+
+  console.log('🛒 [PRODUCT PAGE] Adding to cart:', bagistoProduct);
+  
+  try {
+    const result = await addToCart(bagistoProduct, quantity, selectedOptions);
+    
+    if (result.success) {
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+      
+      // Show success message if needed
+      console.log('✅ Added to cart:', result.message);
+    } else {
+      // Show error message
+      Alert.alert('Error', result.message || 'Failed to add to cart');
+    }
+  } catch (error: any) {
+    console.error('❌ Error adding to cart:', error);
+    Alert.alert('Error', 'Failed to add to cart');
+  }
+};
 
   const handleScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;

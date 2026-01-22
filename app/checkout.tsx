@@ -1,5 +1,5 @@
 // app/checkout.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -8,63 +8,69 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { CreditCard, ShoppingBag, Package, AlertCircle } from 'lucide-react-native';
-import Colors from '@/constants/colors';
-import { useCart } from '@/contexts/CartContext';
-import { formatPrice } from '@/utils/currency';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import {
+  CreditCard,
+  ShoppingBag,
+  Package,
+  AlertCircle,
+} from "lucide-react-native";
+import Colors from "@/constants/colors";
+import { useCart } from "@/contexts/CartContext";
+import { formatPrice } from "@/utils/currency";
 
 export default function CheckoutScreen() {
-  const {
-    items,
-    subtotal,
-    cartDetails,
-    isLoading,
-    placeOrder,
-    clearCart,
-  } = useCart();
+  const { items, subtotal, cartDetails, isLoading, placeOrder, clearCart } =
+    useCart();
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [shippingMethod, setShippingMethod] = useState('standard');
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [shippingMethod, setShippingMethod] = useState("standard");
+  const [paymentMethod, setPaymentMethod] = useState("card");
 
   // Calculate totals based on Bagisto cart data if available
   const calculatedTotals = useMemo(() => {
-    if (!cartDetails?.formattedPrice) {
+    if (!cartDetails) {
       // Fallback to local calculations
-      const shippingCost = shippingMethod === 'express' ? 15 : shippingMethod === 'standard' ? 8 : 0;
+      const shippingCost =
+        shippingMethod === "express"
+          ? 15
+          : shippingMethod === "standard"
+            ? 8
+            : 0;
       const taxRate = 0.1; // 10% tax
       const taxAmount = subtotal * taxRate;
       const total = subtotal + shippingCost + taxAmount;
 
       return {
-        subtotal,
+        subTotal: subtotal,
         shipping: shippingCost,
         tax: taxAmount,
         discount: 0,
-        total,
+        grandTotal: total,
       };
     }
 
-    // Use Bagisto's calculated prices
-    const bagistoPrices = cartDetails.formattedPrice;
+    // Use Bagisto's calculated prices from root level (not formattedPrice)
     return {
-      subtotal: bagistoPrices.subTotal,
-      shipping: bagistoPrices.shippingTotal || 0,
-      tax: bagistoPrices.taxTotal,
-      discount: bagistoPrices.discountAmount,
-      total: bagistoPrices.grandTotal,
+      subTotal: cartDetails.subTotal || 0,
+      shipping: 0, // Bagisto doesn't provide shipping in cart, it's calculated in checkout
+      tax: cartDetails.taxTotal || 0,
+      discount: cartDetails.discountAmount || 0,
+      grandTotal: cartDetails.grandTotal || 0,
     };
   }, [cartDetails, subtotal, shippingMethod]);
 
   // Get display currency
-  const displayCurrency = cartDetails?.currencyCode || 'USD';
+  const displayCurrency = cartDetails?.currencyCode || "USD";
 
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
-      Alert.alert('Empty Cart', 'Your cart is empty. Add some items before checkout.');
+      Alert.alert(
+        "Empty Cart",
+        "Your cart is empty. Add some items before checkout.",
+      );
       return;
     }
 
@@ -72,7 +78,7 @@ export default function CheckoutScreen() {
     try {
       // Prepare order data
       const orderData = {
-        items: items.map(item => ({
+        items: items.map((item) => ({
           productId: item.product.productId,
           quantity: item.quantity,
           configurableParams: item.product.configurableParams,
@@ -88,30 +94,32 @@ export default function CheckoutScreen() {
 
       if (orderResult.success) {
         Alert.alert(
-          'Order Placed!',
+          "Order Placed!",
           `Your order #${orderResult.orderId} has been placed successfully.`,
           [
             {
-              text: 'View Orders',
-              onPress: () => router.push('/orders'),
+              text: "View Orders",
+              onPress: () => router.push("/orders"),
             },
             {
-              text: 'Continue Shopping',
+              text: "Continue Shopping",
               onPress: () => {
                 clearCart();
-                router.push('/');
+                router.push("/");
               },
             },
-          ]
+          ],
         );
       } else {
-        throw new Error(orderResult.error || 'Failed to place order');
+        throw new Error(orderResult.error || "Failed to place order");
       }
     } catch (error) {
-      console.error('Order placement error:', error);
+      console.error("Order placement error:", error);
       Alert.alert(
-        'Order Failed',
-        error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+        "Order Failed",
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
       );
     } finally {
       setIsProcessing(false);
@@ -135,10 +143,7 @@ export default function CheckoutScreen() {
         <Text style={styles.emptySubtitle}>
           Add some items to your cart before checking out
         </Text>
-        <Pressable
-          style={styles.continueButton}
-          onPress={() => router.back()}
-        >
+        <Pressable style={styles.continueButton} onPress={() => router.back()}>
           <Text style={styles.continueButtonText}>Continue Shopping</Text>
         </Pressable>
       </View>
@@ -146,7 +151,7 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView style={styles.content}>
         {/* Order Summary */}
         <View style={styles.section}>
@@ -154,21 +159,23 @@ export default function CheckoutScreen() {
           {items.map((item) => {
             const itemPrice = item.product.price || 0;
             const itemTotal = itemPrice * item.quantity;
-            
+
             return (
               <View key={item.id} style={styles.orderItem}>
                 <View style={styles.orderItemInfo}>
                   <Text style={styles.orderItemName} numberOfLines={2}>
                     {item.product.name}
                   </Text>
-                  {item.product.selectedOptions && Object.keys(item.product.selectedOptions).length > 0 && (
-                    <Text style={styles.orderItemVariant}>
-                      {Object.values(item.product.selectedOptions).join(', ')}
-                    </Text>
-                  )}
+                  {item.product.selectedOptions &&
+                    Object.keys(item.product.selectedOptions).length > 0 && (
+                      <Text style={styles.orderItemVariant}>
+                        {Object.values(item.product.selectedOptions).join(", ")}
+                      </Text>
+                    )}
                   <View style={styles.orderItemPriceRow}>
                     <Text style={styles.orderItemQuantity}>
-                      {item.quantity} × {formatPrice(itemPrice, displayCurrency)}
+                      {item.quantity} ×{" "}
+                      {formatPrice(itemPrice, displayCurrency)}
                     </Text>
                     <Text style={styles.orderItemTotal}>
                       {formatPrice(itemTotal, displayCurrency)}
@@ -186,20 +193,18 @@ export default function CheckoutScreen() {
           <Pressable
             style={[
               styles.optionCard,
-              shippingMethod === 'standard' && styles.optionCardSelected,
+              shippingMethod === "standard" && styles.optionCardSelected,
             ]}
-            onPress={() => setShippingMethod('standard')}
+            onPress={() => setShippingMethod("standard")}
           >
             <View style={styles.optionCardContent}>
               <Package size={20} color={Colors.primary} />
               <View style={styles.optionCardText}>
                 <Text style={styles.optionCardTitle}>Standard Shipping</Text>
-                <Text style={styles.optionCardSubtitle}>
-                  5-7 business days
-                </Text>
+                <Text style={styles.optionCardSubtitle}>5-7 business days</Text>
               </View>
               <Text style={styles.optionCardPrice}>
-                {formatPrice(calculatedTotals.shipping, displayCurrency)}
+                {formatPrice(8, displayCurrency)}
               </Text>
             </View>
           </Pressable>
@@ -207,20 +212,18 @@ export default function CheckoutScreen() {
           <Pressable
             style={[
               styles.optionCard,
-              shippingMethod === 'express' && styles.optionCardSelected,
+              shippingMethod === "express" && styles.optionCardSelected,
             ]}
-            onPress={() => setShippingMethod('express')}
+            onPress={() => setShippingMethod("express")}
           >
             <View style={styles.optionCardContent}>
               <Package size={20} color={Colors.primary} />
               <View style={styles.optionCardText}>
                 <Text style={styles.optionCardTitle}>Express Shipping</Text>
-                <Text style={styles.optionCardSubtitle}>
-                  2-3 business days
-                </Text>
+                <Text style={styles.optionCardSubtitle}>2-3 business days</Text>
               </View>
               <Text style={styles.optionCardPrice}>
-                {formatPrice(calculatedTotals.shipping + 7, displayCurrency)}
+                {formatPrice(15, displayCurrency)}
               </Text>
             </View>
           </Pressable>
@@ -232,9 +235,9 @@ export default function CheckoutScreen() {
           <Pressable
             style={[
               styles.optionCard,
-              paymentMethod === 'card' && styles.optionCardSelected,
+              paymentMethod === "card" && styles.optionCardSelected,
             ]}
-            onPress={() => setPaymentMethod('card')}
+            onPress={() => setPaymentMethod("card")}
           >
             <View style={styles.optionCardContent}>
               <CreditCard size={20} color={Colors.primary} />
@@ -250,9 +253,9 @@ export default function CheckoutScreen() {
           <Pressable
             style={[
               styles.optionCard,
-              paymentMethod === 'cod' && styles.optionCardSelected,
+              paymentMethod === "cod" && styles.optionCardSelected,
             ]}
-            onPress={() => setPaymentMethod('cod')}
+            onPress={() => setPaymentMethod("cod")}
           >
             <View style={styles.optionCardContent}>
               <ShoppingBag size={20} color={Colors.primary} />
@@ -271,7 +274,7 @@ export default function CheckoutScreen() {
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
             <Text style={styles.totalValue}>
-              {formatPrice(calculatedTotals.subtotal, displayCurrency)}
+              {formatPrice(calculatedTotals.subTotal, displayCurrency)}
             </Text>
           </View>
 
@@ -287,67 +290,84 @@ export default function CheckoutScreen() {
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Shipping</Text>
             <Text style={styles.totalValue}>
-              {formatPrice(calculatedTotals.shipping, displayCurrency)}
+              {shippingMethod === "express"
+                ? formatPrice(15, displayCurrency)
+                : shippingMethod === "standard"
+                  ? formatPrice(8, displayCurrency)
+                  : formatPrice(0, displayCurrency)}
             </Text>
           </View>
 
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Tax</Text>
-            <Text style={styles.totalValue}>
-              {formatPrice(calculatedTotals.tax, displayCurrency)}
-            </Text>
-          </View>
+          {calculatedTotals.tax > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Tax</Text>
+              <Text style={styles.totalValue}>
+                {formatPrice(calculatedTotals.tax, displayCurrency)}
+              </Text>
+            </View>
+          )}
 
           <View style={[styles.totalRow, styles.grandTotalRow]}>
             <Text style={styles.grandTotalLabel}>Total</Text>
             <Text style={styles.grandTotalValue}>
-              {formatPrice(calculatedTotals.total, displayCurrency)}
+              {formatPrice(
+                calculatedTotals.grandTotal +
+                  (shippingMethod === "express"
+                    ? 15
+                    : shippingMethod === "standard"
+                      ? 8
+                      : 0),
+                displayCurrency,
+              )}
             </Text>
           </View>
         </View>
 
         {/* Bagisto Price Comparison (for debugging) */}
-        {cartDetails?.formattedPrice && (
+        {cartDetails && (
           <View style={styles.debugSection}>
-            <Text style={styles.debugTitle}>Bagisto Totals</Text>
+            <Text style={styles.debugTitle}>ORA Totals</Text>
             <View style={styles.debugRow}>
               <Text style={styles.debugLabel}>Subtotal:</Text>
               <Text style={styles.debugValue}>
-                {formatPrice(cartDetails.formattedPrice.subTotal, displayCurrency)}
+                {formatPrice(cartDetails.subTotal || 0, displayCurrency)}
               </Text>
             </View>
             <View style={styles.debugRow}>
               <Text style={styles.debugLabel}>Tax:</Text>
               <Text style={styles.debugValue}>
-                {formatPrice(cartDetails.formattedPrice.taxTotal, displayCurrency)}
+                {formatPrice(cartDetails.taxTotal || 0, displayCurrency)}
               </Text>
             </View>
             <View style={styles.debugRow}>
               <Text style={styles.debugLabel}>Discount:</Text>
               <Text style={styles.debugValue}>
-                {formatPrice(cartDetails.formattedPrice.discountAmount, displayCurrency)}
+                {formatPrice(cartDetails.discountAmount || 0, displayCurrency)}
               </Text>
             </View>
             <View style={styles.debugRow}>
               <Text style={styles.debugLabel}>Shipping:</Text>
               <Text style={styles.debugValue}>
-                {formatPrice(cartDetails.formattedPrice.shippingTotal || 0, displayCurrency)}
+                {formatPrice(0, displayCurrency)} *
               </Text>
             </View>
             <View style={styles.debugRow}>
               <Text style={styles.debugLabel}>Grand Total:</Text>
               <Text style={[styles.debugValue, styles.debugGrandTotal]}>
-                {formatPrice(cartDetails.formattedPrice.grandTotal, displayCurrency)}
+                {formatPrice(cartDetails.grandTotal || 0, displayCurrency)}
               </Text>
             </View>
+            <Text style={styles.debugNote}>
+              * Note: ORA calculates shipping during checkout
+            </Text>
           </View>
         )}
 
         {/* Terms and Conditions */}
         <View style={styles.termsSection}>
           <Text style={styles.termsText}>
-            By placing your order, you agree to our Terms of Service and Privacy Policy.
-            All transactions are secure and encrypted.
+            By placing your order, you agree to our Terms of Service and Privacy
+            Policy. All transactions are secure and encrypted.
           </Text>
         </View>
       </ScrollView>
@@ -355,7 +375,10 @@ export default function CheckoutScreen() {
       {/* Checkout Button */}
       <View style={styles.footer}>
         <Pressable
-          style={[styles.checkoutButton, isProcessing && styles.checkoutButtonDisabled]}
+          style={[
+            styles.checkoutButton,
+            isProcessing && styles.checkoutButtonDisabled,
+          ]}
           onPress={handlePlaceOrder}
           disabled={isProcessing}
         >
@@ -363,7 +386,16 @@ export default function CheckoutScreen() {
             <ActivityIndicator color={Colors.white} size="small" />
           ) : (
             <Text style={styles.checkoutButtonText}>
-              Place Order • {formatPrice(calculatedTotals.total, displayCurrency)}
+              Place Order •{" "}
+              {formatPrice(
+                calculatedTotals.grandTotal +
+                  (shippingMethod === "express"
+                    ? 15
+                    : shippingMethod === "standard"
+                      ? 8
+                      : 0),
+                displayCurrency,
+              )}
             </Text>
           )}
         </Pressable>
@@ -390,8 +422,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: Colors.background,
   },
   loadingText: {
@@ -401,14 +433,14 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
     backgroundColor: Colors.background,
   },
   emptyTitle: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     marginTop: 16,
     marginBottom: 8,
@@ -416,7 +448,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 16,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 24,
   },
   continueButton: {
@@ -428,7 +460,7 @@ const styles = StyleSheet.create({
   continueButtonText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   section: {
     backgroundColor: Colors.white,
@@ -438,12 +470,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: 16,
   },
   orderItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
@@ -454,7 +486,7 @@ const styles = StyleSheet.create({
   },
   orderItemName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 4,
   },
@@ -464,9 +496,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   orderItemPriceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   orderItemQuantity: {
     fontSize: 14,
@@ -474,7 +506,7 @@ const styles = StyleSheet.create({
   },
   orderItemTotal: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.primary,
   },
   optionCard: {
@@ -483,15 +515,15 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   optionCardSelected: {
     borderColor: Colors.primary,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: "#F0F9FF",
   },
   optionCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   optionCardText: {
     flex: 1,
@@ -499,7 +531,7 @@ const styles = StyleSheet.create({
   },
   optionCardTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 2,
   },
@@ -509,7 +541,7 @@ const styles = StyleSheet.create({
   },
   optionCardPrice: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.primary,
   },
   totalsSection: {
@@ -519,9 +551,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   totalLabel: {
@@ -530,7 +562,7 @@ const styles = StyleSheet.create({
   },
   totalValue: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   discountValue: {
@@ -544,50 +576,56 @@ const styles = StyleSheet.create({
   },
   grandTotalLabel: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
   },
   grandTotalValue: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.primary,
   },
   debugSection: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     borderRadius: 12,
     padding: 16,
     margin: 20,
     marginTop: 0,
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: "#E9ECEF",
   },
   debugTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#6C757D',
+    fontWeight: "700",
+    color: "#6C757D",
     marginBottom: 12,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   debugRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   debugLabel: {
     fontSize: 13,
-    color: '#6C757D',
+    color: "#6C757D",
   },
   debugValue: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#495057',
+    fontWeight: "600",
+    color: "#495057",
   },
   debugGrandTotal: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.primary,
+  },
+  debugNote: {
+    fontSize: 11,
+    color: "#6C757D",
+    fontStyle: "italic",
+    marginTop: 8,
   },
   termsSection: {
     paddingHorizontal: 20,
@@ -597,7 +635,7 @@ const styles = StyleSheet.create({
   termsText: {
     fontSize: 12,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 18,
   },
   footer: {
@@ -610,8 +648,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderRadius: 16,
     height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 12,
   },
   checkoutButtonDisabled: {
@@ -620,12 +658,12 @@ const styles = StyleSheet.create({
   },
   checkoutButtonText: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
   },
   backButton: {
     padding: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   backButtonText: {
     fontSize: 16,
