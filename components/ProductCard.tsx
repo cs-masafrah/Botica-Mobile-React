@@ -28,18 +28,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const imageUrl = product.images?.[0]?.url || '';
   const brand = product.additionalData?.find(data => data.label === 'Brand')?.value || '';
 
-  const handleAddToCart = () => {
-    if (onAddToCart) {
-      onAddToCart(product);
-    } else {
-      // Default add to cart behavior
-      const cartProduct: any = {
+ const handleAddToCart = async () => {
+  if (onAddToCart) {
+    onAddToCart(product);
+  } else {
+    try {
+      // Prepare product for Bagisto GraphQL API
+      const bagistoProduct: any = {
         id: product.id,
+        productId: product.id,
         name: product.name,
         description: product.shortDescription || product.description || '',
-        price: product.priceHtml?.finalPrice || 0,
         compareAtPrice: product.priceHtml?.regularPrice || 0,
-        currencyCode: 'USD',
+        currencyCode: 'USD', 
         image: imageUrl,
         images: product.images?.map(img => img.url) || [],
         brand: brand,
@@ -52,16 +53,36 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
           name: attr.label,
           values: attr.options.map((opt: any) => opt.label)
         })) || [],
-        variants: product.variants || [],
-        variantId: product.variants?.[0]?.id,
-        originalProduct: product,
+
+        price: product.priceHtml?.finalPrice || 0,
+        // Include any variant data if available
+        ...(product.variants?.[0] && {
+          selectedConfigurableOption: product.variants[0].id
+        }),
+        // Pass variantId if available
+        variantId: product.variants?.[0]?.id
       };
 
-      addToCart(cartProduct, 1);
-      setAddedProductId(product.id);
-      setTimeout(() => setAddedProductId(null), 600);
+      console.log('🛒 [PRODUCT CARD] Adding to cart:', bagistoProduct);
+      
+      const result = await addToCart(bagistoProduct, 1);
+      
+      if (result.success) {
+        setAddedProductId(product.id);
+        setTimeout(() => setAddedProductId(null), 600);
+        
+        // You can show a success toast here if needed
+        console.log('✅ Added to cart:', result.message);
+      } else {
+        // Show error message
+        console.error('❌ Failed to add to cart:', result.message);
+        // You can show an error toast here
+      }
+    } catch (error) {
+      console.error('❌ Error adding to cart:', error);
     }
-  };
+  }
+};
 
   return (
     <Pressable

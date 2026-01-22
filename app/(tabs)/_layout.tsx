@@ -3,6 +3,7 @@ import { Home, LayoutGrid, ShoppingCart, User, Video } from 'lucide-react-native
 import React from 'react';
 import Colors from '@/constants/colors';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Alert } from 'react-native';
 
 export default function TabLayout() {
   const { t, isRTL } = useLanguage();
