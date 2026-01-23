@@ -255,7 +255,7 @@ export default function ProductDetailScreen() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>Product Not Found</Text>
-        <Text style={styles.errorText}>The product you're looking for doesn't exist.</Text>
+        <Text style={styles.errorText}>The product you&apos;re looking for doesn&apos;t exist.</Text>
         <Pressable style={styles.retryButton} onPress={() => router.back()}>
           <Text style={styles.retryButtonText}>Go Back</Text>
         </Pressable>

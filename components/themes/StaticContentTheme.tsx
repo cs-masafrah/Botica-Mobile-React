@@ -1,11 +1,10 @@
 // components/themes/StaticContentTheme.tsx
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Linking, Dimensions } from 'react-native';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Linking, Dimensions, ActivityIndicator } from 'react-native';
 import { Theme } from '@/types/theme';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Colors from '@/constants/colors';
 import { WebView } from 'react-native-webview';
-import RenderHtml from 'react-native-render-html'; // Alternative to WebView
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -16,8 +15,11 @@ interface StaticContentThemeProps {
 
 const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale = 'en' }) => {
   const { isRTL } = useLanguage();
-  const [webViewHeight, setWebViewHeight] = useState<number | null>(null);
+  const [webViewHeight, setWebViewHeight] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+  const webViewRef = useRef<WebView>(null);
 
   const translation = useMemo(() => {
     return theme.translations?.find(t => t.localeCode === locale) || 
@@ -27,245 +29,296 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
   const options = translation?.options || {};
   const html = options.html;
   const css = options.css;
-  const title = options.title || theme.name;
 
-  // Check if this is the "Offer Information" theme (ID: 2 based on your logs)
-  const isOfferInformation = theme.id === '2' || theme.name === 'Offer Information';
-  
-  // Clean HTML - remove excessive whitespace and optimize
+  // Clean HTML
   const cleanHtml = useMemo(() => {
-    if (!html) return null;
+    if (!html) {
+      return null;
+    }
     
     let cleaned = html
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-      .replace(/>\s+</g, '><') // Remove whitespace between tags
+      .replace(/\s+/g, ' ')
+      .replace(/>\s+</g, '><')
       .trim();
     
-    // For Offer Information specifically, check if it's empty or minimal
-    if (isOfferInformation) {
-      console.log(`🔍 [StaticContentTheme] Offer Information HTML length: ${cleaned.length}`);
-      console.log(`   Preview: ${cleaned.substring(0, 200)}...`);
-      
-      // If HTML seems empty or just whitespace, return null
-      if (cleaned.length < 50 || cleaned.replace(/<[^>]*>/g, '').trim().length === 0) {
-        console.log(`   ⚠️ Empty or minimal content detected`);
-        return null;
-      }
+    // Check if HTML is meaningful
+    const textOnly = cleaned.replace(/<[^>]*>/g, '').trim();
+    
+    if (textOnly.length < 5) {
+      return null;
     }
     
     return cleaned;
-  }, [html, isOfferInformation]);
+  }, [html]);
 
-  if (!html) {
-    console.log(`❌ [StaticContentTheme] No HTML content for theme: ${theme.name}`);
-    return null;
-  }
-
-  // If cleaned HTML is null or empty, don't render
-  if (!cleanHtml) {
-    console.log(`❌ [StaticContentTheme] Skipping empty theme: ${theme.name}`);
-    return null;
-  }
-
-  // Create HTML with inline CSS for WebView
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-        <style>
-          ${css || ''}
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.5;
-            color: #333;
-          }
-          img {
-            max-width: 100%;
-            height: auto;
-            display: block;
-          }
-          a {
-            color: #007AFF;
-            text-decoration: none;
-          }
-          p, h1, h2, h3, h4, h5, h6 {
-            margin-bottom: 8px;
-          }
-          .container {
-            max-width: 100%;
-            overflow: hidden;
-          }
-          /* Add minimal padding for better mobile viewing */
-          body > div {
-            padding: 8px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          ${cleanHtml}
-        </div>
-        <script>
-          // Send height to React Native once content loads
-          window.addEventListener('load', function() {
-            setTimeout(function() {
-              const height = document.documentElement.scrollHeight;
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'height',
-                height: height
-              }));
-            }, 100);
-          });
-          
-          // Also send height when images load
-          document.addEventListener('DOMContentLoaded', function() {
-            const images = document.getElementsByTagName('img');
-            Array.from(images).forEach(img => {
-              img.addEventListener('load', function() {
-                const height = document.documentElement.scrollHeight;
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'height',
-                  height: height
-                }));
-              });
-            });
-          });
-        </script>
-      </body>
-    </html>
-  `;
+  // Determine if we should render
+  useEffect(() => {
+    const hasValidContent = !!cleanHtml && cleanHtml.length > 10;
+    setShouldRender(hasValidContent);
+  }, [cleanHtml]);
 
   // Handle WebView messages
   const handleWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
+      
       if (data.type === 'height' && data.height > 0) {
-        // For Offer Information, limit maximum height
-        const maxHeight = isOfferInformation ? 120 : 400; // Smaller max height for offers
-        const calculatedHeight = Math.min(data.height, maxHeight);
-        setWebViewHeight(calculatedHeight);
+        const newHeight = Math.max(data.height, 10) + 2;
+        
+        if (Math.abs(newHeight - webViewHeight) > 1) {
+          setWebViewHeight(newHeight);
+        }
+        
         setIsLoading(false);
+        setHasError(false);
       }
     } catch (error) {
-      console.log('Error parsing WebView message:', error);
+      // Silently handle parse errors
     }
   };
 
-  // For Offer Information specifically, use a simpler approach
-  if (isOfferInformation) {
-    return (
-      <View style={[styles.container, styles.offerInfoContainer]}>
-        {title ? (
-          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
-            {title}
-          </Text>
-        ) : null}
-        
-        <View style={[styles.webViewContainer, { height: webViewHeight || 80 }]}>
-          <WebView
-            source={{ html: htmlContent }}
-            style={styles.webView}
-            scalesPageToFit={false}
-            onMessage={handleWebViewMessage}
-            onLoadEnd={() => setIsLoading(false)}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            onShouldStartLoadWithRequest={(request) => {
-              if (request.url.startsWith('http')) {
-                Linking.openURL(request.url).catch(console.error);
-                return false;
-              }
-              return true;
-            }}
-          />
-          {isLoading && (
-            <View style={styles.loadingOverlay}>
-              <Text style={styles.loadingText}>Loading...</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    );
+  const handleWebViewLoad = () => {
+    setIsLoading(false);
+    
+    // Force height calculation
+    setTimeout(() => {
+      if (webViewRef.current) {
+        webViewRef.current.injectJavaScript(`
+          (function() {
+            const height = document.documentElement.scrollHeight;
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'height',
+              height: height
+            }));
+          })();
+        `);
+      }
+    }, 500);
+  };
+
+  const handleWebViewError = () => {
+    setHasError(true);
+    setIsLoading(false);
+    setWebViewHeight(100); // Fallback height
+  };
+
+  // If no content to render, return null early
+  if (!shouldRender) {
+    return null;
   }
 
-  // For other static content
+  // Create HTML content
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="UTF-8">
+        <style>
+          ${css || ''}
+          
+          /* Base styles */
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #000000;
+            background: transparent !important;
+            width: 100%;
+          }
+          
+          .content-wrapper {
+            padding: 0;
+            background: transparent;
+            width: 100%;
+          }
+          
+          img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+          }
+          
+          a {
+            color: #007AFF;
+            text-decoration: none;
+          }
+          
+          p, h1, h2, h3, h4, h5, h6 {
+            margin: 0 0 8px 0;
+            padding: 0;
+          }
+          
+          ul, ol {
+            margin: 0 0 8px 20px;
+            padding: 0;
+          }
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+        </style>
+      </head>
+      <body style="background: transparent;">
+        <div class="content-wrapper" id="content-wrapper">
+          ${cleanHtml}
+        </div>
+          <script>
+            (function () {
+              let lastHeight = 0;
+              let sent = false;
+
+              function sendHeight(force = false) {
+                const wrapper = document.getElementById('content-wrapper');
+                if (!wrapper) return;
+
+                const height = Math.ceil(wrapper.scrollHeight);
+
+                if (!force && Math.abs(height - lastHeight) < 2) return;
+
+                lastHeight = height;
+
+                window.ReactNativeWebView.postMessage(
+                  JSON.stringify({ type: 'height', height })
+                );
+              }
+
+              function init() {
+                sendHeight(true);
+
+                const images = document.images;
+                let pending = images.length;
+
+                if (pending === 0) {
+                  sendHeight(true);
+                  return;
+                }
+
+                for (let img of images) {
+                  if (img.complete) {
+                    pending--;
+                  } else {
+                    img.onload = img.onerror = () => {
+                      pending--;
+                      if (pending === 0) {
+                        sendHeight(true);
+                      }
+                    };
+                  }
+                }
+
+                if (pending === 0) {
+                  sendHeight(true);
+                }
+              }
+
+              window.addEventListener('load', init);
+            })();
+        </script>
+      </body>
+    </html>
+  `;
+
   return (
     <View style={styles.container}>
-      {title ? (
-        <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
-          {title}
-        </Text>
-      ) : null}
+      {/* Loading state */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading content...</Text>
+        </View>
+      )}
       
-      <View style={[styles.webViewContainer, { height: webViewHeight || 200 }]}>
+      {/* WebView container - always render but control visibility */}
+      <View style={[
+        styles.webViewContainer, 
+        { 
+          height: webViewHeight > 0 ? webViewHeight : 'auto',
+          opacity: isLoading ? 0 : 1 
+        }
+      ]}>
         <WebView
+          ref={webViewRef}
           source={{ html: htmlContent }}
           style={styles.webView}
           scalesPageToFit={false}
+          scrollEnabled={false}
           onMessage={handleWebViewMessage}
-          onLoadEnd={() => setIsLoading(false)}
+          onLoad={handleWebViewLoad}
+          onLoadEnd={() => {
+            setIsLoading(false);
+          }}
+          onError={handleWebViewError}
           javaScriptEnabled={true}
           domStorageEnabled={true}
+          mixedContentMode="always"
+          originWhitelist={['*']}
           onShouldStartLoadWithRequest={(request) => {
+            // Allow navigation to external URLs
             if (request.url.startsWith('http')) {
-              Linking.openURL(request.url).catch(console.error);
+              Linking.openURL(request.url).catch(() => {});
               return false;
             }
             return true;
           }}
         />
-        {isLoading && (
-          <View style={styles.loadingOverlay}>
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
-        )}
       </View>
+      
+      {/* Error state - only shown if WebView fails */}
+      {hasError && !isLoading && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load content</Text>
+        </View>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 12,
-    backgroundColor: Colors.background,
-  },
-  offerInfoContainer: {
-    marginVertical: 8, // Less vertical margin for offer info
-    paddingHorizontal: 16,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 12,
+    backgroundColor: 'transparent',
+    marginVertical: 8,
   },
   webViewContainer: {
     backgroundColor: 'transparent',
-    borderRadius: 8,
     overflow: 'hidden',
-    minHeight: 60, // Minimum height for offer info
+    minHeight: 1,
   },
   webView: {
     flex: 1,
     backgroundColor: 'transparent',
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.background,
+  loadingContainer: {
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    gap: 10,
   },
   loadingText: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  errorContainer: {
+    padding: 16,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: Colors.error,
+    fontWeight: '600',
   },
 });
 

@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useCart } from '@/contexts/CartContext';
-import { Product, BagistoProduct } from '@/types/product';
+import { Product, BagistoProduct } from '@/app/types/product';
 
 interface ProductCardProps {
   product: Product | BagistoProduct;

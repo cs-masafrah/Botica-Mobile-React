@@ -81,7 +81,7 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
         <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
           {title}
         </Text>
-        <Pressable onPress={() => router.push('/(tabs)')}>
+        <Pressable onPress={() => router.push('/product/[id]')}>
           <Text style={styles.seeAllText}>{t('seeAll')}</Text>
         </Pressable>
       </View>

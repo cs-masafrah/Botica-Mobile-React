@@ -12,6 +12,7 @@ const GET_THEME_CUSTOMIZATION = gql`
       id
       type
       name
+      sortOrder
       translations {
         localeCode
         options {
@@ -70,20 +71,38 @@ export const useThemes = () => {
         );
 
         console.log(`✅ Theme customization fetched: ${data.themeCustomization.length} themes`);
-        console.log('📊 Theme types:', data.themeCustomization.map(t => t.type));
         
-        // Add sortOrder based on ID for now
-        const sortedThemes = data.themeCustomization
-          .map((theme, index) => ({
-            ...theme,
-            sortOrder: parseInt(theme.id) || index,
+        // Log sortOrder values for debugging
+        console.log('📊 Theme sortOrder values:', 
+          data.themeCustomization.map(t => ({
+            id: t.id,
+            type: t.type,
+            name: t.name,
+            sortOrder: t.sortOrder
           }))
-          .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+        );
+        
+        // Sort themes by sortOrder (smallest to largest)
+        const sortedThemes = [...data.themeCustomization]
+          .sort((a, b) => {
+            const aOrder = a.sortOrder !== null && a.sortOrder !== undefined 
+              ? Number(a.sortOrder) 
+              : Number.MAX_SAFE_INTEGER;
+            const bOrder = b.sortOrder !== null && b.sortOrder !== undefined 
+              ? Number(b.sortOrder) 
+              : Number.MAX_SAFE_INTEGER;
+            
+            return aOrder - bOrder;
+          });
+
+        console.log('📊 Sorted themes order:', sortedThemes.map(t => ({ 
+          type: t.type, 
+          sortOrder: t.sortOrder 
+        })));
 
         return sortedThemes;
       } catch (error: any) {
         console.error('❌ Error fetching theme customization:', error.message || error);
-        // Return empty array instead of throwing error
         return [];
       }
     },

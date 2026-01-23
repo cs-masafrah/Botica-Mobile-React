@@ -1,4 +1,5 @@
 // components/themes/CategoryCarouselTheme.tsx
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
@@ -22,121 +23,114 @@ interface Category {
   parentId?: string;
 }
 
-const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, locale = 'en' }) => {
+const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
+  theme,
+  locale = 'en',
+}) => {
   const { t, isRTL } = useLanguage();
   const { data: allCategories } = useCategories();
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
-  // Extract static values ONCE on component mount
-  const { title, filters, themeName } = useMemo(() => {
-    const translation = theme.translations?.find(t => t.localeCode === locale) || 
-                       theme.translations?.[0];
+  // Extract static values
+  const { title, filters } = useMemo(() => {
+    const translation =
+      theme.translations?.find(t => t.localeCode === locale) ||
+      theme.translations?.[0];
+
     return {
       title: translation?.options?.title || theme.name,
       filters: translation?.options?.filters || [],
-      themeName: theme.name
     };
-  }, [theme.translations, theme.name, locale]); // These should be stable
+  }, [theme.translations, theme.name, locale]);
 
-  // Filter categories - only run when allCategories changes
+  // Filter categories
   useEffect(() => {
-    if (!allCategories || allCategories.length === 0) {
+    if (!allCategories?.length) {
       setFilteredCategories([]);
       return;
     }
 
     let result = [...allCategories];
-    
-    // Parse filters
+
     const filtersObj: Record<string, string> = {};
     filters.forEach((filter: ThemeFilter) => {
       filtersObj[filter.key] = filter.value;
     });
 
-    // Apply parent_id filter
     if (filtersObj.parent_id && filtersObj.parent_id !== '1') {
-      result = result.filter((cat: Category) => {
-        return cat.parentId === filtersObj.parent_id;
-      });
+      result = result.filter(cat => cat.parentId === filtersObj.parent_id);
     }
 
-    // Apply limit
     if (filtersObj.limit) {
-      const limit = parseInt(filtersObj.limit, 10);
-      result = result.slice(0, limit);
+      result = result.slice(0, parseInt(filtersObj.limit, 10));
     }
 
-    // Apply sort
     if (filtersObj.sort === 'asc') {
       result.sort((a, b) => a.name.localeCompare(b.name));
     } else if (filtersObj.sort === 'desc') {
       result.sort((a, b) => b.name.localeCompare(a.name));
     }
 
-    // Use a simple comparison instead of JSON.stringify for better performance
-    const shouldUpdate = filteredCategories.length !== result.length || 
-                         filteredCategories.some((cat, idx) => cat.id !== result[idx]?.id);
-    
-    if (shouldUpdate) {
-      setFilteredCategories(result);
-    }
-  }, [allCategories]); // Only depend on allCategories, not filters
+    setFilteredCategories(result);
+  }, [allCategories]);
 
   if (!filteredCategories.length) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
-            {title}
-          </Text>
-        </View>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>
-            No categories to display
-          </Text>
-        </View>
-      </View>
-    );
+    return null;
   }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
           {title}
         </Text>
-        <Pressable onPress={() => router.push('/categories')}>
-          <Text style={styles.seeAllText}>{t('seeAll')}</Text>
-        </Pressable>
+        <Text style={styles.subtitle}>
+          Discover your perfect fragrance
+        </Text>
       </View>
+
+      {/* Categories Carousel */}
       <FlatList
         data={filteredCategories}
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.categoryCard}
-            onPress={() => router.push({ pathname: '/category/[id]', params: { id: item.id } })}
-          >
-            <View style={styles.imageContainer}>
-              {item.image ? (
-                <Image
-                  source={{ uri: item.image }}
-                  style={styles.categoryImage}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                />
-              ) : (
-                <View style={[styles.categoryImage, { backgroundColor: Colors.cardBackground }]} />
-              )}
-            </View>
-            <Text style={styles.categoryName} numberOfLines={2}>
-              {item.name}
-            </Text>
-          </Pressable>
-        )}
-        keyExtractor={item => item.id}
         horizontal
         showsHorizontalScrollIndicator={false}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.card}
+            onPress={() =>
+              router.push({
+                pathname: '/category/[id]',
+                params: { id: item.id },
+              })
+            }
+          >
+            {/* Background Image */}
+            {item.image ? (
+              <Image
+                source={{ uri: item.image }}
+                style={StyleSheet.absoluteFillObject}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+            ) : (
+              <View
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { backgroundColor: Colors.cardBackground },
+                ]}
+              />
+            )}
+
+            {/* Dark Overlay */}
+            <View style={styles.overlay} />
+
+            {/* Centered Category Name */}
+            <Text style={styles.cardText}>{item.name}</Text>
+          </Pressable>
+        )}
       />
     </View>
   );
@@ -144,62 +138,52 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({ theme, lo
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 20,
+    marginVertical: 24,
     backgroundColor: Colors.background,
   },
+
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 20,
   },
+
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: Colors.text,
   },
-  seeAllText: {
+
+  subtitle: {
+    marginTop: 4,
     fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
+    color: Colors.textSecondary,
   },
+
   listContent: {
     paddingHorizontal: 16,
   },
-  categoryCard: {
-    alignItems: 'center',
-    width: 100,
-    marginRight: 12,
-  },
-  imageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+
+  card: {
+    width: 180,
+    height: 180,
+    marginRight: 16,
+    borderRadius: 22,
     overflow: 'hidden',
-    marginBottom: 8,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  categoryImage: {
-    width: '100%',
-    height: '100%',
-  },
-  categoryName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  emptyState: {
-    padding: 20,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  emptyStateText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+
+  cardText: {
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.white,
+    zIndex: 2,
   },
 });
 

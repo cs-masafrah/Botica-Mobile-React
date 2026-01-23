@@ -5,7 +5,8 @@ export type ThemeType =
   | 'static_content'
   | 'image_carousel'
   | 'footer_links'
-  | 'services_content';
+  | 'services_content'
+  | 'product_by_brand';
 
 export interface ThemeLink {
   url: string;
@@ -39,6 +40,7 @@ export interface ThemeOptions {
   services?: ThemeService[] | null;
   images?: ThemeImage[] | null;
   filters?: ThemeFilter[] | null;
+  brand?: BrandFilter | null;
   column_1?: ThemeLink[] | null;
   column_2?: ThemeLink[] | null;
   column_3?: ThemeLink[] | null;
@@ -53,6 +55,7 @@ export interface Theme {
   id: string;
   type: ThemeType;
   name: string;
+  
   translations: ThemeTranslation[];
   // We'll add a calculated sortOrder based on ID or name
   sortOrder?: number;
@@ -60,4 +63,11 @@ export interface Theme {
 
 export interface ThemeCustomizationResponse {
   themeCustomization: Theme[];
+}
+
+export interface BrandFilter {
+  brand_id?: string;
+  brand_option_id?: string;
+  brand_slug?: string;
+  title?: string;
 }
