@@ -1,19 +1,29 @@
 // components/themes/StaticContentTheme.tsx
-import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Linking, Dimensions, ActivityIndicator } from 'react-native';
-import { Theme } from '@/types/theme';
-import { useLanguage } from '@/contexts/LanguageContext';
-import Colors from '@/constants/colors';
-import { WebView } from 'react-native-webview';
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Linking,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
+import { Theme } from "@/types/theme";
+import { useLanguage } from "@/contexts/LanguageContext";
+import Colors from "@/constants/colors";
+import { WebView } from "react-native-webview";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface StaticContentThemeProps {
   theme: Theme;
   locale?: string;
 }
 
-const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale = 'en' }) => {
+const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
+  theme,
+  locale = "en",
+}) => {
   const { isRTL } = useLanguage();
   const [webViewHeight, setWebViewHeight] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,8 +32,10 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
   const webViewRef = useRef<WebView>(null);
 
   const translation = useMemo(() => {
-    return theme.translations?.find(t => t.localeCode === locale) || 
-           theme.translations?.[0];
+    return (
+      theme.translations?.find((t) => t.localeCode === locale) ||
+      theme.translations?.[0]
+    );
   }, [theme.translations, locale]);
 
   const options = translation?.options || {};
@@ -35,19 +47,16 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
     if (!html) {
       return null;
     }
-    
-    let cleaned = html
-      .replace(/\s+/g, ' ')
-      .replace(/>\s+</g, '><')
-      .trim();
-    
+
+    let cleaned = html.replace(/\s+/g, " ").replace(/>\s+</g, "><").trim();
+
     // Check if HTML is meaningful
-    const textOnly = cleaned.replace(/<[^>]*>/g, '').trim();
-    
+    const textOnly = cleaned.replace(/<[^>]*>/g, "").trim();
+
     if (textOnly.length < 5) {
       return null;
     }
-    
+
     return cleaned;
   }, [html]);
 
@@ -61,14 +70,14 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
   const handleWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      
-      if (data.type === 'height' && data.height > 0) {
+
+      if (data.type === "height" && data.height > 0) {
         const newHeight = Math.max(data.height, 10) + 2;
-        
+
         if (Math.abs(newHeight - webViewHeight) > 1) {
           setWebViewHeight(newHeight);
         }
-        
+
         setIsLoading(false);
         setHasError(false);
       }
@@ -79,7 +88,7 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
 
   const handleWebViewLoad = () => {
     setIsLoading(false);
-    
+
     // Force height calculation
     setTimeout(() => {
       if (webViewRef.current) {
@@ -115,7 +124,7 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta charset="UTF-8">
         <style>
-          ${css || ''}
+          ${css || ""}
           
           /* Base styles */
           * {
@@ -126,7 +135,7 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
           
           body {
             margin: 0;
-            padding: 0;
+            padding: 0 10px 0 10px;
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 16px;
             line-height: 1.5;
@@ -237,15 +246,17 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
           <Text style={styles.loadingText}>Loading content...</Text>
         </View>
       )}
-      
+
       {/* WebView container - always render but control visibility */}
-      <View style={[
-        styles.webViewContainer, 
-        { 
-          height: webViewHeight > 0 ? webViewHeight : 'auto',
-          opacity: isLoading ? 0 : 1 
-        }
-      ]}>
+      <View
+        style={[
+          styles.webViewContainer,
+          {
+            height: webViewHeight > 0 ? webViewHeight : "auto",
+            opacity: isLoading ? 0 : 1,
+          },
+        ]}
+      >
         <WebView
           ref={webViewRef}
           source={{ html: htmlContent }}
@@ -261,10 +272,10 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
           javaScriptEnabled={true}
           domStorageEnabled={true}
           mixedContentMode="always"
-          originWhitelist={['*']}
+          originWhitelist={["*"]}
           onShouldStartLoadWithRequest={(request) => {
             // Allow navigation to external URLs
-            if (request.url.startsWith('http')) {
+            if (request.url.startsWith("http")) {
               Linking.openURL(request.url).catch(() => {});
               return false;
             }
@@ -272,7 +283,7 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
           }}
         />
       </View>
-      
+
       {/* Error state - only shown if WebView fails */}
       {hasError && !isLoading && (
         <View style={styles.errorContainer}>
@@ -285,24 +296,24 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({ theme, locale =
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     marginVertical: 8,
   },
   webViewContainer: {
-    backgroundColor: 'transparent',
-    overflow: 'hidden',
+    backgroundColor: "transparent",
+    overflow: "hidden",
     minHeight: 1,
   },
   webView: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   loadingContainer: {
     height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    flexDirection: "row",
     gap: 10,
   },
   loadingText: {
@@ -313,12 +324,12 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: Colors.cardBackground,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   errorText: {
     fontSize: 14,
     color: Colors.error,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

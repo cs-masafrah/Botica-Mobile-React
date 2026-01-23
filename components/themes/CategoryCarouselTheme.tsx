@@ -1,14 +1,14 @@
 // components/themes/CategoryCarouselTheme.tsx
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { FlatList } from 'react-native-gesture-handler';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useCategories } from '../../app/hooks/useCategories';
-import { Theme, ThemeFilter } from '@/types/theme';
-import { useLanguage } from '@/contexts/LanguageContext';
-import Colors from '@/constants/colors';
+import React, { useMemo } from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { useCategories } from "../../app/hooks/useCategories";
+import { Theme, ThemeFilter } from "@/types/theme";
+import { useLanguage } from "@/contexts/LanguageContext";
+import Colors from "@/constants/colors";
 
 interface CategoryCarouselThemeProps {
   theme: Theme;
@@ -25,16 +25,15 @@ interface Category {
 
 const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
   theme,
-  locale = 'en',
+  locale = "en",
 }) => {
   const { t, isRTL } = useLanguage();
   const { data: allCategories } = useCategories();
-  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
   // Extract static values
   const { title, filters } = useMemo(() => {
     const translation =
-      theme.translations?.find(t => t.localeCode === locale) ||
+      theme.translations?.find((t) => t.localeCode === locale) ||
       theme.translations?.[0];
 
     return {
@@ -43,12 +42,9 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
     };
   }, [theme.translations, theme.name, locale]);
 
-  // Filter categories
-  useEffect(() => {
-    if (!allCategories?.length) {
-      setFilteredCategories([]);
-      return;
-    }
+  // Filter categories using useMemo instead of useState + useEffect
+  const filteredCategories = useMemo(() => {
+    if (!allCategories?.length) return [];
 
     let result = [...allCategories];
 
@@ -57,22 +53,22 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
       filtersObj[filter.key] = filter.value;
     });
 
-    if (filtersObj.parent_id && filtersObj.parent_id !== '1') {
-      result = result.filter(cat => cat.parentId === filtersObj.parent_id);
+    if (filtersObj.parent_id && filtersObj.parent_id !== "1") {
+      result = result.filter((cat) => cat.parentId === filtersObj.parent_id);
     }
 
     if (filtersObj.limit) {
       result = result.slice(0, parseInt(filtersObj.limit, 10));
     }
 
-    if (filtersObj.sort === 'asc') {
+    if (filtersObj.sort === "asc") {
       result.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (filtersObj.sort === 'desc') {
+    } else if (filtersObj.sort === "desc") {
       result.sort((a, b) => b.name.localeCompare(a.name));
     }
 
-    setFilteredCategories(result);
-  }, [allCategories]);
+    return result;
+  }, [allCategories, filters]); // Include filters in dependencies
 
   if (!filteredCategories.length) {
     return null;
@@ -82,12 +78,10 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
+        <Text style={[styles.title, isRTL && { textAlign: "right" }]}>
           {title}
         </Text>
-        <Text style={styles.subtitle}>
-          Discover your perfect fragrance
-        </Text>
+        <Text style={styles.subtitle}>Discover your perfect fragrance</Text>
       </View>
 
       {/* Categories Carousel */}
@@ -95,14 +89,14 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
         data={filteredCategories}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
             onPress={() =>
               router.push({
-                pathname: '/category/[id]',
+                pathname: "/category/[id]",
                 params: { id: item.id },
               })
             }
@@ -149,7 +143,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
   },
 
@@ -168,20 +162,20 @@ const styles = StyleSheet.create({
     height: 180,
     marginRight: 16,
     borderRadius: 22,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
 
   cardText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
     zIndex: 2,
   },
