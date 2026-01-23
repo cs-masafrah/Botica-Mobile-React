@@ -11,6 +11,7 @@ import StaticContentTheme from './StaticContentTheme';
 import ImageCarouselTheme from './ImageCarouselTheme';
 import FooterLinksTheme from './FooterLinksTheme';
 import ServicesContentTheme from './ServicesContentTheme';
+import ProductByBrandTheme from './ProductByBrandTheme'; 
 
 interface ThemeFactoryProps {
   theme: Theme;
@@ -35,6 +36,7 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
     image_carousel: ImageCarouselTheme,
     footer_links: FooterLinksTheme,
     services_content: ServicesContentTheme,
+    product_by_brand: ProductByBrandTheme, 
   };
 
   const ThemeComponent = componentMap[theme.type];
