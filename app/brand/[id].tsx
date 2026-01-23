@@ -43,7 +43,11 @@ const BrandProductsScreen = () => {
     type: typeof brandValue
   });
   
-  const { data: productsData, isLoading, error } = useProductsByBrand(brandValue);
+   const { data: productsData, isLoading, error } = useProductsByBrand(brandValue) as {
+    data: { data: any[] } | null;
+    isLoading: boolean;
+    error: Error | null;
+  };
   
   // DEBUG: Log the response
   console.log('🔍 [BrandProductsScreen] Hook response:', {
@@ -134,7 +138,7 @@ const BrandProductsScreen = () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No products found for "{brandName}"</Text>
+            <Text style={styles.emptyText}>No products found for &quot;{brandName}&quot;</Text>
             <Pressable style={styles.backButtonEmpty} onPress={() => router.back()}>
               <Text style={styles.backButtonText}>Go Back to Brands</Text>
             </Pressable>

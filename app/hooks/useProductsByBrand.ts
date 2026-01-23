@@ -153,6 +153,5 @@ export const useProductsByBrand = (brandValue: string | null, page = 1, perPage 
     },
     enabled: !!brandValue,
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
   });
 };
