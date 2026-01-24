@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { request, gql } from "graphql-request";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
 import { Reel } from "../types/reels";
-import { useAuth } from "@/contexts/AuthContext"; // Import your AuthContext
+import { useAuth } from "@/contexts/AuthContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
-const GET_REELS = gql`
+// Define two separate queries - one with auth, one without
+const GET_REELS_WITH_AUTH = gql`
   query GetReels($page: Int, $first: Int) {
     reels(first: $first, page: $page) {
       data {
@@ -19,7 +20,35 @@ const GET_REELS = gql`
         sort_order
         likes_count
         views_count
-        is_liked # Add this field for like status
+        is_liked
+        caption
+        product {
+          id
+          name
+          sku
+        }
+      }
+      paginatorInfo {
+        currentPage
+        lastPage
+      }
+    }
+  }
+`;
+
+const GET_REELS_WITHOUT_AUTH = gql`
+  query GetReels($page: Int, $first: Int) {
+    reels(first: $first, page: $page) {
+      data {
+        id
+        title
+        video_url
+        thumbnail_url
+        is_active
+        duration
+        sort_order
+        likes_count
+        views_count
         caption
         product {
           id
@@ -38,10 +67,13 @@ const GET_REELS = gql`
 const fetchReels = async (
   page = 1,
   first = 10,
-  accessToken?: string | null
+  accessToken?: string | null,
 ): Promise<Reel[]> => {
   try {
     console.log("📡 Fetching reels from:", GRAPHQL_ENDPOINT);
+
+    // Choose the appropriate query based on authentication
+    const query = accessToken ? GET_REELS_WITH_AUTH : GET_REELS_WITHOUT_AUTH;
     const variables = { page, first };
 
     const headers: Record<string, string> = {
@@ -54,9 +86,11 @@ const fetchReels = async (
       headers["Authorization"] = `Bearer ${accessToken}`;
     }
 
+    console.log(`🔐 Using ${accessToken ? "authenticated" : "public"} query`);
+
     const data = await request<{ reels: { data: Reel[] } }>({
       url: GRAPHQL_ENDPOINT,
-      document: GET_REELS,
+      document: query,
       variables,
       requestHeaders: headers,
     });
@@ -71,7 +105,12 @@ const fetchReels = async (
     // Filter active reels and sort by sort_order
     const activeReels = data.reels.data
       .filter((reel) => reel.is_active)
-      .sort((a, b) => a.sort_order - b.sort_order);
+      .sort((a, b) => a.sort_order - b.sort_order)
+      // Ensure is_liked field exists (set to false if not provided in response)
+      .map((reel) => ({
+        ...reel,
+        is_liked: reel.is_liked || false,
+      }));
 
     console.log(`📊 Loaded ${activeReels.length} active reels`);
     return activeReels;
@@ -80,23 +119,35 @@ const fetchReels = async (
 
     // Try without auth headers if auth fails
     try {
+      console.log("🔄 Retrying with public query...");
       const variables = { page, first };
+
+      // Always use the public query for retry (no is_liked field)
       const data = await request<{ reels: { data: Reel[] } }>(
         GRAPHQL_ENDPOINT,
-        GET_REELS,
-        variables
+        GET_REELS_WITHOUT_AUTH,
+        variables,
       );
 
       if (data?.reels?.data) {
         const activeReels = data.reels.data
           .filter((reel) => reel.is_active)
-          .sort((a, b) => a.sort_order - b.sort_order);
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((reel) => ({
+            ...reel,
+            is_liked: false, // Explicitly set to false for unauthenticated users
+          }));
+        console.log("✅ Successfully loaded reels without auth");
         return activeReels;
       }
     } catch (noAuthError: any) {
-      console.error("❌ Error fetching without auth:", noAuthError);
+      console.error(
+        "❌ Error fetching without auth:",
+        noAuthError.message || noAuthError,
+      );
     }
 
+    // If everything fails, return mock data
     return getMockReels();
   }
 };
@@ -152,7 +203,7 @@ export const useReels = (page = 1, first = 10) => {
   const { accessToken } = useAuth();
 
   return useQuery<Reel[], Error>({
-    queryKey: ["reels", page, first, accessToken], // Include token in query key
+    queryKey: ["reels", page, first, accessToken],
     queryFn: () => fetchReels(page, first, accessToken),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
