@@ -334,9 +334,9 @@ export default function ReelsScreen() {
                     setIsCurrentVideoPlaying(status.isPlaying);
                   }
                   
-                  if (status.error) {
-                    console.error(`❌ Playback error for ${item.id}:`, status.error);
-                    setVideoError(`Video error: ${status.error}`);
+                  if (status) {
+                    console.error(`❌ Playback error for ${item.id}:`, status);
+                    setVideoError(`Video error: ${status}`);
                   }
                 }
               }}
