@@ -68,6 +68,122 @@ export const checkAvailableMutations = async () => {
 };
 
 // Like/Unlike a reel
+// Like/Unlike a reel
+// export const useLikeReel = () => {
+//   const queryClient = useQueryClient();
+//   const { accessToken, isAuthenticated } = useAuth();
+
+//   return useMutation({
+//     mutationFn: async (reelId: string): Promise<ReelLikeResponse> => {
+//       try {
+//         console.log(`❤️ Liking reel: ${reelId}`);
+
+//         // Check authentication
+//         if (!isAuthenticated || !accessToken) {
+//           throw new Error("LOGIN_REQUIRED");
+//         }
+
+//         const variables = { id: reelId };
+//         const headers: Record<string, string> = {
+//           "Content-Type": "application/json",
+//           Accept: "application/json",
+//           Authorization: `Bearer ${accessToken}`,
+//         };
+
+//         const data = await request<{ likeReel: ReelLikeResponse }>({
+//           url: GRAPHQL_ENDPOINT,
+//           document: LIKE_REEL,
+//           variables,
+//           requestHeaders: headers,
+//         });
+
+//         console.log("✅ Like response:", data.likeReel);
+
+//         if (!data?.likeReel) {
+//           throw new Error("Invalid response from server");
+//         }
+
+//         // Check if the mutation was successful
+//         if (!data.likeReel.success) {
+//           // If not successful and it's an auth error
+//           if (
+//             data.likeReel.message?.includes("Authentication required") ||
+//             data.likeReel.message?.includes("Please login")
+//           ) {
+//             throw new Error("LOGIN_REQUIRED");
+//           }
+//           throw new Error(data.likeReel.message || "Failed to like reel");
+//         }
+
+//         return data.likeReel;
+//       } catch (error: any) {
+//         console.error("❌ Error liking reel:", error);
+
+//         // Extract error message
+//         let errorMessage = "Failed to like reel";
+//         if (error.response?.errors?.[0]?.message) {
+//           errorMessage = error.response.errors[0].message;
+//         } else if (error.message) {
+//           errorMessage = error.message;
+//         }
+
+//         // Check if it's an auth error
+//         if (
+//           errorMessage.includes("Authentication required") ||
+//           errorMessage.includes("Please login") ||
+//           errorMessage.includes("LOGIN_REQUIRED") ||
+//           errorMessage.includes("Unauthorized")
+//         ) {
+//           throw new Error("LOGIN_REQUIRED");
+//         }
+
+//         throw new Error(errorMessage);
+//       }
+//     },
+//     onMutate: async (reelId: string) => {
+//       // Cancel any outgoing refetches
+//       await queryClient.cancelQueries({ queryKey: ["reels"] });
+
+//       // Snapshot the previous value
+//       const previousReels = queryClient.getQueryData<Reel[]>(["reels"]);
+
+//       // Optimistically update the cache
+//       if (previousReels) {
+//         const updatedReels = previousReels.map((reel) => {
+//           if (reel.id === reelId) {
+//             const currentlyLiked = reel.is_liked || false;
+//             return {
+//               ...reel,
+//               is_liked: !currentlyLiked,
+//               likes_count: currentlyLiked
+//                 ? reel.likes_count - 1
+//                 : reel.likes_count + 1,
+//             };
+//           }
+//           return reel;
+//         });
+
+//         queryClient.setQueryData<Reel[]>(["reels"], updatedReels);
+//       }
+
+//       return { previousReels };
+//     },
+//     onError: (err: Error, reelId: string, context: any) => {
+//       console.error("Mutation error:", err);
+
+//       // Rollback to previous state on error
+//       if (context?.previousReels) {
+//         queryClient.setQueryData<Reel[]>(["reels"], context.previousReels);
+//       }
+//     },
+//     onSettled: () => {
+//       // Refetch reels to ensure data is in sync
+//       queryClient.invalidateQueries({ queryKey: ["reels"] });
+//     },
+//   });
+// };
+
+// Like/Unlike a reel
 export const useLikeReel = () => {
   const queryClient = useQueryClient();
   const { accessToken, isAuthenticated } = useAuth();
@@ -79,14 +195,14 @@ export const useLikeReel = () => {
 
         // Check authentication
         if (!isAuthenticated || !accessToken) {
-          throw new Error("Please login to like reels");
+          throw new Error("LOGIN_REQUIRED");
         }
 
         const variables = { id: reelId };
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
           Accept: "application/json",
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         };
 
         const data = await request<{ likeReel: ReelLikeResponse }>({
@@ -102,10 +218,22 @@ export const useLikeReel = () => {
           throw new Error("Invalid response from server");
         }
 
+        // Check if the mutation was successful
+        if (!data.likeReel.success) {
+          // If not successful and it's an auth error
+          if (
+            data.likeReel.message?.includes("Authentication required") ||
+            data.likeReel.message?.includes("Please login")
+          ) {
+            throw new Error("LOGIN_REQUIRED");
+          }
+          throw new Error(data.likeReel.message || "Failed to like reel");
+        }
+
         return data.likeReel;
       } catch (error: any) {
         console.error("❌ Error liking reel:", error);
-        
+
         // Extract error message
         let errorMessage = "Failed to like reel";
         if (error.response?.errors?.[0]?.message) {
@@ -113,7 +241,17 @@ export const useLikeReel = () => {
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
+
+        // Check if it's an auth error
+        if (
+          errorMessage.includes("Authentication required") ||
+          errorMessage.includes("Please login") ||
+          errorMessage.includes("LOGIN_REQUIRED") ||
+          errorMessage.includes("Unauthorized")
+        ) {
+          throw new Error("LOGIN_REQUIRED");
+        }
+
         throw new Error(errorMessage);
       }
     },
@@ -146,12 +284,7 @@ export const useLikeReel = () => {
       return { previousReels };
     },
     onError: (err: Error, reelId: string, context: any) => {
-      console.error("Mutation error:", err);
-
-      // Show alert for auth errors
-      if (err.message.includes("Please login")) {
-        console.log("⚠️ User needs to login to like reels");
-      }
+      console.error("Mutation error:", err.message || err);
 
       // Rollback to previous state on error
       if (context?.previousReels) {
@@ -175,24 +308,6 @@ export const useViewReel = () => {
       try {
         console.log(`👀 Tracking view for reel: ${reelId}`);
 
-        // Check if the mutation exists first
-        // For now, let's assume it doesn't and return a mock response
-        console.log("⚠️ ViewReel mutation might not exist in schema, returning mock response");
-        
-        return {
-          success: true,
-          message: "View tracked locally",
-          views_count: 0,
-          reel: {
-            id: reelId,
-            title: "",
-            views_count: 0,
-            likes_count: 0
-          } as any,
-        };
-        
-        /*
-        // If you want to try the actual mutation, uncomment this:
         const variables = { id: reelId };
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -217,8 +332,6 @@ export const useViewReel = () => {
         }
 
         return data.viewReel;
-        */
-        
       } catch (error: any) {
         console.error("❌ Error tracking view:", error);
         
@@ -241,10 +354,10 @@ export const useViewReel = () => {
 
           return oldData.map((reel) => {
             if (reel.id === reelId && data.views_count !== undefined) {
-              return { 
-                ...reel, 
+              return {
+                ...reel,
                 views_count: data.views_count,
-                likes_count: data.reel?.likes_count || reel.likes_count
+                likes_count: data.reel?.likes_count || reel.likes_count,
               };
             }
             return reel;
@@ -272,9 +385,9 @@ export const useTrackView = () => {
 
         return oldData.map((reel) => {
           if (reel.id === reelId) {
-            return { 
-              ...reel, 
-              views_count: (reel.views_count || 0) + 1
+            return {
+              ...reel,
+              views_count: (reel.views_count || 0) + 1,
             };
           }
           return reel;

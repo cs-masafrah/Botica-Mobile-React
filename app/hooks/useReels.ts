@@ -6,8 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
-// Define two separate queries - one with auth, one without
-const GET_REELS_WITH_AUTH = gql`
+// Define the public query (without is_liked)
+const GET_REELS_PUBLIC = gql`
   query GetReels($page: Int, $first: Int) {
     reels(first: $first, page: $page) {
       data {
@@ -20,7 +20,6 @@ const GET_REELS_WITH_AUTH = gql`
         sort_order
         likes_count
         views_count
-        is_liked
         caption
         product {
           id
@@ -36,29 +35,21 @@ const GET_REELS_WITH_AUTH = gql`
   }
 `;
 
-const GET_REELS_WITHOUT_AUTH = gql`
-  query GetReels($page: Int, $first: Int) {
-    reels(first: $first, page: $page) {
-      data {
+// Define the individual reel query (includes is_liked)
+const GET_REEL = gql`
+  query GetReel($id: ID!) {
+    reel(id: $id) {
+      id
+      title
+      video_url
+      thumbnail_url
+      views_count
+      likes_count
+      is_liked
+      product {
         id
-        title
-        video_url
-        thumbnail_url
-        is_active
-        duration
-        sort_order
-        likes_count
-        views_count
-        caption
-        product {
-          id
-          name
-          sku
-        }
-      }
-      paginatorInfo {
-        currentPage
-        lastPage
+        name
+        sku
       }
     }
   }
@@ -72,26 +63,16 @@ const fetchReels = async (
   try {
     console.log("📡 Fetching reels from:", GRAPHQL_ENDPOINT);
 
-    // Choose the appropriate query based on authentication
-    const query = accessToken ? GET_REELS_WITH_AUTH : GET_REELS_WITHOUT_AUTH;
-    const variables = { page, first };
-
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
     };
 
-    // Add auth token if available
-    if (accessToken) {
-      headers["Authorization"] = `Bearer ${accessToken}`;
-    }
-
-    console.log(`🔐 Using ${accessToken ? "authenticated" : "public"} query`);
-
+    // Always use public query for initial fetch
     const data = await request<{ reels: { data: Reel[] } }>({
       url: GRAPHQL_ENDPOINT,
-      document: query,
-      variables,
+      document: GET_REELS_PUBLIC,
+      variables: { page, first },
       requestHeaders: headers,
     });
 
@@ -105,49 +86,74 @@ const fetchReels = async (
     // Filter active reels and sort by sort_order
     const activeReels = data.reels.data
       .filter((reel) => reel.is_active)
-      .sort((a, b) => a.sort_order - b.sort_order)
-      // Ensure is_liked field exists (set to false if not provided in response)
-      .map((reel) => ({
-        ...reel,
-        is_liked: reel.is_liked || false,
-      }));
+      .sort((a, b) => a.sort_order - b.sort_order);
 
     console.log(`📊 Loaded ${activeReels.length} active reels`);
-    return activeReels;
-  } catch (error: any) {
-    console.error("❌ Error fetching reels:", error.message || error);
 
-    // Try without auth headers if auth fails
-    try {
-      console.log("🔄 Retrying with public query...");
-      const variables = { page, first };
+    // If user is authenticated, fetch is_liked status for each reel
+    if (accessToken) {
+      console.log("🔐 User is authenticated, fetching like status...");
+      try {
+        const authHeaders = {
+          ...headers,
+          Authorization: `Bearer ${accessToken}`,
+        };
 
-      // Always use the public query for retry (no is_liked field)
-      const data = await request<{ reels: { data: Reel[] } }>(
-        GRAPHQL_ENDPOINT,
-        GET_REELS_WITHOUT_AUTH,
-        variables,
-      );
+        // Fetch like status for each reel
+        const reelsWithLikes = await Promise.all(
+          activeReels.map(async (reel) => {
+            try {
+              const reelData = await request<{ reel: Reel }>({
+                url: GRAPHQL_ENDPOINT,
+                document: GET_REEL,
+                variables: { id: reel.id },
+                requestHeaders: authHeaders,
+              });
 
-      if (data?.reels?.data) {
-        const activeReels = data.reels.data
-          .filter((reel) => reel.is_active)
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((reel) => ({
-            ...reel,
-            is_liked: false, // Explicitly set to false for unauthenticated users
-          }));
-        console.log("✅ Successfully loaded reels without auth");
-        return activeReels;
+              if (reelData?.reel) {
+                return {
+                  ...reel,
+                  is_liked: reelData.reel.is_liked || false,
+                  likes_count: reelData.reel.likes_count || reel.likes_count,
+                  views_count: reelData.reel.views_count || reel.views_count,
+                };
+              }
+            } catch (error) {
+              console.warn(`⚠️ Failed to fetch like status for reel ${reel.id}:`, error);
+              // If fails, return reel without is_liked
+              return {
+                ...reel,
+                is_liked: false,
+              };
+            }
+            return {
+              ...reel,
+              is_liked: false,
+            };
+          })
+        );
+
+        return reelsWithLikes;
+      } catch (error) {
+        console.warn("⚠️ Failed to fetch like status, using public data:", error);
+        // If fetching like status fails, return reels with is_liked = false
+        return activeReels.map(reel => ({
+          ...reel,
+          is_liked: false,
+        }));
       }
-    } catch (noAuthError: any) {
-      console.error(
-        "❌ Error fetching without auth:",
-        noAuthError.message || noAuthError,
-      );
     }
 
-    // If everything fails, return mock data
+    // For non-authenticated users, set is_liked = false
+    return activeReels.map(reel => ({
+      ...reel,
+      is_liked: false,
+    }));
+  } catch (error: any) {
+    console.error("❌ Error fetching reels:", error.message || error);
+    
+    // Try mock data if everything fails
+    console.log("🔄 Falling back to mock data...");
     return getMockReels();
   }
 };
@@ -208,5 +214,39 @@ export const useReels = (page = 1, first = 10) => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
     refetchOnWindowFocus: false,
+  });
+};
+
+// New hook to fetch individual reel with like status
+export const useReel = (reelId: string) => {
+  const { accessToken } = useAuth();
+
+  return useQuery<Reel, Error>({
+    queryKey: ["reel", reelId, accessToken],
+    queryFn: async () => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
+
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const data = await request<{ reel: Reel }>({
+        url: GRAPHQL_ENDPOINT,
+        document: GET_REEL,
+        variables: { id: reelId },
+        requestHeaders: headers,
+      });
+
+      if (!data?.reel) {
+        throw new Error("Invalid response from server");
+      }
+
+      return data.reel;
+    },
+    enabled: !!reelId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
