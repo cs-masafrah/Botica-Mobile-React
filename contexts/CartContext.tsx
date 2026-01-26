@@ -13,6 +13,7 @@ import {
   extractCartTotals,
   parseCurrencyString 
 } from '@/utils/bagistoHelpers';
+import { shippingService } from '@/services/ShippingService';
 
 interface ShippingAddress {
   companyName?: string;
@@ -463,19 +464,27 @@ const removeFromCart = useCallback(async (cartItemId: string) => {
       setIsLoading(true);
       console.log('🚚 [CART] Getting shipping methods');
       
-      const result = await bagistoService.getPaymentMethods(shippingMethod);
+      // Use shippingService instead of checkoutService
+      const result = await shippingService.getShippingMethods(shippingMethod || "");
       
-      console.log('✅ [CART] Shipping methods result:', result);
+      console.log('✅ [CART] Shipping methods result:', {
+        message: result.message,
+        shippingMethodsCount: result.shippingMethods?.length || 0,
+      });
       
       setShippingMethods(result.shippingMethods || []);
-      setPaymentMethods(result.paymentMethods || []);
       
       console.log('✅ [CART] Shipping methods loaded');
       return result;
       
     } catch (error: any) {
       console.error('❌ [CART] Failed to get shipping methods:', error.message);
-      return { shippingMethods: [], paymentMethods: [] };
+      return { 
+        message: error.message,
+        shippingMethods: [], 
+        paymentMethods: [],
+        cart: null 
+      };
     } finally {
       setIsLoading(false);
     }
