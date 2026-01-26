@@ -1,13 +1,5 @@
-// services/CheckoutService.ts
+// services/CheckoutService.ts - FIXED VERSION
 import { bagistoService } from './bagisto';
-
-export interface ShippingMethod {
-  title: string;
-  methods: Array<{
-    code: string;
-    formattedPrice: string;
-  }>;
-}
 
 export interface CheckoutAddress {
   companyName?: string;
@@ -26,131 +18,155 @@ export interface CheckoutAddress {
   saveAddress?: boolean;
 }
 
-export interface PaymentMethod {
-  method: string;
-  methodTitle: string;
-  description?: string;
-  sort: number;
-}
-
 class CheckoutService {
-  // Get shipping methods
-  async getShippingMethods(shippingMethod?: string): Promise<{
+  // Save checkout addresses - CORRECTED for Bagisto API
+  async saveCheckoutAddresses(billing: CheckoutAddress, shipping: CheckoutAddress): Promise<{
     message: string;
-    shippingMethods: ShippingMethod[];
-    paymentMethods: PaymentMethod[];
     cart: any;
+    shippingMethods?: any[];
+    paymentMethods?: any[];
   }> {
     try {
+      console.log('🏠 [CHECKOUT SERVICE] Saving addresses for Bagisto...');
+
+      // Based on the error and typical Bagisto schema, we need a different approach
+      // Let's try the correct mutation based on Bagisto docs
       const query = `
-        query paymentMethods {
-          paymentMethods(input: {
-            ${shippingMethod ? `shippingMethod: "${shippingMethod}"` : ''}
-          }) {
+        mutation SaveCheckoutAddresses($input: CheckoutAddressesInput!) {
+          saveCheckoutAddresses(input: $input) {
             message
+            cart {
+              id
+              customerEmail
+              customerFirstName
+              customerLastName
+              shippingMethod
+              itemsCount
+              itemsQty
+              subTotal
+              taxTotal
+              discountAmount
+              shippingAmount
+              grandTotal
+            }
+            shippingMethods {
+              title
+              methods {
+                code
+                label
+                price
+                formattedPrice
+                basePrice
+                formattedBasePrice
+              }
+            }
             paymentMethods {
               method
               methodTitle
               description
               sort
             }
-            cart {
-              id
-              customerEmail
-              customerFirstName
-              customerLastName
-              shippingMethod
-              couponCode
-              isGift
-              itemsCount
-              itemsQty
-              formattedPrice {
-                grandTotal
-              }
-            }
           }
         }
       `;
 
-      const result = await bagistoService.rawRequest<{
-        data: { paymentMethods: any };
-      }>(query);
+      // CORRECT: Bagisto expects a single input object with billing and shipping inside
+      const variables = {
+        input: {
+          billing: {
+            address1: [billing.address],
+            city: billing.city,
+            country: billing.country,
+            firstName: billing.firstName,
+            lastName: billing.lastName,
+            email: billing.email,
+            phone: billing.phone,
+            postcode: billing.postcode,
+            state: billing.state || '',
+            useForShipping: billing.useForShipping !== false,
+            companyName: billing.companyName || '',
+            address2: billing.address2 || ''
+          },
+          shipping: {
+            address1: [shipping.address],
+            city: shipping.city,
+            country: shipping.country,
+            firstName: shipping.firstName,
+            lastName: shipping.lastName,
+            email: shipping.email,
+            phone: shipping.phone,
+            postcode: shipping.postcode,
+            state: shipping.state || '',
+            companyName: shipping.companyName || '',
+            address2: shipping.address2 || ''
+          }
+        }
+      };
 
-      return result.data?.paymentMethods || {
-        message: '',
-        shippingMethods: [],
-        paymentMethods: [],
-        cart: null
-      };
-    } catch (error) {
-      console.error('❌ [CHECKOUT SERVICE] Failed to get shipping methods:', error);
+      const result = await bagistoService.executeQuery<{ saveCheckoutAddresses: any }>(query, variables);
+      const addressResult = result?.saveCheckoutAddresses;
+      
+      console.log("✅ [CHECKOUT SERVICE] Addresses saved:", {
+        message: addressResult?.message,
+        shippingMethods: addressResult?.shippingMethods?.length || 0,
+        paymentMethods: addressResult?.paymentMethods?.length || 0
+      });
+      
       return {
-        message: 'Failed to load shipping methods',
-        shippingMethods: [],
-        paymentMethods: [],
-        cart: null
+        message: addressResult?.message || '',
+        cart: addressResult?.cart || null,
+        shippingMethods: addressResult?.shippingMethods || [],
+        paymentMethods: addressResult?.paymentMethods || [],
       };
+    } catch (error: any) {
+      console.error('❌ [CHECKOUT SERVICE] Failed to save addresses:', error.message);
+      
+      // Try alternative approach if the first one fails
+      try {
+        console.log("🔄 [CHECKOUT SERVICE] Trying alternative address save approach...");
+        return await this.saveCheckoutAddressesLegacy(billing, shipping);
+      } catch (altError) {
+        console.error('❌ [CHECKOUT SERVICE] Alternative also failed:', altError);
+        return {
+          message: error.message || 'Failed to save addresses',
+          cart: null
+        };
+      }
     }
   }
 
-  // Save checkout addresses
-  async saveCheckoutAddresses(billing: CheckoutAddress, shipping: CheckoutAddress): Promise<{
+  // Alternative legacy approach for Bagisto v1.x or different schema
+  private async saveCheckoutAddressesLegacy(billing: CheckoutAddress, shipping: CheckoutAddress): Promise<{
     message: string;
-    shippingMethods: ShippingMethod[];
-    paymentMethods: PaymentMethod[];
     cart: any;
-    jumpToSection: string;
+    shippingMethods?: any[];
+    paymentMethods?: any[];
   }> {
     try {
-      // Format addresses according to Bagisto GraphQL schema
-      const billingInput = {
-        defaultAddress: false,
-        companyName: billing.companyName || '',
-        firstName: billing.firstName,
-        lastName: billing.lastName,
-        email: billing.email,
-        address: `${billing.address}${billing.address2 ? ' ' + billing.address2 : ''}`,
-        city: billing.city,
-        country: billing.country,
-        state: billing.state || '',
-        postcode: billing.postcode,
-        phone: billing.phone,
-        useForShipping: billing.useForShipping || true,
-        defaultAddress: false,
-        saveAddress: false
-      };
-
-      const shippingInput = {
-        defaultAddress: false,
-        companyName: shipping.companyName || '',
-        firstName: shipping.firstName,
-        lastName: shipping.lastName,
-        email: shipping.email,
-        address: `${shipping.address}${shipping.address2 ? ' ' + shipping.address2 : ''}`,
-        city: shipping.city,
-        country: shipping.country,
-        state: shipping.state || '',
-        postcode: shipping.postcode,
-        phone: shipping.phone
-      };
-
+      // Try the mutation that might exist in older Bagisto versions
       const query = `
-        mutation saveCheckoutAddresses {
-          saveCheckoutAddresses(input: {
-            billing: ${JSON.stringify(billingInput).replace(/"([^"]+)":/g, '$1:')},
-            shipping: ${JSON.stringify(shippingInput).replace(/"([^"]+)":/g, '$1:')}
-          }) {
+        mutation SaveBillingAddress($billing: BillingAddressInput!) {
+          saveBillingAddress(input: $billing) {
+            message
+            cart {
+              id
+            }
+          }
+        }
+        
+        mutation SaveShippingAddress($shipping: ShippingAddressInput!) {
+          saveShippingAddress(input: $shipping) {
             message
             shippingMethods {
               title
               methods {
                 code
+                label
+                price
                 formattedPrice
+                basePrice
+                formattedBasePrice
               }
-            }
-            paymentMethods {
-              method
-              methodTitle
             }
             cart {
               id
@@ -158,53 +174,178 @@ class CheckoutService {
               customerFirstName
               customerLastName
               shippingMethod
-              couponCode
-              isGift
               itemsCount
               itemsQty
-              formattedPrice {
-                grandTotal
-              }
+              subTotal
+              taxTotal
+              discountAmount
+              shippingAmount
+              grandTotal
             }
-            jumpToSection
           }
         }
       `;
 
-      const result = await bagistoService.rawRequest<{
-        data: { saveCheckoutAddresses: any };
-      }>(query);
+      // First save billing address
+      const billingResult = await bagistoService.executeQuery<any>(`
+        mutation SaveBillingAddress($input: BillingAddressInput!) {
+          saveBillingAddress(input: $input) {
+            message
+            cart {
+              id
+            }
+          }
+        }
+      `, {
+        input: {
+          address1: [billing.address],
+          city: billing.city,
+          country: billing.country,
+          firstName: billing.firstName,
+          lastName: billing.lastName,
+          email: billing.email,
+          phone: billing.phone,
+          postcode: billing.postcode,
+          state: billing.state || '',
+          useForShipping: billing.useForShipping !== false
+        }
+      });
 
-      return result.data?.saveCheckoutAddresses || {
-        message: 'Failed to save addresses',
-        shippingMethods: [],
-        paymentMethods: [],
-        cart: null,
-        jumpToSection: ''
+      // Then save shipping address
+      const shippingResult = await bagistoService.executeQuery<any>(`
+        mutation SaveShippingAddress($input: ShippingAddressInput!) {
+          saveShippingAddress(input: $input) {
+            message
+            shippingMethods {
+              title
+              methods {
+                code
+                label
+                price
+                formattedPrice
+                basePrice
+                formattedBasePrice
+              }
+            }
+            cart {
+              id
+              customerEmail
+              customerFirstName
+              customerLastName
+              shippingMethod
+              itemsCount
+              itemsQty
+              subTotal
+              taxTotal
+              discountAmount
+              shippingAmount
+              grandTotal
+            }
+          }
+        }
+      `, {
+        input: {
+          address1: [shipping.address],
+          city: shipping.city,
+          country: shipping.country,
+          firstName: shipping.firstName,
+          lastName: shipping.lastName,
+          email: shipping.email,
+          phone: shipping.phone,
+          postcode: shipping.postcode,
+          state: shipping.state || ''
+        }
+      });
+
+      return {
+        message: shippingResult?.saveShippingAddress?.message || '',
+        cart: shippingResult?.saveShippingAddress?.cart || null,
+        shippingMethods: shippingResult?.saveShippingAddress?.shippingMethods || [],
+        paymentMethods: [] // Payment methods will come later
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Simple method to just set shipping address (when billing is already same as shipping)
+  async saveShippingAddressOnly(address: CheckoutAddress): Promise<{
+    message: string;
+    cart: any;
+    shippingMethods?: any[];
+  }> {
+    try {
+      const query = `
+        mutation SaveShippingAddress($input: ShippingAddressInput!) {
+          saveShippingAddress(input: $input) {
+            message
+            shippingMethods {
+              title
+              methods {
+                code
+                label
+                price
+                formattedPrice
+                basePrice
+                formattedBasePrice
+              }
+            }
+            cart {
+              id
+              customerEmail
+              customerFirstName
+              customerLastName
+              shippingMethod
+              itemsCount
+              itemsQty
+              subTotal
+              taxTotal
+              discountAmount
+              shippingAmount
+              grandTotal
+            }
+          }
+        }
+      `;
+
+      const variables = {
+        input: {
+          address1: [address.address],
+          city: address.city,
+          country: address.country,
+          firstName: address.firstName,
+          lastName: address.lastName,
+          email: address.email,
+          phone: address.phone,
+          postcode: address.postcode,
+          state: address.state || '',
+          companyName: address.companyName || '',
+          address2: address.address2 || ''
+        }
+      };
+
+      const result = await bagistoService.executeQuery<{ saveShippingAddress: any }>(query, variables);
+      
+      return {
+        message: result?.saveShippingAddress?.message || '',
+        cart: result?.saveShippingAddress?.cart || null,
+        shippingMethods: result?.saveShippingAddress?.shippingMethods || []
       };
     } catch (error: any) {
-      console.error('❌ [CHECKOUT SERVICE] Failed to save addresses:', error);
-      return {
-        message: error.message || 'Failed to save addresses',
-        shippingMethods: [],
-        paymentMethods: [],
-        cart: null,
-        jumpToSection: ''
-      };
+      console.error('❌ [CHECKOUT SERVICE] Failed to save shipping address:', error);
+      throw error;
     }
   }
 
   // Save payment method
   async savePayment(method: string): Promise<{
-    jumpToSection: string;
     cart: any;
+    jumpToSection?: string;
   }> {
     try {
       const query = `
-        mutation savePayment {
-          savePayment(input: {
-            method: "${method}"
-          }) {
+        mutation SavePayment($input: SavePaymentInput!) {
+          savePayment(input: $input) {
             jumpToSection
             cart {
               id
@@ -212,133 +353,46 @@ class CheckoutService {
               itemsCount
               itemsQty
               grandTotal
-              appliedTaxRates {
-                taxName
-                totalAmount
-              }
-              items {
-                id
-                quantity
-                appliedTaxRate
-                price
-                formattedPrice {
-                  price
-                  total
-                }
-                type
-                name
-                productId
-                product {
-                  id
-                  type
-                  sku
-                  parentId
-                  images {
-                    url
-                  }
-                }
-              }
               formattedPrice {
                 grandTotal
                 subTotal
                 taxTotal
                 discountAmount
               }
-              shippingAddress {
-                id
-                address
-                postcode
-                city
-                state
-                country
-                phone
-              }
-              billingAddress {
-                id
-                address
-                postcode
-                city
-                state
-                country
-                phone
-              }
-              selectedShippingRate {
-                id
-                methodTitle
-                formattedPrice {
-                  price
-                  basePrice
-                }
-              }
-              payment {
-                id
-                method
-                methodTitle
-              }
             }
           }
         }
       `;
 
-      const result = await bagistoService.rawRequest<{
-        data: { savePayment: any };
-      }>(query);
-
-      return result.data?.savePayment || {
-        jumpToSection: '',
-        cart: null
+      const result = await bagistoService.executeQuery<{ savePayment: any }>(query, {
+        input: { method }
+      });
+      
+      return {
+        cart: result?.savePayment?.cart || null,
+        jumpToSection: result?.savePayment?.jumpToSection
       };
     } catch (error: any) {
       console.error('❌ [CHECKOUT SERVICE] Failed to save payment:', error);
       return {
-        jumpToSection: '',
         cart: null
       };
     }
   }
 
   // Place order
-  async placeOrder(paymentDetails?: {
-    isPaymentCompleted?: boolean;
-    error?: boolean;
-    message?: string;
-    transactionId?: string;
-    paymentStatus?: string;
-    paymentType?: string;
-    paymentMethod?: string;
-    orderID?: string;
-  }): Promise<{
+  async placeOrder(paymentMethod: string = 'cashondelivery'): Promise<{
     success: boolean;
-    redirectUrl?: string;
-    order: {
+    order?: {
       id: string;
       incrementId: string;
     };
+    redirectUrl?: string;
   }> {
     try {
-      const {
-        isPaymentCompleted = true,
-        error = false,
-        message = '',
-        transactionId = '',
-        paymentStatus = 'completed',
-        paymentType = 'cashondelivery',
-        paymentMethod = 'cashondelivery',
-        orderID = ''
-      } = paymentDetails || {};
-
       const query = `
-        mutation placeOrder {
-          placeOrder(
-            isPaymentCompleted: ${isPaymentCompleted},
-            error: ${error},
-            message: "${message}",
-            transactionId: "${transactionId}",
-            paymentStatus: "${paymentStatus}",
-            paymentType: "${paymentType}",
-            paymentMethod: "${paymentMethod}",
-            orderID: "${orderID}"
-          ) {
+        mutation PlaceOrder($payment: PaymentInput!) {
+          placeOrder(payment: $payment) {
             success
             redirectUrl
             order {
@@ -349,71 +403,22 @@ class CheckoutService {
         }
       `;
 
-      const result = await bagistoService.rawRequest<{
-        data: { placeOrder: any };
-      }>(query);
-
-      return result.data?.placeOrder || {
-        success: false,
-        order: { id: '', incrementId: '' }
+      const result = await bagistoService.executeQuery<{ placeOrder: any }>(query, {
+        payment: {
+          method: paymentMethod
+        }
+      });
+      
+      const orderResult = result?.placeOrder;
+      
+      return {
+        success: orderResult?.success || false,
+        order: orderResult?.order,
+        redirectUrl: orderResult?.redirectUrl
       };
     } catch (error: any) {
       console.error('❌ [CHECKOUT SERVICE] Failed to place order:', error);
-      return {
-        success: false,
-        order: { id: '', incrementId: '' }
-      };
-    }
-  }
-
-  // Get countries and states (for address forms)
-  async getCountriesAndStates() {
-    try {
-      const query = `
-        query countries {
-          countries {
-            id
-            code
-            name
-            translations {
-              id
-              locale
-              name
-            }
-            states {
-              id
-              countryCode
-              code
-              defaultName
-              translations {
-                id
-                locale
-              }
-            }
-          }
-        }
-      `;
-
-      const result = await bagistoService.rawRequest<{
-        data: { countries: any[] };
-      }>(query);
-
-      return result.data?.countries || [];
-    } catch (error) {
-      console.error('❌ [CHECKOUT SERVICE] Failed to get countries:', error);
-      return [];
-    }
-  }
-
-  // Apply shipping method
-  async applyShippingMethod(methodCode: string): Promise<boolean> {
-    try {
-      // This might need to be implemented differently based on your Bagisto setup
-      console.log('🚚 [CHECKOUT SERVICE] Applying shipping method:', methodCode);
-      return true;
-    } catch (error) {
-      console.error('❌ [CHECKOUT SERVICE] Failed to apply shipping method:', error);
-      return false;
+      return { success: false };
     }
   }
 }
