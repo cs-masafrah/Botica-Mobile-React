@@ -37,3 +37,4 @@ yarn-error.*
 .vercel
 .env
 yarn.lock
+.fake
