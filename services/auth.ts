@@ -1,10 +1,10 @@
-import { SHOPIFY_CONFIG } from '@/constants/shopify';
-import { BAGISTO_CONFIG } from '@/constants/bagisto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
+import { SHOPIFY_CONFIG } from "@/constants/shopify";
+import { BAGISTO_CONFIG } from "@/constants/bagisto";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 
-const SHOPIFY_API_VERSION = '2024-10';
-const AUTH_STORAGE_KEY = '@beauty_auth';
+const SHOPIFY_API_VERSION = "2024-10";
+const AUTH_STORAGE_KEY = "@beauty_auth";
 
 export interface Address {
   id: string;
@@ -26,14 +26,14 @@ export interface Address {
 function mapGraphQLAddressToAddress(gqlAddress: any): Address {
   return {
     id: gqlAddress.id,
-    firstName: gqlAddress.firstName || '',
-    lastName: gqlAddress.lastName || '',
-    address1: gqlAddress.address || '',
+    firstName: gqlAddress.firstName || "",
+    lastName: gqlAddress.lastName || "",
+    address1: gqlAddress.address || "",
     address2: undefined, // Bagisto doesn't have address2
-    city: gqlAddress.city || '',
+    city: gqlAddress.city || "",
     province: gqlAddress.state || gqlAddress.stateName || undefined,
-    zip: gqlAddress.postcode || '',
-    country: gqlAddress.country || gqlAddress.countryName || '',
+    zip: gqlAddress.postcode || "",
+    country: gqlAddress.country || gqlAddress.countryName || "",
     phone: gqlAddress.phone || undefined,
     isDefault: gqlAddress.defaultAddress || false,
     companyName: gqlAddress.companyName || undefined,
@@ -88,8 +88,8 @@ class AuthService {
   constructor() {
     this.baseUrl = BAGISTO_CONFIG.baseUrl;
     this.headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      "Content-Type": "application/json",
+      Accept: "application/json",
     };
   }
 
@@ -98,7 +98,7 @@ class AuthService {
   // -------------------------------
   async login(email: string, password: string): Promise<AuthState> {
     try {
-      console.log('Attempting customer login:', email);
+      console.log("Attempting customer login:", email);
 
       const query = `
         mutation CustomerLogin(
@@ -119,6 +119,8 @@ class AuthService {
             customer {
               id
               name
+              firstName
+              lastName
               email
               phone
               defaultAddress {
@@ -146,26 +148,26 @@ class AuthService {
       console.log("Base URL: " + this.baseUrl);
 
       const response = await fetch(this.baseUrl, {
-        method: 'POST',
+        method: "POST",
         headers: this.headers,
         body: JSON.stringify({ query, variables }),
       });
 
       const json = await response.json();
-      console.log('Login response:', JSON.stringify(json, null, 2));
+      console.log("Login response:", JSON.stringify(json, null, 2));
 
       if (json.errors?.length) {
-        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
       }
 
       const result = json?.data?.customerLogin;
 
       if (!result?.success) {
-        throw new Error(result?.message || 'Login failed');
+        throw new Error(result?.message || "Login failed");
       }
 
       if (!result.accessToken) {
-        throw new Error('No access token received');
+        throw new Error("No access token received");
       }
 
       const customer: Customer = {
@@ -173,6 +175,7 @@ class AuthService {
         email: result.customer.email,
         firstName: result.customer.firstName,
         lastName: result.customer.lastName,
+        name: result.customer.name,
         phone: result.customer.phone,
         defaultAddress: result.customer.defaultAddress
           ? mapGraphQLAddressToAddress(result.customer.defaultAddress)
@@ -180,7 +183,7 @@ class AuthService {
       };
 
       const expiresAt = new Date(
-        Date.now() + result.expiresIn * 1000
+        Date.now() + result.expiresIn * 1000,
       ).toISOString();
 
       const authState: AuthState = {
@@ -189,23 +192,25 @@ class AuthService {
         customer,
       };
 
-      await AsyncStorage.setItem(
-        AUTH_STORAGE_KEY,
-        JSON.stringify(authState)
-      );
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authState));
 
-      console.log('Login successful:', customer.email);
+      console.log("Login successful:", customer.email);
 
       return authState;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       throw error;
     }
   }
 
-  async signup(email: string, password: string, firstName: string, lastName: string): Promise<AuthState> {
+  async signup(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+  ): Promise<AuthState> {
     try {
-      console.log('Signing up customer:', email);
+      console.log("Signing up customer:", email);
 
       const query = `
         mutation CustomerSignUp($input: SignUpInput!) {
@@ -218,6 +223,8 @@ class AuthService {
             customer {
               id
               name
+              firstName
+              lastName
               email
               phone
               defaultAddress {
@@ -246,39 +253,40 @@ class AuthService {
           passwordConfirmation: password,
           subscribedToNewsLetter: true,
           agreement: true,
-          deviceToken: 'example-device-token',
-          deviceName: 'React Native App',
+          deviceToken: "example-device-token",
+          deviceName: "React Native App",
         },
       };
 
       const response = await fetch(this.baseUrl, {
-        method: 'POST',
+        method: "POST",
         headers: this.headers,
         body: JSON.stringify({ query, variables }),
       });
 
       const json = await response.json();
-      console.log('Signup response:', JSON.stringify(json, null, 2));
+      console.log("Signup response:", JSON.stringify(json, null, 2));
 
       if (json.errors?.length) {
-        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
       }
 
       const result = json.data?.customerSignUp;
 
       if (!result?.success) {
-        throw new Error(result?.message || 'Signup failed');
+        throw new Error(result?.message || "Signup failed");
       }
 
       if (!result.accessToken) {
-        throw new Error('No access token received');
+        throw new Error("No access token received");
       }
 
       const customer: Customer = {
         id: result.customer.id,
         email: result.customer.email,
-        firstName: result.customer.firstName,
-        lastName: result.customer.lastName,
+        firstName: result.customer?.firstName,
+        lastName: result.customer?.lastName,
+        name: result.customer?.name,
         phone: result.customer.phone,
         defaultAddress: result.customer.defaultAddress
           ? mapGraphQLAddressToAddress(result.customer.defaultAddress)
@@ -286,7 +294,7 @@ class AuthService {
       };
 
       const expiresAt = new Date(
-        Date.now() + result.expiresIn * 1000
+        Date.now() + result.expiresIn * 1000,
       ).toISOString();
 
       const authState: AuthState = {
@@ -294,24 +302,21 @@ class AuthService {
         expiresAt,
         customer,
       };
-      
-      await AsyncStorage.setItem(
-        AUTH_STORAGE_KEY,
-        JSON.stringify(authState)
-      );
 
-      console.log('Signup successful:', customer.email);
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authState));
+
+      console.log("Signup successful:", customer.email);
 
       return authState;
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error("Signup error:", error);
       throw error;
     }
   }
 
   async getCustomer(): Promise<Customer> {
     const auth = await this.getStoredAuth();
-    if (!auth) throw new Error('Not authenticated');
+    if (!auth) throw new Error("Not authenticated");
 
     const query = `
       query accountInfo {
@@ -360,7 +365,7 @@ class AuthService {
     `;
 
     const response = await fetch(this.baseUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
         ...this.headers,
         Authorization: `Bearer ${auth.accessToken}`,
@@ -370,7 +375,7 @@ class AuthService {
 
     const json = await response.json();
     const account = json.data?.accountInfo;
-    if (!account) throw new Error('Account not found');
+    if (!account) throw new Error("Account not found");
 
     const customer: Customer = {
       id: account.id,
@@ -396,7 +401,7 @@ class AuthService {
 
     await AsyncStorage.setItem(
       AUTH_STORAGE_KEY,
-      JSON.stringify({ ...auth, customer })
+      JSON.stringify({ ...auth, customer }),
     );
 
     return customer;
@@ -404,7 +409,7 @@ class AuthService {
 
   async logout(): Promise<void> {
     try {
-      console.log('Logging out...');
+      console.log("Logging out...");
 
       const query = `
         mutation CustomerLogout {
@@ -416,7 +421,7 @@ class AuthService {
       `;
 
       const response = await fetch(this.baseUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...this.headers,
           Authorization: `Bearer ${(await this.getStoredAuth())?.accessToken}`,
@@ -425,23 +430,22 @@ class AuthService {
       });
 
       const json = await response.json();
-      console.log('Logout response:', JSON.stringify(json, null, 2));
+      console.log("Logout response:", JSON.stringify(json, null, 2));
 
       if (json.errors?.length) {
-        console.error('GraphQL Errors:', json.errors);
+        console.error("GraphQL Errors:", json.errors);
       }
 
       const result = json.data?.customerLogout;
 
       if (!result?.success) {
-        console.warn(result?.message || 'Logout failed on server');
+        console.warn(result?.message || "Logout failed on server");
       }
-
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-      console.log('Local auth cleared');
+      console.log("Local auth cleared");
     }
   }
 
@@ -454,24 +458,24 @@ class AuthService {
       try {
         authState = JSON.parse(stored);
       } catch (parseError) {
-        console.error('Failed to parse auth data:', parseError);
-        console.log('Clearing corrupted auth data');
+        console.error("Failed to parse auth data:", parseError);
+        console.log("Clearing corrupted auth data");
         await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
         return null;
       }
-      
+
       const expiresAt = new Date(authState.expiresAt);
       const now = new Date();
-      
+
       if (expiresAt <= now) {
-        console.log('Access token expired');
+        console.log("Access token expired");
         await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
         return null;
       }
 
       return authState;
     } catch (error) {
-      console.error('Get stored auth error:', error);
+      console.error("Get stored auth error:", error);
       await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
       return null;
     }
@@ -481,7 +485,7 @@ class AuthService {
     firstName: string;
     lastName: string;
     email: string;
-    gender?: 'MALE' | 'FEMALE' | 'OTHER' | string | undefined;
+    gender?: "MALE" | "FEMALE" | "OTHER" | string | undefined;
     dateOfBirth?: string | null;
     phone?: string | null;
     currentPassword?: string;
@@ -492,7 +496,7 @@ class AuthService {
   }): Promise<Customer> {
     try {
       const authState = await this.getStoredAuth();
-      if (!authState) throw new Error('Not authenticated');
+      if (!authState) throw new Error("Not authenticated");
 
       const query = `
         mutation updateAccount($input: UpdateAccountInput!) {
@@ -512,7 +516,7 @@ class AuthService {
       const variables = { input };
 
       const response = await fetch(this.baseUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...this.headers,
           Authorization: `Bearer ${authState.accessToken}`,
@@ -521,10 +525,12 @@ class AuthService {
       });
 
       const json = await response.json();
-      if (json.errors?.length) throw new Error(json.errors.map((e: any) => e.message).join(', '));
+      if (json.errors?.length)
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
 
       const result = json.data?.updateAccount;
-      if (!result?.success) throw new Error(result?.message || 'Update account failed');
+      if (!result?.success)
+        throw new Error(result?.message || "Update account failed");
 
       const updated = result.customer;
 
@@ -538,21 +544,24 @@ class AuthService {
         dateOfBirth: updated.dateOfBirth ?? undefined,
       };
 
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ ...authState, customer }));
+      await AsyncStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({ ...authState, customer }),
+      );
 
       return customer;
     } catch (error) {
-      console.error('Update account error:', error);
+      console.error("Update account error:", error);
       throw error;
     }
   }
 
   async getAddresses(): Promise<Address[]> {
     try {
-      console.log('Fetching customer addresses (Bagisto)...');
-      
+      console.log("Fetching customer addresses (Bagisto)...");
+
       const auth = await this.getStoredAuth();
-      if (!auth) throw new Error('Not authenticated');
+      if (!auth) throw new Error("Not authenticated");
 
       const query = `
         query addresses {
@@ -595,7 +604,7 @@ class AuthService {
       `;
 
       const response = await fetch(this.baseUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...this.headers,
           Authorization: `Bearer ${auth.accessToken}`,
@@ -604,24 +613,24 @@ class AuthService {
       });
 
       const json = await response.json();
-      console.log('Get addresses response:', JSON.stringify(json, null, 2));
+      console.log("Get addresses response:", JSON.stringify(json, null, 2));
 
       if (json.errors?.length) {
-        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
       }
 
       const addressesData = json.data?.addresses?.data || [];
-      
+
       return addressesData.map((address: any) => ({
         id: address.id,
-        firstName: address.firstName || '',
-        lastName: address.lastName || '',
-        address1: address.address || '',
+        firstName: address.firstName || "",
+        lastName: address.lastName || "",
+        address1: address.address || "",
         address2: undefined,
-        city: address.city || '',
+        city: address.city || "",
         province: address.state || address.stateName || undefined,
-        zip: address.postcode || '',
-        country: address.country || address.countryName || '',
+        zip: address.postcode || "",
+        country: address.country || address.countryName || "",
         phone: address.phone || undefined,
         isDefault: address.defaultAddress || false,
         companyName: address.companyName || undefined,
@@ -629,21 +638,23 @@ class AuthService {
         vatId: address.vatId || undefined,
       }));
     } catch (error) {
-      console.error('Get addresses error:', error);
+      console.error("Get addresses error:", error);
       throw error;
     }
   }
 
-  async addAddress(address: Omit<Address, 'id'> & {
-    email: string;
-    companyName?: string;
-    vatId?: string;
-  }): Promise<Address> {
+  async addAddress(
+    address: Omit<Address, "id"> & {
+      email: string;
+      companyName?: string;
+      vatId?: string;
+    },
+  ): Promise<Address> {
     try {
-      console.log('Adding customer address (Bagisto)...', address);
+      console.log("Adding customer address (Bagisto)...", address);
 
       const auth = await this.getStoredAuth();
-      if (!auth) throw new Error('Not authenticated');
+      if (!auth) throw new Error("Not authenticated");
 
       const query = `
         mutation createAddress($input: AddressInput!) {
@@ -680,17 +691,17 @@ class AuthService {
           lastName: address.lastName,
           address: address.address1,
           country: address.country,
-          state: address.province ?? '',
+          state: address.province ?? "",
           city: address.city,
           postcode: address.zip,
-          phone: address.phone ?? '',
+          phone: address.phone ?? "",
           vatId: address.vatId ?? null,
           defaultAddress: address.isDefault ?? false,
         },
       };
 
       const response = await fetch(this.baseUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...this.headers,
           Authorization: `Bearer ${auth.accessToken}`,
@@ -699,35 +710,38 @@ class AuthService {
       });
 
       const json = await response.json();
-      console.log('Create address response:', JSON.stringify(json, null, 2));
+      console.log("Create address response:", JSON.stringify(json, null, 2));
 
       if (json.errors?.length) {
-        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
       }
 
       const result = json.data?.createAddress;
 
       if (!result?.success) {
-        throw new Error(result?.message || 'Failed to create address');
+        throw new Error(result?.message || "Failed to create address");
       }
 
       if (!result.address) {
-        throw new Error('Address was created but no address data returned');
+        throw new Error("Address was created but no address data returned");
       }
 
       return mapGraphQLAddressToAddress(result.address);
     } catch (error) {
-      console.error('Add address error:', error);
+      console.error("Add address error:", error);
       throw error;
     }
   }
 
-  async updateAddress(addressId: string, address: Omit<Address, 'id'>): Promise<Address> {
+  async updateAddress(
+    addressId: string,
+    address: Omit<Address, "id">,
+  ): Promise<Address> {
     try {
-      console.log('Updating customer address (Bagisto)...', addressId, address);
+      console.log("Updating customer address (Bagisto)...", addressId, address);
 
       const auth = await this.getStoredAuth();
-      if (!auth) throw new Error('Not authenticated');
+      if (!auth) throw new Error("Not authenticated");
 
       const query = `
         mutation updateAddress($id: ID!, $input: AddressInput!) {
@@ -762,18 +776,18 @@ class AuthService {
           lastName: address.lastName,
           address: address.address1,
           country: address.country,
-          state: address.province || '',
+          state: address.province || "",
           city: address.city,
-          email: address.email || '',
+          email: address.email || "",
           postcode: address.zip,
-          phone: address.phone || '',
+          phone: address.phone || "",
           vatId: address.vatId || null,
           defaultAddress: address.isDefault || false,
         },
       };
 
       const response = await fetch(this.baseUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...this.headers,
           Authorization: `Bearer ${auth.accessToken}`,
@@ -782,35 +796,35 @@ class AuthService {
       });
 
       const json = await response.json();
-      console.log('Update address response:', JSON.stringify(json, null, 2));
+      console.log("Update address response:", JSON.stringify(json, null, 2));
 
       if (json.errors?.length) {
-        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
       }
 
       const result = json.data?.updateAddress;
 
       if (!result?.success) {
-        throw new Error(result?.message || 'Failed to update address');
+        throw new Error(result?.message || "Failed to update address");
       }
 
       if (!result.address) {
-        throw new Error('Address was updated but no address data returned');
+        throw new Error("Address was updated but no address data returned");
       }
 
       return mapGraphQLAddressToAddress(result.address);
     } catch (error) {
-      console.error('Update address error:', error);
+      console.error("Update address error:", error);
       throw error;
     }
   }
 
   async deleteAddress(addressId: string): Promise<void> {
     try {
-      console.log('Deleting customer address (Bagisto)...', addressId);
+      console.log("Deleting customer address (Bagisto)...", addressId);
 
       const auth = await this.getStoredAuth();
-      if (!auth) throw new Error('Not authenticated');
+      if (!auth) throw new Error("Not authenticated");
 
       const query = `
         mutation deleteAddress($id: ID!) {
@@ -826,7 +840,7 @@ class AuthService {
       };
 
       const response = await fetch(this.baseUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
           ...this.headers,
           Authorization: `Bearer ${auth.accessToken}`,
@@ -835,39 +849,39 @@ class AuthService {
       });
 
       const json = await response.json();
-      console.log('Delete address response:', JSON.stringify(json, null, 2));
+      console.log("Delete address response:", JSON.stringify(json, null, 2));
 
       if (json.errors?.length) {
-        throw new Error(json.errors.map((e: any) => e.message).join(', '));
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
       }
 
       const result = json.data?.deleteAddress;
 
       if (!result?.success) {
-        throw new Error(result?.message || 'Failed to delete address');
+        throw new Error(result?.message || "Failed to delete address");
       }
 
-      console.log('Address deleted successfully');
+      console.log("Address deleted successfully");
     } catch (error) {
-      console.error('Delete address error:', error);
+      console.error("Delete address error:", error);
       throw error;
     }
   }
 
   async setDefaultAddress(addressId: string): Promise<void> {
     try {
-      console.log('Setting default address (Bagisto)...', addressId);
+      console.log("Setting default address (Bagisto)...", addressId);
 
       const auth = await this.getStoredAuth();
-      if (!auth) throw new Error('Not authenticated');
+      if (!auth) throw new Error("Not authenticated");
 
       // First, get all addresses to find the current one
       const addresses = await this.getAddresses();
-      
+
       // Get the address to set as default
-      const addressToUpdate = addresses.find(addr => addr.id === addressId);
+      const addressToUpdate = addresses.find((addr) => addr.id === addressId);
       if (!addressToUpdate) {
-        throw new Error('Address not found');
+        throw new Error("Address not found");
       }
 
       // Update the address with isDefault: true
@@ -889,7 +903,7 @@ class AuthService {
 
       await this.updateAddress(addressId, updatedAddress);
     } catch (error) {
-      console.error('Set default address error:', error);
+      console.error("Set default address error:", error);
       throw error;
     }
   }
