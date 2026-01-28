@@ -1,6 +1,4 @@
 // app/order-details.tsx
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Package, Clock, CheckCircle, XCircle, MapPin, CreditCard, Truck, AlertCircle } from 'lucide-react-native';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -9,144 +7,87 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Image,
-  Alert,
 } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft, Package, Clock, CreditCard, MapPin, Truck } from 'lucide-react-native';
+import { orderService } from '@/services/OrderService';
 import Colors from '@/constants/colors';
-import { orderService, OrderDetail } from '@/services/OrderService';
 import { formatPrice } from '@/utils/currency';
-import { useCart } from '@/contexts/CartContext';
 
-export default function OrderDetailsScreen() {
-  const router = useRouter();
-  const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  const { reorder } = useCart();
-  
-  const [order, setOrder] = useState<OrderDetail | null>(null);
+const OrderDetailsScreen = () => {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [reordering, setReordering] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    loadOrderDetail();
-  }, [orderId]);
+    if (id) {
+      loadOrder();
+    }
+  }, [id]);
 
-  const loadOrderDetail = async () => {
-    if (!orderId) return;
-    
-    setLoading(true);
+  const loadOrder = async () => {
     try {
-      const orderData = await orderService.getOrderDetail(orderId);
+      setLoading(true);
+      const orderData = await orderService.getOrderDetail(id);
       setOrder(orderData);
     } catch (error) {
-      console.error('Failed to load order details:', error);
-      Alert.alert('Error', 'Failed to load order details');
+      console.error('Failed to load order:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending':
-      case 'processing':
-        return Colors.warning;
+    switch (status?.toLowerCase()) {
       case 'completed':
       case 'delivered':
         return Colors.success;
+      case 'processing':
+      case 'pending':
+        return Colors.warning;
+      case 'canceled':
       case 'cancelled':
-      case 'refunded':
-      case 'failed':
         return Colors.error;
       default:
         return Colors.textSecondary;
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending':
-      case 'processing':
-        return Clock;
-      case 'completed':
-      case 'delivered':
-        return CheckCircle;
-      case 'cancelled':
-      case 'refunded':
-      case 'failed':
-        return XCircle;
-      default:
-        return Package;
-    }
-  };
-
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const handleCancelOrder = async () => {
-    if (!orderId) return;
-    
-    Alert.alert(
-      'Cancel Order',
-      'Are you sure you want to cancel this order?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            try {
-              const result = await orderService.cancelOrder(orderId);
-              if (result.success) {
-                Alert.alert('Success', 'Order cancelled successfully');
-                loadOrderDetail(); // Refresh order data
-              } else {
-                Alert.alert('Error', result.message);
-              }
-            } catch (error: any) {
-              Alert.alert('Error', error.message);
-            } finally {
-              setCancelling(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleReorder = async () => {
-    if (!orderId) return;
-    
-    setReordering(true);
+    if (!dateString) return '';
     try {
-      const result = await reorder(orderId);
-      if (result.success) {
-        Alert.alert('Success', 'Items added to cart. You can now proceed to checkout.');
-        router.push('/cart');
-      } else {
-        Alert.alert('Error', result.message);
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setReordering(false);
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch (error) {
+      return dateString;
     }
+  };
+
+  const handleRefresh = () => {
+    loadOrder();
   };
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Order Details', headerBackTitle: 'Back' }} />
-        <View style={styles.centerContainer}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Pressable style={styles.backButton} onPress={handleBack}>
+            <ArrowLeft size={24} color={Colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Order Details</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Loading order details...</Text>
         </View>
@@ -156,440 +97,278 @@ export default function OrderDetailsScreen() {
 
   if (!order) {
     return (
-      <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Order Details', headerBackTitle: 'Back' }} />
-        <View style={styles.centerContainer}>
-          <Package size={64} color={Colors.textSecondary} />
-          <Text style={styles.emptyTitle}>Order Not Found</Text>
-          <Text style={styles.emptySubtitle}>
-            This order could not be found
-          </Text>
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Pressable style={styles.backButton} onPress={handleBack}>
+            <ArrowLeft size={24} color={Colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Order Details</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Order not found</Text>
+          <Pressable style={styles.retryButton} onPress={handleRefresh}>
+            <Text style={styles.retryButtonText}>Refresh</Text>
+          </Pressable>
+          <Pressable style={styles.backToOrdersButton} onPress={() => router.push('/order-history')}>
+            <Text style={styles.backToOrdersText}>Back to Orders</Text>
           </Pressable>
         </View>
       </View>
     );
   }
 
-  const StatusIcon = getStatusIcon(order.status);
-  const statusColor = getStatusColor(order.status);
-  const canCancel = order.status.toLowerCase() === 'pending';
-  const canReorder = order.status.toLowerCase() === 'completed' || order.status.toLowerCase() === 'delivered';
-
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: `Order #${order.incrementId}`,
-          headerBackTitle: 'Back',
-        }}
-      />
-      <View style={styles.container}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.statusCard}>
-            <View style={[styles.statusIconContainer, { backgroundColor: `${statusColor}15` }]}>
-              <StatusIcon size={32} color={statusColor} />
-            </View>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable style={styles.backButton} onPress={handleBack}>
+          <ArrowLeft size={24} color={Colors.text} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Order Details</Text>
+        <View style={styles.headerRight} />
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Order Header */}
+        <View style={styles.orderHeader}>
+          <View>
             <Text style={styles.orderNumber}>Order #{order.incrementId}</Text>
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {order.status}
+            <Text style={styles.orderDate}>
+              <Clock size={14} color={Colors.textSecondary} /> {formatDate(order.createdAt)}
             </Text>
-            <Text style={styles.orderDate}>{formatDate(order.createdAt)}</Text>
           </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '20' }]}>
+            <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
+              {order.statusLabel || order.status}
+            </Text>
+          </View>
+        </View>
 
-          {order.shippingAddress && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Truck size={20} color={Colors.primary} />
-                <Text style={styles.sectionTitle}>Shipping Address</Text>
-              </View>
-              <View style={styles.card}>
-                <Text style={styles.addressName}>
-                  {order.shippingAddress.firstName} {order.shippingAddress.lastName}
-                </Text>
-                <Text style={styles.addressLine}>{order.shippingAddress.address}</Text>
-                <Text style={styles.addressLine}>
-                  {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postcode}
-                </Text>
-                <Text style={styles.addressLine}>{order.shippingAddress.country}</Text>
-                <Text style={styles.addressPhone}>{order.shippingAddress.phone}</Text>
-              </View>
-            </View>
-          )}
-
-          {order.billingAddress && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <MapPin size={20} color={Colors.primary} />
-                <Text style={styles.sectionTitle}>Billing Address</Text>
-              </View>
-              <View style={styles.card}>
-                <Text style={styles.addressName}>
-                  {order.billingAddress.firstName} {order.billingAddress.lastName}
-                </Text>
-                <Text style={styles.addressLine}>{order.billingAddress.address}</Text>
-                <Text style={styles.addressLine}>
-                  {order.billingAddress.city}, {order.billingAddress.state} {order.billingAddress.postcode}
-                </Text>
-                <Text style={styles.addressLine}>{order.billingAddress.country}</Text>
-                <Text style={styles.addressPhone}>{order.billingAddress.phone}</Text>
-              </View>
-            </View>
-          )}
-
-          {order.payment && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <CreditCard size={20} color={Colors.primary} />
-                <Text style={styles.sectionTitle}>Payment Information</Text>
-              </View>
-              <View style={styles.card}>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Method:</Text>
-                  <Text style={styles.paymentValue}>{order.payment.methodTitle}</Text>
-                </View>
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Status:</Text>
-                  <Text style={[styles.paymentValue, { color: statusColor }]}>
-                    {order.status}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Package size={20} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>
-                Items ({order.items.length})
+        {/* Order Summary */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Order Summary</Text>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Items</Text>
+            <Text style={styles.summaryValue}>
+              {order.totalItemCount || order.totalQtyOrdered || 0}
+            </Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryValue}>
+              {formatPrice(order.subTotal || order.formattedPrice?.subTotal || 0)}
+            </Text>
+          </View>
+          
+          {order.shippingAmount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Shipping</Text>
+              <Text style={styles.summaryValue}>
+                {formatPrice(order.shippingAmount || order.formattedPrice?.shippingAmount || 0)}
               </Text>
             </View>
-            <View style={styles.card}>
-              {order.items.map((item, index) => (
-                <View key={`${item.id}-${index}`}>
-                  <View style={styles.itemRow}>
-                    {item.product?.images?.[0]?.url ? (
-                      <Image 
-                        source={{ uri: item.product.images[0].url }} 
-                        style={styles.itemImage} 
-                      />
-                    ) : (
-                      <View style={[styles.itemImage, styles.itemImagePlaceholder]}>
-                        <Package size={24} color={Colors.textSecondary} />
-                      </View>
-                    )}
-                    <View style={styles.itemDetails}>
-                      <Text style={styles.itemTitle}>{item.name}</Text>
-                      <Text style={styles.itemSku}>SKU: {item.sku}</Text>
-                      <Text style={styles.itemQuantity}>Quantity: {item.qtyOrdered}</Text>
-                      <Text style={styles.itemPrice}>
-                        {formatPrice(item.formattedPrice.price, 'USD')} each
-                      </Text>
-                    </View>
-                    <Text style={styles.itemTotal}>
-                      {formatPrice(item.formattedPrice.total, 'USD')}
-                    </Text>
-                  </View>
-                  {index < order.items.length - 1 && (
-                    <View style={styles.itemDivider} />
-                  )}
-                </View>
-              ))}
+          )}
+          
+          {order.taxAmount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Tax</Text>
+              <Text style={styles.summaryValue}>
+                {formatPrice(order.taxAmount || order.formattedPrice?.taxAmount || 0)}
+              </Text>
             </View>
+          )}
+          
+          {order.discountAmount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Discount</Text>
+              <Text style={[styles.summaryValue, styles.discountValue]}>
+                -{formatPrice(order.discountAmount || order.formattedPrice?.discountAmount || 0)}
+              </Text>
+            </View>
+          )}
+          
+          <View style={[styles.summaryRow, styles.totalRow]}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>
+              {formatPrice(order.grandTotal || order.formattedPrice?.grandTotal || 0)}
+            </Text>
           </View>
+        </View>
 
+        {/* Payment Information */}
+        {order.payment && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Order Summary</Text>
-            <View style={styles.card}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>
-                  {formatPrice(order.formattedPrice.subTotal, 'USD')}
-                </Text>
-              </View>
-              
-              {order.formattedPrice.shippingAmount > 0 && (
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Shipping</Text>
-                  <Text style={styles.summaryValue}>
-                    {formatPrice(order.formattedPrice.shippingAmount, 'USD')}
-                  </Text>
-                </View>
-              )}
-              
-              {order.formattedPrice.taxAmount > 0 && (
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Tax</Text>
-                  <Text style={styles.summaryValue}>
-                    {formatPrice(order.formattedPrice.taxAmount, 'USD')}
-                  </Text>
-                </View>
-              )}
-              
-              {order.formattedPrice.discountAmount > 0 && (
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Discount</Text>
-                  <Text style={[styles.summaryValue, styles.discountValue]}>
-                    -{formatPrice(order.formattedPrice.discountAmount, 'USD')}
-                  </Text>
-                </View>
-              )}
-              
-              <View style={styles.divider} />
-              
-              <View style={styles.summaryRow}>
-                <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalValue}>
-                  {formatPrice(order.formattedPrice.grandTotal, 'USD')}
-                </Text>
-              </View>
+            <Text style={styles.sectionTitle}>
+              <CreditCard size={16} color={Colors.text} style={styles.sectionIcon} />
+              Payment
+            </Text>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Method</Text>
+              <Text style={styles.infoValue}>
+                {order.payment.methodTitle || order.payment.method || 'N/A'}
+              </Text>
             </View>
           </View>
+        )}
 
-          <View style={styles.actionsSection}>
-            <View style={styles.actions}>
-              {canCancel && (
-                <Pressable
-                  style={[styles.actionButton, styles.cancelButton]}
-                  onPress={handleCancelOrder}
-                  disabled={cancelling}
-                >
-                  {cancelling ? (
-                    <ActivityIndicator size="small" color={Colors.error} />
-                  ) : (
-                    <XCircle size={20} color={Colors.error} />
-                  )}
-                  <Text style={styles.cancelButtonText}>
-                    {cancelling ? 'Cancelling...' : 'Cancel Order'}
-                  </Text>
-                </Pressable>
-              )}
-              
-              {canReorder && (
-                <Pressable
-                  style={[styles.actionButton, styles.reorderButton]}
-                  onPress={handleReorder}
-                  disabled={reordering}
-                >
-                  {reordering ? (
-                    <ActivityIndicator size="small" color={Colors.white} />
-                  ) : (
-                    <Package size={20} color={Colors.white} />
-                  )}
-                  <Text style={styles.reorderButtonText}>
-                    {reordering ? 'Adding to Cart...' : 'Reorder'}
-                  </Text>
-                </Pressable>
-              )}
+        {/* Shipping Information */}
+        {order.shippingAddress && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              <Truck size={16} color={Colors.text} style={styles.sectionIcon} />
+              Shipping
+            </Text>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>City</Text>
+              <Text style={styles.infoValue}>{order.shippingAddress.city || 'N/A'}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Postcode</Text>
+              <Text style={styles.infoValue}>{order.shippingAddress.postcode || 'N/A'}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Country</Text>
+              <Text style={styles.infoValue}>{order.shippingAddress.country || 'N/A'}</Text>
             </View>
           </View>
-        </ScrollView>
-      </View>
-    </>
+        )}
+
+        <View style={styles.footerSpacing} />
+      </ScrollView>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-  centerContainer: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  headerRight: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+  },
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    padding: 40,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: Colors.textSecondary,
-    fontWeight: '600',
   },
-  emptyTitle: {
-    marginTop: 24,
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    marginTop: 8,
-    fontSize: 15,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  backButton: {
-    marginTop: 24,
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.white,
-  },
-  scrollView: {
+  emptyContainer: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  statusCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statusIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    padding: 40,
   },
-  orderNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 8,
+  emptyText: {
+    fontSize: 18,
+    color: Colors.textSecondary,
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  statusText: {
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  retryButtonText: {
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
-    textTransform: 'capitalize',
-    marginBottom: 8,
+  },
+  backToOrdersButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  backToOrdersText: {
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  orderHeader: {
+    backgroundColor: Colors.white,
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  orderNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 4,
   },
   orderDate: {
     fontSize: 14,
     color: Colors.textSecondary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    backgroundColor: Colors.white,
+    marginTop: 12,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  addressName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  addressLine: {
-    fontSize: 15,
-    color: Colors.text,
-    lineHeight: 22,
-    marginBottom: 4,
-  },
-  addressPhone: {
-    fontSize: 15,
-    color: Colors.primary,
-    marginTop: 8,
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  paymentLabel: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-    width: 80,
-  },
-  paymentValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.text,
-    flex: 1,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-  },
-  itemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: Colors.cardBackground,
-    marginRight: 12,
-  },
-  itemImagePlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  itemDetails: {
-    flex: 1,
-  },
-  itemTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  itemSku: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginBottom: 4,
-  },
-  itemQuantity: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginBottom: 4,
-  },
-  itemPrice: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-  itemTotal: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    marginLeft: 12,
-  },
-  itemDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 12,
+  sectionIcon: {
+    marginRight: 8,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -598,62 +377,49 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   summaryLabel: {
-    fontSize: 15,
-    color: Colors.text,
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
   summaryValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: Colors.text,
   },
   discountValue: {
     color: Colors.success,
   },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 12,
+  totalRow: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   totalLabel: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.text,
   },
   totalValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: Colors.primary,
   },
-  actionsSection: {
-    marginBottom: 40,
+  infoItem: {
+    marginBottom: 12,
   },
-  actions: {
-    gap: 12,
+  infoLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 4,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 16,
-    borderRadius: 12,
-  },
-  cancelButton: {
-    backgroundColor: Colors.cardBackground,
-    borderWidth: 2,
-    borderColor: Colors.error,
-  },
-  cancelButtonText: {
+  infoValue: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.error,
+    color: Colors.text,
+    fontWeight: '500',
   },
-  reorderButton: {
-    backgroundColor: Colors.primary,
-  },
-  reorderButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.white,
+  footerSpacing: {
+    height: 32,
   },
 });
+
+export default OrderDetailsScreen;

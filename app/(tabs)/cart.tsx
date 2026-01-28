@@ -5,6 +5,9 @@ import {
   AlertCircle,
   RefreshCw,
   Bug,
+  Tag,
+  X,
+  Check,
 } from "lucide-react-native";
 import React, { useState, useCallback, useEffect } from "react";
 import {
@@ -17,6 +20,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from "react-native";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
@@ -44,17 +48,29 @@ export default function CartScreen() {
     cartDetails,
     hasError,
     debugCart,
+    applyCoupon,
+    removeCoupon,
   } = useCart();
 
   const [refreshing, setRefreshing] = useState(false);
   const [manualLoading, setManualLoading] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [showCouponInput, setShowCouponInput] = useState(false);
   const displayCurrency = currencyCode || APP_CURRENCY;
+
+  // Check if coupon is already applied
+  const isCouponApplied = cartDetails?.couponCode ? true : false;
+  const appliedCouponCode = cartDetails?.couponCode || '';
 
   // Debug effect
   useEffect(() => {
     console.log("🔍 [CART SCREEN DEBUG] Current state:", {
       itemsCount: items.length,
+      couponApplied: isCouponApplied,
+      couponCode: appliedCouponCode,
+      discountAmount: cartDetails?.discountAmount,
       items: items.map((item) => ({
         id: item.id,
         name: item.product.name,
@@ -76,7 +92,7 @@ export default function CartScreen() {
           }
         : null,
     });
-  }, [items, subtotal, cartDetails]);
+  }, [items, subtotal, cartDetails, isCouponApplied, appliedCouponCode]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -114,6 +130,51 @@ export default function CartScreen() {
     console.log("🐛 [CART SCREEN] Debug triggered");
     await debugCart();
     setShowDebug(!showDebug);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      Alert.alert('Invalid Coupon', 'Please enter a coupon code');
+      return;
+    }
+
+    try {
+      setApplyingCoupon(true);
+      const result = await applyCoupon(couponCode);
+      
+      if (result.success) {
+        Alert.alert('Success', result.message || 'Coupon applied successfully');
+        setCouponCode('');
+        setShowCouponInput(false);
+      } else {
+        Alert.alert('Failed', result.message || 'Invalid coupon code');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to apply coupon');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = async () => {
+    try {
+      setApplyingCoupon(true);
+      const result = await removeCoupon();
+      
+      if (result.success) {
+        Alert.alert('Success', result.message || 'Coupon removed successfully');
+      } else {
+        Alert.alert('Failed', result.message || 'Failed to remove coupon');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to remove coupon');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleCheckout = () => {
+    router.push('/checkout');
   };
 
   // Show loading state
@@ -279,6 +340,14 @@ export default function CartScreen() {
               • Cart ID: {cartDetails?.id || "None"}
             </Text>
             <Text style={styles.debugInfoText}>
+              • Coupon Applied: {isCouponApplied ? 'Yes' : 'No'}
+            </Text>
+            {isCouponApplied && (
+              <Text style={styles.debugInfoText}>
+                • Coupon Code: {appliedCouponCode}
+              </Text>
+            )}
+            <Text style={styles.debugInfoText}>
               • Last Updated: {new Date().toLocaleTimeString()}
             </Text>
             {/* Add formatted price debugging */}
@@ -302,6 +371,81 @@ export default function CartScreen() {
             )}
           </View>
         )}
+
+        {/* Coupon Section */}
+        <View style={styles.couponSection}>
+          {isCouponApplied ? (
+            <View style={styles.couponAppliedContainer}>
+              <View style={styles.couponAppliedInfo}>
+                <Tag size={16} color={Colors.success} />
+                <Text style={styles.couponAppliedText}>
+                  Coupon "{appliedCouponCode}" applied
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleRemoveCoupon}
+                disabled={applyingCoupon}
+                style={styles.removeCouponButton}
+              >
+                {applyingCoupon ? (
+                  <ActivityIndicator size={16} color={Colors.error} />
+                ) : (
+                  <>
+                    <X size={16} color={Colors.error} />
+                    <Text style={styles.removeCouponText}>Remove</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          ) : showCouponInput ? (
+            <View style={styles.couponInputContainer}>
+              <TextInput
+                style={styles.couponInput}
+                placeholder="Enter coupon code"
+                value={couponCode}
+                onChangeText={setCouponCode}
+                autoCapitalize="characters"
+                placeholderTextColor={Colors.textSecondary}
+              />
+              <View style={styles.couponInputActions}>
+                <Pressable
+                  onPress={handleApplyCoupon}
+                  disabled={applyingCoupon || !couponCode.trim()}
+                  style={[
+                    styles.applyCouponButton,
+                    (applyingCoupon || !couponCode.trim()) && styles.applyCouponButtonDisabled,
+                  ]}
+                >
+                  {applyingCoupon ? (
+                    <ActivityIndicator size={16} color={Colors.white} />
+                  ) : (
+                    <>
+                      <Check size={16} color={Colors.white} />
+                      <Text style={styles.applyCouponText}>Apply</Text>
+                    </>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setShowCouponInput(false);
+                    setCouponCode('');
+                  }}
+                  style={styles.cancelCouponButton}
+                >
+                  <X size={16} color={Colors.textSecondary} />
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable
+              style={styles.addCouponButton}
+              onPress={() => setShowCouponInput(true)}
+            >
+              <Tag size={16} color={Colors.primary} />
+              <Text style={styles.addCouponText}>Add Coupon Code</Text>
+            </Pressable>
+          )}
+        </View>
 
         <View style={styles.itemsContainer}>
           {items.map((item) => {
@@ -475,57 +619,47 @@ export default function CartScreen() {
           <View />
         )}
 
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Subtotal</Text>
-          <Text style={styles.totalAmount}>
-            {formatPrice(subtotal, displayCurrency)}
-          </Text>
-        </View>
-
-        {cartDetails && (
-          <View style={styles.bagistoTotals}>
-            <View style={styles.bagistoTotalRow}>
-              <Text style={styles.bagistoTotalLabel}>ORA Subtotal:</Text>
-              <Text style={styles.bagistoTotalValue}>
-                {formatPrice(cartDetails.subTotal, displayCurrency)}
-              </Text>
-            </View>
-
-            {cartDetails.taxTotal > 0 && (
-              <View style={styles.bagistoTotalRow}>
-                <Text style={styles.bagistoTotalLabel}>ORA Tax:</Text>
-                <Text style={styles.bagistoTotalValue}>
-                  {formatPrice(cartDetails.taxTotal, displayCurrency)}
-                </Text>
-              </View>
-            )}
-
-            {cartDetails.discountAmount > 0 && (
-              <View style={styles.bagistoTotalRow}>
-                <Text style={styles.bagistoTotalLabel}>ORA Discount:</Text>
-                <Text style={styles.bagistoTotalValue}>
-                  {formatPrice(cartDetails.discountAmount, displayCurrency)}
-                </Text>
-              </View>
-            )}
-
-            <View style={[styles.bagistoTotalRow, styles.bagistoGrandTotal]}>
-              <Text style={styles.bagistoTotalLabel}>ORA Grand Total:</Text>
-              <Text
-                style={[
-                  styles.bagistoTotalValue,
-                  styles.bagistoGrandTotalValue,
-                ]}
-              >
-                {formatPrice(cartDetails.grandTotal, displayCurrency)}
-              </Text>
-            </View>
+        {/* Order Summary */}
+        <View style={styles.orderSummary}>
+          <Text style={styles.orderSummaryTitle}>Order Summary</Text>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryValue}>
+              {formatPrice(subtotal, displayCurrency)}
+            </Text>
           </View>
-        )}
+
+          {cartDetails?.discountAmount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Discount</Text>
+              <Text style={[styles.summaryValue, styles.discountValue]}>
+                -{formatPrice(cartDetails.discountAmount, displayCurrency)}
+              </Text>
+            </View>
+          )}
+
+          {cartDetails?.taxTotal > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Tax</Text>
+              <Text style={styles.summaryValue}>
+                {formatPrice(cartDetails.taxTotal, displayCurrency)}
+              </Text>
+            </View>
+          )}
+
+          <View style={[styles.summaryRow, styles.grandTotalRow]}>
+            <Text style={styles.grandTotalLabel}>Total</Text>
+            <Text style={styles.grandTotalValue}>
+              {formatPrice(cartDetails?.grandTotal || total, displayCurrency)}
+            </Text>
+          </View>
+        </View>
 
         <Pressable
           style={styles.checkoutButton}
-          onPress={() => router.push("/checkout")}
+          onPress={handleCheckout}
+          disabled={items.length === 0}
         >
           <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
         </Pressable>
@@ -773,8 +907,103 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 16,
   },
+  // Coupon Styles
+  couponSection: {
+    margin: 20,
+    marginBottom: 10,
+  },
+  addCouponButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.cardBackground,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  addCouponText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.primary,
+  },
+  couponInputContainer: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 12,
+  },
+  couponInput: {
+    fontSize: 16,
+    color: Colors.text,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: 12,
+  },
+  couponInputActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  applyCouponButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  applyCouponButtonDisabled: {
+    opacity: 0.5,
+  },
+  applyCouponText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelCouponButton: {
+    padding: 8,
+  },
+  couponAppliedContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  couponAppliedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  couponAppliedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.success,
+  },
+  removeCouponButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  removeCouponText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.error,
+  },
   itemsContainer: {
     padding: 20,
+    paddingTop: 10,
   },
   cartItem: {
     flexDirection: "row",
@@ -902,6 +1131,52 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
+  orderSummary: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  orderSummaryTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+  },
+  discountValue: {
+    color: Colors.success,
+  },
+  grandTotalRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  grandTotalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  grandTotalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
   shippingProgressContainer: {
     backgroundColor: "transparent",
     marginBottom: 16,
@@ -962,71 +1237,6 @@ const styles = StyleSheet.create({
     fontWeight: "900" as const,
     fontSize: 13,
     color: "#000000",
-  },
-  progressTextAchieved: {
-    fontSize: 13,
-    fontWeight: "900" as const,
-    color: "#000000",
-    textAlign: "center" as const,
-  },
-  progressPercentage: {
-    display: "none" as const,
-  },
-  progressPercentageText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: Colors.white,
-  },
-  totalContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: Colors.text,
-  },
-  totalAmount: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: Colors.text,
-  },
-  bagistoTotals: {
-    marginBottom: 16,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    padding: 12,
-  },
-  bagistoTotalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  bagistoTotalLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  bagistoTotalValue: {
-    fontSize: 12,
-    color: Colors.text,
-    fontWeight: "500" as const,
-  },
-  bagistoGrandTotal: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  bagistoGrandTotalValue: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: Colors.primary,
   },
   checkoutButton: {
     backgroundColor: "#10B981",
