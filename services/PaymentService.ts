@@ -117,6 +117,52 @@ class PaymentService {
       };
     }
   }
+
+  async savePayment(method: string): Promise<{
+    success: boolean;
+    cart?: any;
+    message?: string;
+  }> {
+    try {
+      console.log('💳 [PAYMENT SERVICE] Saving payment method:', method);
+
+      const query = `
+        mutation SavePayment($input: SavePaymentInput!) {
+          savePayment(input: $input) {
+            success
+            message
+            cart {
+              id
+              payment {
+                method
+                methodTitle
+              }
+              grandTotal
+            }
+            jumpToSection
+          }
+        }
+      `;
+
+      const result = await bagistoService.executeQuery<{ savePayment: any }>(query, {
+        input: { method }
+      });
+
+      const saveResult = result?.savePayment;
+      
+      return {
+        success: saveResult?.success || false,
+        cart: saveResult?.cart,
+        message: saveResult?.message
+      };
+    } catch (error: any) {
+      console.error('❌ [PAYMENT SERVICE] Failed to save payment:', error);
+      return { 
+        success: false,
+        message: error.message || 'Failed to save payment'
+      };
+    }
+  }
 }
 
 export const paymentService = new PaymentService();
