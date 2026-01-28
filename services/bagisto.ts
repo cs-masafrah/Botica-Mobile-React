@@ -89,7 +89,10 @@ export class BagistoService {
 
       return response.data || null;
     } catch (error: any) {
-      console.error("❌ [BAGISTO] Failed to execute query:", error.message);
+      console.error(
+        "❌ [BAGISTO] Failed to execute query:",
+        error?.response?.errors || error
+      );
       throw error;
     }
   }
@@ -329,51 +332,51 @@ export class BagistoService {
 
   // ==================== CHECKOUT METHODS ====================
 
-  async saveCheckoutAddresses(input: {
-    billing: any;
-    shipping: any;
-  }): Promise<any> {
-    try {
-      console.log('🏠 [BAGISTO] Saving checkout addresses');
+  // async saveCheckoutAddresses(input: {
+  //   billing: any;
+  //   shipping: any;
+  // }): Promise<any> {
+  //   try {
+  //     console.log('🏠 [BAGISTO] Saving checkout addresses');
 
-      const query = `
-        mutation SaveCheckoutAddresses($input: SaveCheckoutAddressesInput!) {
-          saveCheckoutAddresses(input: $input) {
-            message
-            shippingMethods {
-              title
-              methods {
-                code
-                label
-                price
-                formattedPrice
-                basePrice
-                formattedBasePrice
-              }
-            }
-            paymentMethods {
-              method
-              methodTitle
-              description
-              sort
-            }
-            cart {
-              id
-              itemsQty
-              itemsCount
-            }
-            jumpToSection
-          }
-        }
-      `;
+  //     const query = `
+  //       mutation SaveCheckoutAddresses($input: SaveCheckoutAddressesInput!) {
+  //         saveCheckoutAddresses(input: $input) {
+  //           message
+  //           shippingMethods {
+  //             title
+  //             methods {
+  //               code
+  //               label
+  //               price
+  //               formattedPrice
+  //               basePrice
+  //               formattedBasePrice
+  //             }
+  //           }
+  //           paymentMethods {
+  //             method
+  //             methodTitle
+  //             description
+  //             sort
+  //           }
+  //           cart {
+  //             id
+  //             itemsQty
+  //             itemsCount
+  //           }
+  //           jumpToSection
+  //         }
+  //       }
+  //     `;
 
-      const result = await this.executeQuery<{ saveCheckoutAddresses: any }>(query, { input });
-      return result?.saveCheckoutAddresses || null;
-    } catch (error: any) {
-      console.error('❌ [BAGISTO] Failed to save addresses:', error.message);
-      throw error;
-    }
-  }
+  //     const result = await this.executeQuery<{ saveCheckoutAddresses: any }>(query, { input });
+  //     return result?.saveCheckoutAddresses || null;
+  //   } catch (error: any) {
+  //     console.error('❌ [BAGISTO] Failed to save addresses:', error.message);
+  //     throw error;
+  //   }
+  // }
 
   async savePayment(method: string): Promise<any> {
     try {

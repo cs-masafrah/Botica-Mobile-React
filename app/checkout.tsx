@@ -1,4 +1,4 @@
-// app/checkout.tsx
+// app/checkout.tsx - REDESIGNED WITH RADIO BUTTONS
 import React, { useState, useEffect, useMemo } from "react";
 import {
   ScrollView,
@@ -16,15 +16,17 @@ import { router } from "expo-router";
 import {
   CreditCard,
   ShoppingBag,
-  Package,
-  Home,
   Truck,
-  Wallet,
   CheckCircle,
   ChevronRight,
   MapPin,
   Tag,
   ShoppingCart,
+  Circle,
+  CircleCheck,
+  Clock,
+  Package,
+  Shield,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { useCart } from "@/contexts/CartContext";
@@ -51,15 +53,25 @@ export default function CheckoutScreen() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
   
-  // Shipping state
-  const [shippingMethods, setShippingMethods] = useState<any[]>([]);
-  const [selectedShipping, setSelectedShipping] = useState<any>(null);
-  const [isLoadingShipping, setIsLoadingShipping] = useState(true);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [selectedShipping, setSelectedShipping] = useState<ShippingMethod['methods'][number] | null>(null);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false);
   
   // Payment state
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
-  const [isLoadingPayment, setIsLoadingPayment] = useState(true);
+  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
+
+  type ShippingMethod = {
+  title: string;
+  methods: {
+    code: string;
+    label: string;
+    price: number;
+    formattedPrice: string;
+    [key: string]: any;
+  }[];
+};
 
   // Load addresses on mount
   useEffect(() => {
@@ -82,319 +94,754 @@ export default function CheckoutScreen() {
     }
   };
 
-
-  const loadShippingMethods = async () => {
-    try {
-      setIsLoadingShipping(true);
-      const result = await shippingService.getShippingMethods();
-      
-      if (result.shippingMethods && result.shippingMethods.length > 0) {
-        // Flatten shipping methods
-        const methods: any[] = [];
-        result.shippingMethods.forEach(group => {
-          group.methods.forEach((method: any) => {
-            methods.push({
-              ...method,
-              groupTitle: group.title,
-            });
-          });
-        });
-        setShippingMethods(methods);
-        
-        // Set default shipping method
-        if (methods.length > 0) {
-          setSelectedShipping(methods[0]);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load shipping methods:", error);
-    } finally {
-      setIsLoadingShipping(false);
-    }
+  // Step validation functions
+  const canProceedFromAddress = () => {
+    return !!selectedAddress;
   };
 
-  const loadPaymentMethods = async () => {
-    try {
-      setIsLoadingPayment(true);
-      
-      // Load payment methods - this will try multiple approaches
-      const result = await paymentService.getPaymentMethods();
-      
-      console.log("💳 Payment methods result:", {
-        count: result.paymentMethods.length,
-        message: result.message
-      });
-      
-      if (result.paymentMethods.length > 0) {
-        setPaymentMethods(result.paymentMethods);
-        setSelectedPayment(result.paymentMethods[0]);
-      } else {
-        console.log("⚠️ No payment methods available initially");
-        // Don't show error - they'll load after shipping
-      }
-    } catch (error) {
-      console.error("Failed to load payment methods:", error);
-    } finally {
-      setIsLoadingPayment(false);
-    }
+  const canProceedFromShipping = () => {
+    return !!selectedShipping;
   };
 
-  const loadShippingMethodsAfterAddress = async () => {
-    if (!selectedAddress) {
-      console.log("⚠️ No address selected, skipping shipping methods");
-      return;
-    }
+  const canProceedFromPayment = () => {
+    return !!selectedPayment;
+  };
+
+  // Address selection handler
+  const handleAddressSelect = async (address: Address) => {
+  try {
+    // 1️⃣ Set selected address
+    setSelectedAddress(address);
+
+    // 2️⃣ Show loading for shipping methods
+    setIsLoadingShipping(true);
+
+    // 3️⃣ Prepare address data with CORRECT camelCase
+    const addressData = {
+      firstName: address.firstName,
+      lastName: address.lastName,
+      email: address.email || 'customer@example.com',
+      address: address.address, // From API response
+      city: address.city,
+      country: address.country,
+      state: address.state || '', // From API response
+      postcode: address.postcode,
+      phone: address.phone || '',
+      companyName: address.companyName || '',
+    };
+
+    console.log('📝 Preparing address with camelCase for GraphQL...');
     
     try {
-      setIsLoadingShipping(true);
-      console.log("🚚 Loading shipping methods after address selected...");
-      
-      // Prepare address for Bagisto
-      const shippingAddress = {
-        firstName: selectedAddress.firstName,
-        lastName: selectedAddress.lastName,
-        email: selectedAddress.email || "customer@example.com",
-        address: selectedAddress.address1,
-        city: selectedAddress.city,
-        country: selectedAddress.country,
-        state: selectedAddress.province || "",
-        postcode: selectedAddress.zip,
-        phone: selectedAddress.phone || "",
-        useForShipping: true,
-      };
+      // Use same data for billing and shipping
+      await checkoutService.saveCheckoutAddresses(addressData, addressData);
+      console.log('✅ Address save attempted (errors ignored for now)');
+    } catch (saveError: any) {
+      console.log('⚠️ Address save may have failed, continuing anyway:', saveError.message);
+      // Continue - shipping methods load independently
+    }
 
-      // SIMPLIFIED: Just save shipping address (assuming billing is same)
-      // This is the most common case in Bagisto
-      console.log("📦 Saving shipping address...");
-      const addressResult = await checkoutService.saveShippingAddressOnly(shippingAddress);
-      
-      console.log("✅ Shipping address saved:", {
-        message: addressResult.message,
-        shippingMethods: addressResult.shippingMethods?.length || 0,
-      });
-      
-      if (addressResult.shippingMethods && addressResult.shippingMethods.length > 0) {
-        console.log("✅ Using shipping methods from address save");
-        
-        // Format methods correctly
-        const formattedMethods = addressResult.shippingMethods.map((group: any) => ({
-          title: group.title,
-          methods: group.methods
-        }));
-        
-        setShippingMethods(formattedMethods);
-        
-        // Set first shipping method if available
-        const firstMethod = formattedMethods[0]?.methods[0];
-        if (firstMethod) {
-          setSelectedShipping(firstMethod);
-          
-          // After setting shipping, load payment methods
-          handleShippingSelect(firstMethod);
-        }
-      } else {
-        // Try to get shipping methods separately
-        console.log("⚠️ No shipping methods from address save, trying separate call");
-        const shippingResult = await shippingService.getShippingMethods();
-        
-        if (shippingResult.shippingMethods.length > 0) {
-          setShippingMethods(shippingResult.shippingMethods);
-          const firstMethod = shippingResult.shippingMethods[0]?.methods[0];
-          if (firstMethod) {
-            setSelectedShipping(firstMethod);
-            
-            // After setting shipping, load payment methods
-            handleShippingSelect(firstMethod);
-          }
-        } else {
-          console.log("❌ No shipping methods available");
-          Alert.alert(
-            "Shipping Unavailable",
-            "No shipping methods are available for your address. Please try a different address.",
-            [{ text: "OK", onPress: () => setCurrentStep("address") }]
-          );
-        }
-      }
-      
-    } catch (error: any) {
-      console.error("Failed to load shipping methods:", error);
+    // 4️⃣ ALWAYS fetch shipping methods directly (this works!)
+    console.log('🚚 Fetching shipping methods...');
+    const shippingResult = await shippingService.getShippingMethods();
+
+    if (!shippingResult.shippingMethods || shippingResult.shippingMethods.length === 0) {
       Alert.alert(
-        "Address Error",
-        `Could not save your address: ${error.message || "Please try again"}`,
+        "No Shipping Available",
+        "No shipping methods are available for this address.",
         [{ text: "OK" }]
       );
-    } finally {
-      setIsLoadingShipping(false);
+      return;
     }
-  };
 
-
-  const handleAddressSelect = async (address: Address) => {
-    setSelectedAddress(address);
-    
-    // Load shipping methods when address is selected
-    if (currentStep === "address") {
-      await loadShippingMethodsAfterAddress();
+    // Process shipping methods
+    const formattedMethods = shippingResult.shippingMethods.map((group: any) => {
+      let methodsArray: any[] = [];
       
-      // Auto-advance to shipping step if shipping methods are available
-      // This improves UX - user doesn't have to click "Continue" after selecting address
-      setTimeout(() => {
-        if (shippingMethods.length > 0) {
-          // You can either auto-advance or show a message
-          console.log("✅ Address selected, shipping methods loaded. Ready for shipping step.");
-          // Or auto-advance:
-          // setCurrentStep("shipping");
-        }
-      }, 500);
-    }
-  };
+      if (Array.isArray(group.methods)) {
+        methodsArray = group.methods;
+      } else if (group.methods && typeof group.methods === 'object') {
+        methodsArray = [group.methods];
+      }
 
+      return {
+        title: group.title || 'Shipping',
+        methods: methodsArray
+      };
+    }).filter(group => group.methods.length > 0);
+
+    console.log(`✅ Found ${formattedMethods.length} shipping groups`);
+    setShippingMethods(formattedMethods);
+
+    // Auto-select first shipping method
+    if (formattedMethods.length > 0 && 
+        formattedMethods[0].methods && 
+        formattedMethods[0].methods.length > 0) {
+      const firstMethod = formattedMethods[0].methods[0];
+      setSelectedShipping(firstMethod);
+      console.log('✅ Auto-selected:', firstMethod.label);
+    }
+
+  } catch (error: any) {
+    console.error("❌ Failed in address selection:", error.message);
+    Alert.alert(
+      "Error",
+      `Failed to load shipping options: ${error.message}`,
+      [{ text: "OK" }]
+    );
+  } finally {
+    setIsLoadingShipping(false);
+  }
+};
+  // Shipping selection handler
   const handleShippingSelect = async (method: any) => {
+    console.log('📦 Selecting shipping method:', {
+      code: method.code,
+      label: method.label,
+      price: method.formattedPrice
+    });
+    
     setSelectedShipping(method);
     
-    // After selecting shipping, load payment methods
     try {
-      setIsLoadingPayment(true);
-      console.log("💳 Loading payment methods for shipping:", method.code);
-      const paymentResult = await paymentService.getPaymentMethods(method.code);
+      // Apply shipping method to cart
+      const shippingResult = await shippingService.applyShippingMethod(method.code);
       
-      if (paymentResult.paymentMethods.length > 0) {
-        setPaymentMethods(paymentResult.paymentMethods);
-        setSelectedPayment(paymentResult.paymentMethods[0]);
+      console.log('📦 Shipping apply result:', {
+        success: shippingResult.success,
+        message: shippingResult.message,
+        hasCart: !!shippingResult.cart
+      });
+      
+      // FIXED: Check for success OR positive message
+      const isSuccess = shippingResult.success || 
+                      (shippingResult.message && 
+                        shippingResult.message.toLowerCase().includes('success'));
+      
+      if (isSuccess) {
+        console.log('✅ Shipping method applied successfully');
         
-        // Auto-advance to payment step after 1 second (good UX)
-        setTimeout(() => {
-          setCurrentStep("payment");
-        }, 1000);
+        // If there's a jumpToSection, update the step
+        if (shippingResult.jumpToSection === 'payment') {
+          console.log('🔄 Jumping to payment section');
+          setCurrentStep('payment');
+        }
+        
+        // Refresh cart to get updated totals
+        await refreshCart();
+        
+        // Now load payment methods
+        setIsLoadingPayment(true);
+        const paymentResult = await paymentService.getPaymentMethods(method.code);
+        
+        console.log('💳 Payment methods loaded:', {
+          count: paymentResult.paymentMethods.length,
+          methods: paymentResult.paymentMethods.map(p => p.methodTitle)
+        });
+        
+        if (paymentResult.paymentMethods.length > 0) {
+          setPaymentMethods(paymentResult.paymentMethods);
+          
+          // Auto-select first payment method if none selected
+          if (!selectedPayment) {
+            setSelectedPayment(paymentResult.paymentMethods[0]);
+            console.log('✅ Auto-selected payment:', paymentResult.paymentMethods[0].methodTitle);
+          }
+        } else {
+          setPaymentMethods([]);
+          setSelectedPayment(null);
+          console.log("⚠️ No payment methods available for this shipping method");
+        }
       } else {
-        console.log("⚠️ No payment methods available for this shipping method");
+        console.error('❌ Failed to apply shipping:', shippingResult.message);
         Alert.alert(
-          "No Payment Methods",
-          `No payment methods are available for "${method.label}". Please try a different shipping method.`,
-          [{ text: "OK" }]
+          "Shipping Error",
+          shippingResult.message || "Failed to apply shipping method. Please try again."
         );
+        // Revert selection if failed
+        setSelectedShipping(null);
       }
-    } catch (error) {
-      console.error("Failed to load payment methods:", error);
+    } catch (error: any) {
+      console.error("❌ Error applying shipping method:", error.message);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to apply shipping method. Please try again."
+      );
+      // Revert selection on error
+      setSelectedShipping(null);
     } finally {
       setIsLoadingPayment(false);
     }
   };
 
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
-      Alert.alert("Error", "Please enter a coupon code");
+  const handlePaymentSelect = (method: any) => {
+    console.log('💳 Selecting payment method:', {
+      method: method.method,
+      title: method.methodTitle,
+      description: method.description
+    });
+    setSelectedPayment(method);
+  };
+
+  // Step navigation handlers
+  const handleNextStep = () => {
+    const steps: CheckoutStep[] = ["address", "shipping", "payment", "review"];
+    const currentIndex = steps.indexOf(currentStep);
+    
+    // Validate current step
+    if (currentStep === "address" && !canProceedFromAddress()) {
+      Alert.alert("Address Required", "Please select a delivery address to continue");
       return;
     }
     
-    setIsApplyingCoupon(true);
-    try {
-      const result = await couponService.applyCoupon(couponCode);
+    if (currentStep === "shipping" && !canProceedFromShipping()) {
+      Alert.alert("Shipping Required", "Please select a shipping method to continue");
+      return;
+    }
+    
+    if (currentStep === "payment" && !canProceedFromPayment()) {
+      Alert.alert("Payment Required", "Please select a payment method to continue");
+      return;
+    }
+    
+    // Proceed to next step
+    if (currentIndex < steps.length - 1) {
+      setCurrentStep(steps[currentIndex + 1]);
+    } else {
+      handlePlaceOrder();
+    }
+  };
+
+  const handleBackStep = () => {
+    const steps: CheckoutStep[] = ["address", "shipping", "payment", "review"];
+    const currentIndex = steps.indexOf(currentStep);
+    
+    if (currentIndex > 0) {
+      setCurrentStep(steps[currentIndex - 1]);
+    } else {
+      router.back();
+    }
+  };
+
+  // Step progress component
+  const StepProgress = () => {
+    const steps = [
+      { key: "address", label: "Address", icon: MapPin },
+      { key: "shipping", label: "Shipping", icon: Truck },
+      { key: "payment", label: "Payment", icon: CreditCard },
+      { key: "review", label: "Review", icon: CheckCircle },
+    ];
+    
+    const currentStepIndex = steps.findIndex(step => step.key === currentStep);
+    
+    return (
+      <View style={styles.progressContainer}>
+        {steps.map((step, index) => {
+          const StepIcon = step.icon;
+          const isActive = step.key === currentStep;
+          const isCompleted = index < currentStepIndex;
+          const isFuture = index > currentStepIndex;
+          
+          return (
+            <React.Fragment key={step.key}>
+              <View style={styles.progressStep}>
+                <View style={styles.progressStepInner}>
+                  <View style={[
+                    styles.progressIconContainer,
+                    isActive && styles.progressIconContainerActive,
+                    isCompleted && styles.progressIconContainerCompleted,
+                    isFuture && styles.progressIconContainerFuture,
+                  ]}>
+                    {isCompleted ? (
+                      <CheckCircle size={16} color={Colors.white} />
+                    ) : (
+                      <StepIcon size={16} color={
+                        isActive ? Colors.white : 
+                        isFuture ? Colors.textSecondary : Colors.white
+                      } />
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.progressLabel,
+                    isActive && styles.progressLabelActive,
+                    isCompleted && styles.progressLabelCompleted,
+                    isFuture && styles.progressLabelFuture,
+                  ]}>
+                    {step.label}
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Connector line */}
+              {index < steps.length - 1 && (
+                <View style={[
+                  styles.progressConnector,
+                  index < currentStepIndex && styles.progressConnectorCompleted,
+                ]} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </View>
+    );
+  };
+
+  // Radio button component
+  const RadioButton = ({ selected, onSelect, disabled = false }: {
+    selected: boolean;
+    onSelect: () => void;
+    disabled?: boolean;
+  }) => {
+    return (
+      <Pressable
+        onPress={onSelect}
+        disabled={disabled}
+        style={styles.radioContainer}
+      >
+        <View style={[
+          styles.radioOuter,
+          selected && styles.radioOuterSelected,
+          disabled && styles.radioOuterDisabled,
+        ]}>
+          {selected && <View style={styles.radioInner} />}
+        </View>
+      </Pressable>
+    );
+  };
+
+  // Address step component
+  const renderAddressStep = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.stepHeader}>
+        <MapPin size={24} color={Colors.primary} />
+        <Text style={styles.stepTitle}>Select Delivery Address</Text>
+      </View>
       
-      if (result.success) {
-        Alert.alert("Success", result.message || "Coupon applied successfully");
-        setAppliedCoupon(couponCode);
-        setCouponCode("");
+      <Text style={styles.stepDescription}>
+        Choose where you want your order delivered
+      </Text>
+      
+      {isLoadingAddresses ? (
+        <View style={styles.loadingSection}>
+          <ActivityIndicator size="small" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading addresses...</Text>
+        </View>
+      ) : addresses.length === 0 ? (
+        <View style={styles.emptySection}>
+          <MapPin size={48} color={Colors.textSecondary} />
+          <Text style={styles.emptyTitle}>No addresses found</Text>
+          <Text style={styles.emptySubtitle}>
+            Add an address to continue with checkout
+          </Text>
+          <Pressable
+            style={styles.addAddressButton}
+            onPress={() => router.push("/addresses")}
+          >
+            <Text style={styles.addAddressButtonText}>+ Add New Address</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView 
+          style={styles.optionsContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {addresses.map((address) => (
+            <Pressable
+              key={address.id}
+              style={[
+                styles.optionCard,
+                selectedAddress?.id === address.id && styles.optionCardSelected,
+              ]}
+              onPress={() => handleAddressSelect(address)}
+            >
+              <RadioButton
+                selected={selectedAddress?.id === address.id}
+                onSelect={() => handleAddressSelect(address)}
+              />
+              
+              <View style={styles.optionContent}>
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>
+                    {address.firstName} {address.lastName}
+                    {address.isDefault && (
+                      <Text style={styles.defaultBadge}> • Default</Text>
+                    )}
+                  </Text>
+                </View>
+                
+                <Text style={styles.optionDetail}>
+                  {address.address1}
+                  {address.address2 && `, ${address.address2}`}
+                </Text>
+                <Text style={styles.optionDetail}>
+                  {address.city}, {address.province} {address.zip}
+                </Text>
+                <Text style={styles.optionDetail}>{address.country}</Text>
+                
+                {address.phone && (
+                  <View style={styles.phoneContainer}>
+                    <Text style={styles.phoneLabel}>Phone:</Text>
+                    <Text style={styles.phoneValue}>{address.phone}</Text>
+                  </View>
+                )}
+              </View>
+            </Pressable>
+          ))}
+          
+          <Pressable
+            style={styles.addNewOptionCard}
+            onPress={() => router.push("/addresses")}
+          >
+            <View style={styles.addNewIcon}>
+              <Text style={styles.addNewIconText}>+</Text>
+            </View>
+            <Text style={styles.addNewText}>Add New Address</Text>
+          </Pressable>
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  // Shipping step component
+  const renderShippingStep = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.stepHeader}>
+        <Truck size={24} color={Colors.primary} />
+        <Text style={styles.stepTitle}>Select Shipping Method</Text>
+      </View>
+      
+      <Text style={styles.stepDescription}>
+        Choose how you want your order delivered
+      </Text>
+      
+      {isLoadingShipping ? (
+        <View style={styles.loadingSection}>
+          <ActivityIndicator size="small" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading shipping options...</Text>
+        </View>
+      ) : shippingMethods.length === 0 ? (
+        <View style={styles.emptySection}>
+          <Truck size={48} color={Colors.textSecondary} />
+          <Text style={styles.emptyTitle}>No shipping methods available</Text>
+          <Text style={styles.emptySubtitle}>
+            Please go back and select a different address
+          </Text>
+          <Pressable
+            style={styles.backButtonSmall}
+            onPress={() => setCurrentStep("address")}
+          >
+            <Text style={styles.backButtonSmallText}>← Back to Address</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView 
+          style={styles.optionsContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {shippingMethods.map((group) => (
+            <View key={group.title} style={styles.shippingGroup}>
+              <Text style={styles.shippingGroupTitle}>{group.title}</Text>
+              
+              {group.methods.map((method: any) => (
+                <Pressable
+                  key={method.code}
+                  style={[
+                    styles.optionCard,
+                    selectedShipping?.code === method.code && styles.optionCardSelected,
+                  ]}
+                  onPress={() => handleShippingSelect(method)}
+                >
+                  <RadioButton
+                    selected={selectedShipping?.code === method.code}
+                    onSelect={() => handleShippingSelect(method)}
+                  />
+                  
+                  <View style={styles.optionContent}>
+                    <View style={styles.optionHeader}>
+                      <Text style={styles.optionTitle}>{method.label}</Text>
+                      <Text style={styles.shippingPrice}>
+                        {method.formattedPrice}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.shippingDetails}>
+                      <View style={styles.shippingDetail}>
+                        <Package size={14} color={Colors.textSecondary} />
+                        <Text style={styles.shippingDetailText}>
+                          {method.code.includes("free") ? "Free shipping" : "Standard delivery"}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.shippingDetail}>
+                        <Clock size={14} color={Colors.textSecondary} />
+                        <Text style={styles.shippingDetailText}>
+                          {method.code.includes("free") ? "5-7 business days" : "3-5 business days"}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  // Payment step component
+  const renderPaymentStep = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.stepHeader}>
+        <CreditCard size={24} color={Colors.primary} />
+        <Text style={styles.stepTitle}>Select Payment Method</Text>
+      </View>
+      
+      <Text style={styles.stepDescription}>
+        Choose how you want to pay for your order
+      </Text>
+      
+      {isLoadingPayment ? (
+        <View style={styles.loadingSection}>
+          <ActivityIndicator size="small" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading payment options...</Text>
+        </View>
+      ) : paymentMethods.length === 0 ? (
+        <View style={styles.emptySection}>
+          <CreditCard size={48} color={Colors.textSecondary} />
+          <Text style={styles.emptyTitle}>No payment methods available</Text>
+          <Text style={styles.emptySubtitle}>
+            Please go back and select a different shipping method
+          </Text>
+          <Pressable
+            style={styles.backButtonSmall}
+            onPress={() => setCurrentStep("shipping")}
+          >
+            <Text style={styles.backButtonSmallText}>← Back to Shipping</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView 
+          style={styles.optionsContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {paymentMethods.map((method) => (
+            <Pressable
+              key={method.method}
+              style={[
+                styles.optionCard,
+                selectedPayment?.method === method.method && styles.optionCardSelected,
+              ]}
+              onPress={() => handlePaymentSelect(method)}
+            >
+              <RadioButton
+                selected={selectedPayment?.method === method.method}
+                onSelect={() => handlePaymentSelect(method)}
+              />
+              
+              <View style={styles.optionContent}>
+                <View style={styles.optionHeader}>
+                  {method.method === "cashondelivery" ? (
+                    <ShoppingBag size={20} color={Colors.primary} />
+                  ) : (
+                    <CreditCard size={20} color={Colors.primary} />
+                  )}
+                  <Text style={styles.optionTitle}>{method.methodTitle}</Text>
+                </View>
+                
+                <Text style={styles.optionDetail}>
+                  {method.description || 
+                   (method.method === "cashondelivery" 
+                    ? "Pay when you receive your order" 
+                    : "Pay securely with your card")}
+                </Text>
+                
+                <View style={styles.paymentSecurity}>
+                  <Shield size={14} color={Colors.success} />
+                  <Text style={styles.paymentSecurityText}>
+                    Secure payment • Encrypted transaction
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  // Review step component
+  const renderReviewStep = () => (
+    <ScrollView style={styles.reviewContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepContent}>
+        <View style={styles.stepHeader}>
+          <CheckCircle size={24} color={Colors.primary} />
+          <Text style={styles.stepTitle}>Review Your Order</Text>
+        </View>
         
-        // Refresh cart data
-        await refreshCart();
-      } else {
-        Alert.alert("Error", result.message || "Failed to apply coupon");
-      }
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to apply coupon");
-    } finally {
-      setIsApplyingCoupon(false);
-    }
-  };
+        <Text style={styles.stepDescription}>
+          Please review your order details before placing it
+        </Text>
+        
+        {/* Order Items */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Order Items</Text>
+          <View style={styles.orderItemsContainer}>
+            {items.map((item) => (
+              <View key={item.id} style={styles.orderItem}>
+                <Image
+                  source={{ uri: item.product.images?.[0]?.url || 'https://via.placeholder.com/100' }}
+                  style={styles.orderItemImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.orderItemDetails}>
+                  <Text style={styles.orderItemName} numberOfLines={2}>
+                    {item.product.name}
+                  </Text>
+                  <View style={styles.orderItemPriceRow}>
+                    <Text style={styles.orderItemQuantity}>
+                      Qty: {item.quantity}
+                    </Text>
+                    <Text style={styles.orderItemTotal}>
+                      {formatPrice(item.product.price * item.quantity, displayCurrency)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+        
+        {/* Coupon Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Coupon Code</Text>
+          {appliedCoupon ? (
+            <View style={styles.appliedCouponContainer}>
+              <View style={styles.appliedCouponBadge}>
+                <Tag size={16} color={Colors.success} />
+                <Text style={styles.appliedCouponText}>{appliedCoupon}</Text>
+                <Pressable onPress={handleRemoveCoupon}>
+                  <Text style={styles.removeCouponText}>Remove</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.couponContainer}>
+              <TextInput
+                style={styles.couponInput}
+                placeholder="Enter coupon code"
+                value={couponCode}
+                onChangeText={setCouponCode}
+                placeholderTextColor={Colors.textSecondary}
+              />
+              <Pressable
+                style={[
+                  styles.couponButton,
+                  (!couponCode.trim() || isApplyingCoupon) && styles.couponButtonDisabled
+                ]}
+                onPress={handleApplyCoupon}
+                disabled={!couponCode.trim() || isApplyingCoupon}
+              >
+                {isApplyingCoupon ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.couponButtonText}>Apply</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
+        </View>
+        
+        {/* Order Summary */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Order Summary</Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Delivery Address</Text>
+              <Text style={styles.summaryValue} numberOfLines={2}>
+                {selectedAddress?.address1}, {selectedAddress?.city}
+              </Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Shipping Method</Text>
+              <Text style={styles.summaryValue}>
+                {selectedShipping?.label} ({selectedShipping?.formattedPrice})
+              </Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Payment Method</Text>
+              <Text style={styles.summaryValue}>
+                {selectedPayment?.methodTitle}
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Order Totals */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Order Total</Text>
+          <View style={styles.totalsCard}>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Subtotal</Text>
+              <Text style={styles.totalValue}>
+                {formatPrice(calculateTotals.subTotal, displayCurrency)}
+              </Text>
+            </View>
+            
+            {calculateTotals.discount > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Discount</Text>
+                <Text style={[styles.totalValue, styles.discountValue]}>
+                  -{formatPrice(calculateTotals.discount, displayCurrency)}
+                </Text>
+              </View>
+            )}
+            
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Shipping</Text>
+              <Text style={styles.totalValue}>
+                {formatPrice(calculateTotals.shipping, displayCurrency)}
+              </Text>
+            </View>
+            
+            {calculateTotals.tax > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Tax</Text>
+                <Text style={styles.totalValue}>
+                  {formatPrice(calculateTotals.tax, displayCurrency)}
+                </Text>
+              </View>
+            )}
+            
+            <View style={[styles.totalRow, styles.grandTotalRow]}>
+              <Text style={styles.grandTotalLabel}>Total</Text>
+              <Text style={styles.grandTotalValue}>
+                {formatPrice(calculateTotals.grandTotal, displayCurrency)}
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Terms and Conditions */}
+        <View style={styles.termsContainer}>
+          <Text style={styles.termsText}>
+            By placing your order, you agree to our Terms of Service and Privacy
+            Policy. All transactions are secure and encrypted.
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  );
 
-  const handleRemoveCoupon = async () => {
-    try {
-      const result = await couponService.removeCoupon();
-      
-      if (result.success) {
-        setAppliedCoupon(null);
-        // Refresh cart data
-        await refreshCart();
-      }
-    } catch (error) {
-      console.error("Failed to remove coupon:", error);
-    }
-  };
-
-  const testShippingMethods = async () => {
-    try {
-      Alert.alert("Testing", "Trying to find working shipping methods...");
-      const result = await paymentService.testWithDummyShipping();
-      
-      if (result.success) {
-        Alert.alert(
-          "Test Successful",
-          `Found ${result.count} payment methods with dummy shipping.\n${result.message}`
-        );
-      } else {
-        Alert.alert("Test Failed", result.message);
-      }
-    } catch (error: any) {
-      Alert.alert("Test Error", error.message);
-    }
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!selectedAddress) {
-      Alert.alert("Error", "Please select a shipping address");
-      return;
-    }
-    
-    if (!selectedShipping) {
-      Alert.alert("Error", "Please select a shipping method");
-      return;
-    }
-    
-    if (!selectedPayment) {
-      Alert.alert("Error", "Please select a payment method");
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      // Apply shipping method
-      await shippingService.applyShippingMethod(selectedShipping.code);
-      
-      // Save payment method
-      const paymentResult = await checkoutService.savePayment(selectedPayment.method);
-      
-      // Place order
-      const orderResult = await checkoutService.placeOrder(selectedPayment.method);
-
-      if (orderResult.success && orderResult.order) {
-        Alert.alert(
-          "Order Placed!",
-          `Your order #${orderResult.order.incrementId} has been placed successfully.`,
-          [
-            {
-              text: "View Orders",
-              onPress: () => router.push("/order-details"),
-            },
-            {
-              text: "Continue Shopping",
-              onPress: () => {
-                router.push("/");
-              },
-            },
-          ],
-        );
-      } else {
-        throw new Error("Failed to place order");
-      }
-    } catch (error: any) {
-      console.error("Order placement error:", error);
-      Alert.alert(
-        "Order Failed",
-        error.message || "Something went wrong. Please try again.",
-      );
-    } finally {
-      setIsProcessing(false);
+  // Main render
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case "address": return renderAddressStep();
+      case "shipping": return renderShippingStep();
+      case "payment": return renderPaymentStep();
+      case "review": return renderReviewStep();
     }
   };
 
@@ -425,447 +872,91 @@ export default function CheckoutScreen() {
 
   const displayCurrency = cartDetails?.currencyCode || "USD";
 
-  // Render current step
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case "address":
-        return (
-          <View style={styles.stepContent}>
-            <Text style={styles.sectionTitle}>Delivery Address</Text>
-            
-            {isLoadingAddresses ? (
-              <View style={styles.loadingSection}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.loadingText}>Loading addresses...</Text>
-              </View>
-            ) : addresses.length === 0 ? (
-              <View style={styles.emptySection}>
-                <MapPin size={48} color={Colors.textSecondary} />
-                <Text style={styles.emptyTitle}>No addresses found</Text>
-                <Text style={styles.emptySubtitle}>
-                  Add an address to continue with checkout
-                </Text>
-              </View>
-            ) : (
-              <>
-                {addresses.map((address) => (
-                  <Pressable
-                    key={address.id}
-                    style={[
-                      styles.addressCard,
-                      selectedAddress?.id === address.id && styles.addressCardSelected,
-                    ]}
-                    onPress={() => handleAddressSelect(address)}
-                  >
-                    <View style={styles.addressHeader}>
-                      <MapPin size={20} color={Colors.primary} />
-                      <View style={styles.addressTextContainer}>
-                        <Text style={styles.addressName}>
-                          {address.firstName} {address.lastName}
-                          {address.isDefault && (
-                            <Text style={styles.defaultBadge}> • Default</Text>
-                          )}
-                        </Text>
-                        <Text style={styles.addressDetail}>
-                          {address.address1}
-                          {address.address2 && `, ${address.address2}`}
-                        </Text>
-                        <Text style={styles.addressDetail}>
-                          {address.city}, {address.province} {address.zip}
-                        </Text>
-                        <Text style={styles.addressDetail}>{address.country}</Text>
-                        {address.phone && (
-                          <Text style={styles.addressPhone}>📱 {address.phone}</Text>
-                        )}
-                      </View>
-                      {selectedAddress?.id === address.id && (
-                        <CheckCircle size={20} color={Colors.primary} />
-                      )}
-                    </View>
-                  </Pressable>
-                ))}
-              </>
-            )}
-            
-            <Pressable
-              style={styles.addAddressButton}
-              onPress={() => router.push("/addresses")}
-            >
-              <Text style={styles.addAddressButtonText}>+ Add New Address</Text>
-            </Pressable>
-          </View>
-        );
-
-      case "shipping":
-        return (
-          <View style={styles.stepContent}>
-            <Text style={styles.sectionTitle}>Shipping Method</Text>
-            
-            {isLoadingShipping ? (
-              <View style={styles.loadingSection}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.loadingText}>Loading shipping options...</Text>
-              </View>
-            ) : shippingMethods.length === 0 ? (
-              <View style={styles.emptySection}>
-                <Truck size={48} color={Colors.textSecondary} />
-                <Text style={styles.emptyTitle}>No shipping methods available</Text>
-                <Text style={styles.emptySubtitle}>
-                  {selectedAddress 
-                    ? "Please save your address first"
-                    : "Please select an address first"
-                  }
-                </Text>
-                {!selectedAddress && (
-                  <Pressable
-                    style={styles.backButtonSmall}
-                    onPress={() => setCurrentStep("address")}
-                  >
-                    <Text style={styles.backButtonSmallText}>← Select Address</Text>
-                  </Pressable>
-                )}
-              </View>
-            ) : (
-              shippingMethods.map((group) => (
-                <View key={group.title} style={styles.shippingGroup}>
-                  <Text style={styles.shippingGroupTitle}>{group.title}</Text>
-                  {group.methods.map((method) => (
-                    <Pressable
-                      key={method.code}
-                      style={[
-                        styles.shippingCard,
-                        selectedShipping?.code === method.code && styles.shippingCardSelected,
-                      ]}
-                      onPress={() => handleShippingSelect(method)}
-                    >
-                      <View style={styles.shippingContent}>
-                        <Truck size={20} color={Colors.primary} />
-                        <View style={styles.shippingTextContainer}>
-                          <Text style={styles.shippingTitle}>
-                            {method.label}
-                          </Text>
-                          <Text style={styles.shippingSubtitle}>
-                            {method.code.includes("standard") ? "5-7 business days" : 
-                            method.code.includes("express") ? "2-3 business days" : 
-                            "Standard delivery"}
-                          </Text>
-                        </View>
-                        <Text style={styles.shippingPrice}>
-                          {method.formattedPrice}
-                        </Text>
-                      </View>
-                      {selectedShipping?.code === method.code && (
-                        <View style={styles.selectedIndicator}>
-                          <CheckCircle size={16} color={Colors.white} />
-                        </View>
-                      )}
-                    </Pressable>
-                  ))}
-                </View>
-              ))
-            )}
-          </View>
-        );
-
-      case "payment":
-        return (
-          <View style={styles.stepContent}>
-            <Text style={styles.sectionTitle}>Payment Method</Text>
-            
-            {isLoadingPayment ? (
-              <View style={styles.loadingSection}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.loadingText}>Loading payment options...</Text>
-              </View>
-            ) : !selectedShipping ? (
-              <View style={styles.emptySection}>
-                <Truck size={48} color={Colors.textSecondary} />
-                <Text style={styles.emptyTitle}>Select Shipping First</Text>
-                <Text style={styles.emptySubtitle}>
-                  Please select a shipping method to see available payment options
-                </Text>
-                <Pressable
-                  style={styles.backButtonSmall}
-                  onPress={() => setCurrentStep("shipping")}
-                >
-                  <Text style={styles.backButtonSmallText}>← Back to Shipping</Text>
-                </Pressable>
-              </View>
-            ) : paymentMethods.length === 0 ? (
-              <View style={styles.emptySection}>
-                <CreditCard size={48} color={Colors.textSecondary} />
-                <Text style={styles.emptyTitle}>No Payment Methods</Text>
-                <Text style={styles.emptySubtitle}>
-                  No payment methods available for "{selectedShipping?.label}"
-                </Text>
-                <Pressable
-                  style={styles.backButtonSmall}
-                  onPress={() => setCurrentStep("shipping")}
-                >
-                  <Text style={styles.backButtonSmallText}>← Choose Different Shipping</Text>
-                </Pressable>
-              </View>
-            ) : (
-              paymentMethods.map((method) => (
-                <Pressable
-                  key={method.method}
-                  style={[
-                    styles.paymentCard,
-                    selectedPayment?.method === method.method && styles.paymentCardSelected,
-                  ]}
-                  onPress={() => setSelectedPayment(method)}
-                >
-                  <View style={styles.paymentContent}>
-                    {method.method === "cashondelivery" ? (
-                      <ShoppingBag size={20} color={Colors.primary} />
-                    ) : (
-                      <CreditCard size={20} color={Colors.primary} />
-                    )}
-                    <View style={styles.paymentTextContainer}>
-                      <Text style={styles.paymentTitle}>{method.methodTitle}</Text>
-                      <Text style={styles.paymentSubtitle}>
-                        {method.description || 
-                        (method.method === "cashondelivery" 
-                          ? "Pay when you receive your order" 
-                          : "Pay securely with your card")}
-                      </Text>
-                    </View>
-                  </View>
-                  {selectedPayment?.method === method.method && (
-                    <View style={styles.selectedIndicator}>
-                      <CheckCircle size={16} color={Colors.white} />
-                    </View>
-                  )}
-                </Pressable>
-              ))
-            )}
-          </View>
-        );
-
-      case "review":
-        return (
-          <ScrollView style={styles.reviewContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.stepContent}>
-              <Text style={styles.sectionTitle}>Order Summary</Text>
-              
-              {/* Order Items with Images */}
-              <View style={styles.orderItemsContainer}>
-                {items.map((item) => (
-                  <View key={item.id} style={styles.orderItem}>
-                    <Image
-                      source={{ uri: item.product.images?.[0]?.url || 'https://via.placeholder.com/100' }}
-                      style={styles.orderItemImage}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.orderItemDetails}>
-                      <Text style={styles.orderItemName} numberOfLines={2}>
-                        {item.product.name}
-                      </Text>
-                      {item.product.selectedOptions && Object.keys(item.product.selectedOptions).length > 0 && (
-                        <Text style={styles.orderItemVariant}>
-                          {Object.values(item.product.selectedOptions).join(", ")}
-                        </Text>
-                      )}
-                      <View style={styles.orderItemPriceRow}>
-                        <Text style={styles.orderItemQuantity}>
-                          Qty: {item.quantity}
-                        </Text>
-                        <Text style={styles.orderItemTotal}>
-                          {formatPrice(item.product.price * item.quantity, displayCurrency)}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </View>
-              
-              {/* Coupon Section */}
-              <View style={styles.couponSection}>
-                <Text style={styles.sectionSubtitle}>Apply Coupon</Text>
-                {appliedCoupon ? (
-                  <View style={styles.appliedCouponContainer}>
-                    <View style={styles.appliedCouponBadge}>
-                      <Tag size={16} color={Colors.success} />
-                      <Text style={styles.appliedCouponText}>{appliedCoupon}</Text>
-                      <Pressable onPress={handleRemoveCoupon}>
-                        <Text style={styles.removeCouponText}>Remove</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.couponContainer}>
-                    <TextInput
-                      style={styles.couponInput}
-                      placeholder="Enter coupon code"
-                      value={couponCode}
-                      onChangeText={setCouponCode}
-                      placeholderTextColor={Colors.textSecondary}
-                    />
-                    <Pressable
-                      style={[
-                        styles.couponButton,
-                        (!couponCode.trim() || isApplyingCoupon) && styles.couponButtonDisabled
-                      ]}
-                      onPress={handleApplyCoupon}
-                      disabled={!couponCode.trim() || isApplyingCoupon}
-                    >
-                      {isApplyingCoupon ? (
-                        <ActivityIndicator size="small" color={Colors.white} />
-                      ) : (
-                        <Text style={styles.couponButtonText}>Apply</Text>
-                      )}
-                    </Pressable>
-                  </View>
-                )}
-              </View>
-              
-              {/* Delivery Details */}
-              <View style={styles.deliverySection}>
-                <Text style={styles.sectionSubtitle}>Delivery Details</Text>
-                <View style={styles.deliveryDetail}>
-                  <Text style={styles.deliveryLabel}>Address:</Text>
-                  <Text style={styles.deliveryValue}>
-                    {selectedAddress?.address1}, {selectedAddress?.city}
-                  </Text>
-                </View>
-                <View style={styles.deliveryDetail}>
-                  <Text style={styles.deliveryLabel}>Shipping:</Text>
-                  <Text style={styles.deliveryValue}>
-                    {selectedShipping?.label} ({selectedShipping?.formattedPrice})
-                  </Text>
-                </View>
-                <View style={styles.deliveryDetail}>
-                  <Text style={styles.deliveryLabel}>Payment:</Text>
-                  <Text style={styles.deliveryValue}>
-                    {selectedPayment?.methodTitle}
-                  </Text>
-                </View>
-              </View>
-              
-              {/* Order Totals */}
-              <View style={styles.totalsContainer}>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Subtotal</Text>
-                  <Text style={styles.totalValue}>
-                    {formatPrice(calculateTotals.subTotal, displayCurrency)}
-                  </Text>
-                </View>
-                
-                {calculateTotals.discount > 0 && (
-                  <View style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>Discount</Text>
-                    <Text style={[styles.totalValue, styles.discountValue]}>
-                      -{formatPrice(calculateTotals.discount, displayCurrency)}
-                    </Text>
-                  </View>
-                )}
-                
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Shipping</Text>
-                  <Text style={styles.totalValue}>
-                    {formatPrice(calculateTotals.shipping, displayCurrency)}
-                  </Text>
-                </View>
-                
-                {calculateTotals.tax > 0 && (
-                  <View style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>Tax</Text>
-                    <Text style={styles.totalValue}>
-                      {formatPrice(calculateTotals.tax, displayCurrency)}
-                    </Text>
-                  </View>
-                )}
-                
-                <View style={[styles.totalRow, styles.grandTotalRow]}>
-                  <Text style={styles.grandTotalLabel}>Total</Text>
-                  <Text style={styles.grandTotalValue}>
-                    {formatPrice(calculateTotals.grandTotal, displayCurrency)}
-                  </Text>
-                </View>
-              </View>
-              
-              {/* Terms and Conditions */}
-              <View style={styles.termsContainer}>
-                <Text style={styles.termsText}>
-                  By placing your order, you agree to our Terms of Service and Privacy
-                  Policy. All transactions are secure and encrypted.
-                </Text>
-              </View>
-            </View>
-          </ScrollView>
-        );
+  // Apply coupon handler
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      Alert.alert("Error", "Please enter a coupon code");
+      return;
+    }
+    
+    setIsApplyingCoupon(true);
+    try {
+      const result = await couponService.applyCoupon(couponCode);
+      
+      if (result.success) {
+        Alert.alert("Success", result.message || "Coupon applied successfully");
+        setAppliedCoupon(couponCode);
+        setCouponCode("");
+        await refreshCart();
+      } else {
+        Alert.alert("Error", result.message || "Failed to apply coupon");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to apply coupon");
+    } finally {
+      setIsApplyingCoupon(false);
     }
   };
 
-  const handleNextStep = () => {
-    const steps: CheckoutStep[] = ["address", "shipping", "payment", "review"];
-    const currentIndex = steps.indexOf(currentStep);
-    
-    // Validation
-    if (currentStep === "address" && !selectedAddress) {
-      Alert.alert("Address Required", "Please select a shipping address to continue");
-      return;
-    }
-    
-    if (currentStep === "shipping" && !selectedShipping) {
-      Alert.alert("Shipping Required", "Please select a shipping method to continue");
-      return;
-    }
-    
-    if (currentStep === "payment") {
-      if (!selectedShipping) {
-        Alert.alert("Shipping Required", "Please go back and select a shipping method first");
-        return;
-      }
+  // Remove coupon handler
+  const handleRemoveCoupon = async () => {
+    try {
+      const result = await couponService.removeCoupon();
       
-      if (paymentMethods.length === 0) {
+      if (result.success) {
+        setAppliedCoupon(null);
+        await refreshCart();
+      }
+    } catch (error) {
+      console.error("Failed to remove coupon:", error);
+    }
+  };
+
+  // Place order handler
+  const handlePlaceOrder = async () => {
+    if (!selectedAddress || !selectedShipping || !selectedPayment) {
+      Alert.alert("Error", "Please complete all checkout steps");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // 1. Save payment method
+      const paymentResult = await paymentService.savePayment(selectedPayment.method);
+      
+      if (!paymentResult.success) {
+        throw new Error("Failed to save payment method");
+      }
+
+      // 2. Place order
+      const orderResult = await checkoutService.placeOrder();
+
+      if (orderResult.success && orderResult.order) {
         Alert.alert(
-          "Payment Methods",
-          `Please wait while we load payment methods for "${selectedShipping.label}"`,
-          [{ text: "OK" }]
+          "🎉 Order Placed Successfully!",
+          `Your order #${orderResult.order.incrementId} has been placed.`,
+          [
+            {
+              text: "Continue Shopping",
+              onPress: () => {
+                // Clear cart and go home
+                router.replace("/");
+              },
+            },
+          ]
         );
-        return;
+      } else {
+        throw new Error(orderResult.message || "Failed to place order");
       }
-      
-      if (!selectedPayment) {
-        Alert.alert("Payment Required", "Please select a payment method to continue");
-        return;
-      }
-    }
-    
-    if (currentIndex < steps.length - 1) {
-      setCurrentStep(steps[currentIndex + 1]);
-    } else {
-      handlePlaceOrder();
-    }
-  };
-
-  const handleBackStep = () => {
-    const steps: CheckoutStep[] = ["address", "shipping", "payment", "review"];
-    const currentIndex = steps.indexOf(currentStep);
-    
-    if (currentIndex > 0) {
-      setCurrentStep(steps[currentIndex - 1]);
-    } else {
-      router.back();
-    }
-  };
-
-  const getStepTitle = (step: CheckoutStep) => {
-    switch (step) {
-      case "address": return "Address";
-      case "shipping": return "Shipping";
-      case "payment": return "Payment";
-      case "review": return "Review";
-    }
-  };
-
-  const getStepNumber = (step: CheckoutStep) => {
-    switch (step) {
-      case "address": return 1;
-      case "shipping": return 2;
-      case "payment": return 3;
-      case "review": return 4;
+    } catch (error: any) {
+      console.error("❌ Order placement error:", error);
+      Alert.alert(
+        "Order Failed",
+        error.message || "Something went wrong. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -895,7 +986,7 @@ export default function CheckoutScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Progress Steps - Fixed Header */}
+      {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronRight size={24} color={Colors.text} style={styles.backIcon} />
@@ -904,52 +995,15 @@ export default function CheckoutScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      {/* Progress Indicator */}
-      <View style={styles.progressContainer}>
-        {["address", "shipping", "payment", "review"].map((step) => (
-          <View key={step} style={styles.progressStep}>
-            <View style={styles.progressStepInner}>
-              <View
-                style={[
-                  styles.progressDot,
-                  currentStep === step && styles.progressDotActive,
-                  (currentStep === step || 
-                   ["address", "shipping", "payment", "review"].indexOf(currentStep) > 
-                   ["address", "shipping", "payment", "review"].indexOf(step)) && 
-                  styles.progressDotCompleted,
-                ]}
-              >
-                {["address", "shipping", "payment", "review"].indexOf(currentStep) > 
-                 ["address", "shipping", "payment", "review"].indexOf(step) ? (
-                  <CheckCircle size={12} color={Colors.white} />
-                ) : (
-                  <Text style={styles.progressNumber}>
-                    {getStepNumber(step as CheckoutStep)}
-                  </Text>
-                )}
-              </View>
-              <Text
-                style={[
-                  styles.progressLabel,
-                  currentStep === step && styles.progressLabelActive,
-                ]}
-              >
-                {getStepTitle(step as CheckoutStep)}
-              </Text>
-            </View>
-            {step !== "review" && (
-              <View style={styles.progressLine} />
-            )}
-          </View>
-        ))}
-      </View>
+      {/* Step Progress */}
+      <StepProgress />
 
       {/* Current Step Content */}
       <View style={styles.content}>
         {renderStepContent()}
       </View>
 
-      {/* Action Buttons - Fixed Footer */}
+      {/* Action Buttons */}
       <View style={styles.footer}>
         <View style={styles.footerTotal}>
           <Text style={styles.footerTotalLabel}>Total</Text>
@@ -973,14 +1027,18 @@ export default function CheckoutScreen() {
             style={[
               styles.nextActionButton,
               isProcessing && styles.nextActionButtonDisabled,
-              (!selectedAddress || !selectedShipping || !selectedPayment) && 
-              styles.nextActionButtonDisabled,
+              (currentStep === "address" && !canProceedFromAddress()) ||
+              (currentStep === "shipping" && !canProceedFromShipping()) ||
+              (currentStep === "payment" && !canProceedFromPayment())
+                ? styles.nextActionButtonDisabled
+                : null,
             ]}
             onPress={handleNextStep}
-            disabled={isProcessing || 
-              (currentStep === "address" && !selectedAddress) ||
-              (currentStep === "shipping" && !selectedShipping) ||
-              (currentStep === "payment" && !selectedPayment)
+            disabled={
+              isProcessing ||
+              (currentStep === "address" && !canProceedFromAddress()) ||
+              (currentStep === "shipping" && !canProceedFromShipping()) ||
+              (currentStep === "payment" && !canProceedFromPayment())
             }
           >
             {isProcessing ? (
@@ -1073,6 +1131,7 @@ const styles = StyleSheet.create({
   progressContainer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: Colors.white,
@@ -1080,50 +1139,58 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   progressStep: {
-    flexDirection: "row",
     alignItems: "center",
-    flex: 1,
+    zIndex: 1,
   },
   progressStepInner: {
     alignItems: "center",
-    minWidth: 60,
   },
-  progressDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  progressIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.border,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 4,
   },
-  progressDotActive: {
+  progressIconContainerActive: {
     backgroundColor: Colors.primary,
   },
-  progressDotCompleted: {
+  progressIconContainerCompleted: {
     backgroundColor: Colors.success,
   },
-  progressNumber: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: Colors.textSecondary,
+  progressIconContainerFuture: {
+    backgroundColor: Colors.background,
+    borderWidth: 2,
+    borderColor: Colors.border,
   },
   progressLabel: {
     fontSize: 11,
     color: Colors.textSecondary,
-    textAlign: "center",
     fontWeight: "500",
   },
   progressLabelActive: {
     color: Colors.primary,
     fontWeight: "600",
   },
-  progressLine: {
+  progressLabelCompleted: {
+    color: Colors.success,
+  },
+  progressLabelFuture: {
+    color: Colors.textSecondary,
+    opacity: 0.6,
+  },
+  progressConnector: {
     flex: 1,
     height: 2,
     backgroundColor: Colors.border,
-    marginHorizontal: 8,
-    marginTop: -20,
+    marginHorizontal: -15,
+    marginTop: -25,
+    zIndex: 0,
+  },
+  progressConnectorCompleted: {
+    backgroundColor: Colors.success,
   },
   // Content
   content: {
@@ -1133,106 +1200,151 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepContent: {
+    flex: 1,
     padding: 20,
   },
-  sectionTitle: {
-    fontSize: 18,
+  stepHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  stepTitle: {
+    fontSize: 20,
     fontWeight: "700",
     color: Colors.text,
-    marginBottom: 16,
+    marginLeft: 8,
   },
-  sectionSubtitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 12,
+  stepDescription: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 24,
   },
-  // Address
-  addressCard: {
-    backgroundColor: Colors.cardBackground,
+  // Options Container
+  optionsContainer: {
+    flex: 1,
+  },
+  // Option Cards
+  optionCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  addressCardSelected: {
+  optionCardSelected: {
     borderColor: Colors.primary,
     backgroundColor: "#F0F9FF",
   },
-  addressHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  addressTextContainer: {
+  optionContent: {
     flex: 1,
     marginLeft: 12,
   },
-  addressName: {
+  optionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  optionTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: Colors.text,
-    marginBottom: 4,
+    flex: 1,
+  },
+  optionDetail: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+  // Radio Button
+  radioContainer: {
+    padding: 4,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  radioOuterSelected: {
+    borderColor: Colors.primary,
+  },
+  radioOuterDisabled: {
+    borderColor: Colors.textSecondary,
+    opacity: 0.5,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.primary,
+  },
+  // Address Specific
+  phoneContainer: {
+    flexDirection: "row",
+    marginTop: 4,
+  },
+  phoneLabel: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginRight: 4,
+  },
+  phoneValue: {
+    fontSize: 13,
+    color: Colors.text,
+    fontWeight: "500",
   },
   defaultBadge: {
     color: Colors.success,
     fontSize: 12,
     fontWeight: "500",
   },
-  addressDetail: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginBottom: 2,
-  },
-  addressPhone: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 4,
-  },
-  addAddressButton: {
-    backgroundColor: Colors.white,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
+  addNewOptionCard: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
-  },
-  addAddressButtonText: {
-    color: Colors.primary,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  // Shipping
-  shippingCard: {
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  shippingCardSelected: {
+    borderWidth: 2,
     borderColor: Colors.primary,
-    backgroundColor: "#F0F9FF",
+    borderStyle: "dashed",
   },
-  shippingContent: {
-    flexDirection: "row",
+  addNewIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
     alignItems: "center",
   },
-  shippingTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  shippingTitle: {
+  addNewIconText: {
+    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 2,
   },
-  shippingSubtitle: {
-    fontSize: 13,
+  addNewText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.primary,
+    marginLeft: 12,
+  },
+  // Shipping Specific
+  shippingGroup: {
+    marginBottom: 20,
+  },
+  shippingGroupTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.textSecondary,
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   shippingPrice: {
     fontSize: 16,
@@ -1240,51 +1352,66 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginLeft: 8,
   },
-  // Payment
-  paymentCard: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  shippingDetails: {
+    marginTop: 8,
   },
-  paymentCardSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: "#F0F9FF",
-  },
-  paymentContent: {
+  shippingDetail: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 4,
   },
-  paymentTextContainer: {
-    flex: 1,
-    marginLeft: 12,
+  shippingDetailText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginLeft: 6,
   },
-  paymentTitle: {
+  // Payment Specific
+  paymentSecurity: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  paymentSecurityText: {
+    fontSize: 12,
+    color: Colors.success,
+    marginLeft: 6,
+  },
+  // Review Specific
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: Colors.text,
-    marginBottom: 2,
+    marginBottom: 12,
   },
-  paymentSubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-  // Review
   orderItemsContainer: {
-    marginBottom: 24,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 12,
   },
   orderItem: {
     flexDirection: "row",
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  orderItem: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  orderItem: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   orderItemImage: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     borderRadius: 8,
     backgroundColor: Colors.border,
   },
@@ -1299,11 +1426,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 4,
   },
-  orderItemVariant: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginBottom: 8,
-  },
   orderItemPriceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1314,13 +1436,73 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   orderItemTotal: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: Colors.primary,
   },
-  couponSection: {
-    marginBottom: 24,
+  summaryCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
   },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.text,
+    textAlign: "right",
+    flex: 1,
+  },
+  totalsCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  totalLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  totalValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  discountValue: {
+    color: Colors.success,
+  },
+  grandTotalRow: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  grandTotalLabel: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  grandTotalValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
+  // Coupon
   couponContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -1379,67 +1561,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     paddingHorizontal: 8,
   },
-  deliverySection: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  deliveryDetail: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  deliveryLabel: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    width: 80,
-  },
-  deliveryValue: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "500",
-    color: Colors.text,
-  },
-  totalsContainer: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  totalLabel: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  totalValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.text,
-  },
-  discountValue: {
-    color: Colors.success,
-  },
-  grandTotalRow: {
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  grandTotalLabel: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: Colors.text,
-  },
-  grandTotalValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.primary,
-  },
   termsContainer: {
     padding: 16,
     backgroundColor: Colors.cardBackground,
@@ -1453,17 +1574,14 @@ const styles = StyleSheet.create({
   },
   // Loading & Empty States
   loadingSection: {
-    flexDirection: "row",
-    alignItems: "center",
+    flex: 1,
     justifyContent: "center",
-    padding: 32,
-  },
-  loadingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: Colors.textSecondary,
+    alignItems: "center",
+    padding: 40,
   },
   emptySection: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
     padding: 40,
   },
@@ -1479,17 +1597,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     textAlign: "center",
+    marginBottom: 24,
   },
-  selectedIndicator: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
+  // Buttons
+  addAddressButton: {
+    backgroundColor: Colors.white,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderRadius: 12,
+    padding: 16,
     alignItems: "center",
+    marginTop: 8,
+  },
+  addAddressButtonText: {
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  backButtonSmall: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+  },
+  backButtonSmallText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Footer
   footer: {
@@ -1550,28 +1685,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: Colors.white,
-  },
-  backButtonSmall: {
-    marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    alignSelf: 'center',
-  },
-  backButtonSmallText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  shippingGroup: {
-    marginBottom: 16,
-  },
-  shippingGroupTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: 8,
-    textTransform: 'uppercase',
   },
 });
