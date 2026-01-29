@@ -1,4 +1,4 @@
-// components/checkout/PaymentStep.tsx - UPDATE WITH useEffect
+// components/checkout/PaymentStep.tsx - STYLES ONLY UPDATE
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useCheckout } from "@/contexts/CheckoutContext";
 import Colors from "@/constants/colors";
-import { CheckCircle } from "lucide-react-native";
+import { Check, CreditCard, Shield } from "lucide-react-native";
 
 const PaymentStep: React.FC = () => {
   const {
@@ -68,7 +68,9 @@ const PaymentStep: React.FC = () => {
   if (localLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <View style={styles.loadingPulse}>
+          <CreditCard size={48} color="#8b5cf6" />
+        </View>
         <Text style={styles.loadingText}>Loading payment methods...</Text>
       </View>
     );
@@ -78,9 +80,18 @@ const PaymentStep: React.FC = () => {
   if (!selectedShippingMethod) {
     return (
       <View style={styles.centered}>
+        <View style={styles.iconWrapper}>
+          <CreditCard size={48} color="#64748b" />
+        </View>
         <Text style={styles.errorText}>
           Please select a shipping method first
         </Text>
+        <Pressable
+          style={[styles.button, styles.backButton]}
+          onPress={() => setStep(2)}
+        >
+          <Text style={styles.backButtonText}>Back to Shipping</Text>
+        </Pressable>
       </View>
     );
   }
@@ -89,6 +100,9 @@ const PaymentStep: React.FC = () => {
   if (paymentMethods.length === 0 && selectedShippingMethod) {
     return (
       <View style={styles.centered}>
+        <View style={styles.iconWrapper}>
+          <CreditCard size={48} color="#64748b" />
+        </View>
         <Text style={styles.noMethodsText}>No payment methods available</Text>
         <Text style={styles.noMethodsSubtext}>
           Unable to load payment methods for the selected shipping method.
@@ -115,12 +129,22 @@ const PaymentStep: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>Payment Method</Text>
-
-      <Text style={styles.description}>
-        Choose your preferred payment method
-      </Text>
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.contentContainer}
+    >
+      <View style={styles.header}>
+        <View style={styles.iconWrapper}>
+          <CreditCard size={24} color="#ffffff" />
+        </View>
+        <View>
+          <Text style={styles.title}>Payment Method</Text>
+          <Text style={styles.subtitle}>
+            Choose your preferred payment method
+          </Text>
+        </View>
+      </View>
 
       {paymentMethods.map((method) => (
         <Pressable
@@ -134,13 +158,17 @@ const PaymentStep: React.FC = () => {
           disabled={isLoading || localLoading}
         >
           <View style={styles.methodContent}>
-            {method.image && (
-              <Image
-                source={{ uri: method.image }}
-                style={styles.methodImage}
-                resizeMode="contain"
-              />
-            )}
+            <View style={styles.methodIconContainer}>
+              {method.method === "cashondelivery" ? (
+                <View style={[styles.methodIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                  <CreditCard size={20} color="#f59e0b" />
+                </View>
+              ) : (
+                <View style={[styles.methodIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <CreditCard size={20} color="#3b82f6" />
+                </View>
+              )}
+            </View>
 
             <View style={styles.methodInfo}>
               <Text style={styles.methodTitle}>{method.methodTitle}</Text>
@@ -149,12 +177,22 @@ const PaymentStep: React.FC = () => {
                   {method.description}
                 </Text>
               )}
+              <View style={styles.securityBadge}>
+                <Shield size={12} color="#10b981" />
+                <Text style={styles.securityText}>
+                  Secure payment • Encrypted
+                </Text>
+              </View>
             </View>
 
             <View style={styles.radioContainer}>
-              {selectedPaymentMethod === method.method && (
-                <CheckCircle size={20} color={Colors.primary} />
-              )}
+              <View style={styles.radioOuter}>
+                {selectedPaymentMethod === method.method && (
+                  <View style={styles.radioInner}>
+                    <Check size={10} color="#ffffff" />
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         </Pressable>
@@ -179,130 +217,204 @@ const PaymentStep: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: Colors.background,
+    backgroundColor: '#f8fafc',
+  },
+  contentContainer: {
+    padding: 24,
+    paddingBottom: 40,
   },
   centered: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 32,
-    backgroundColor: Colors.background,
+    backgroundColor: '#f8fafc',
+  },
+  loadingPulse: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: '#64748b',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 32,
+    gap: 16,
+  },
+  iconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#059669', // Dark green
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   title: {
     fontSize: 24,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: 8,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 4,
   },
-  description: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    marginBottom: 24,
+  subtitle: {
+    fontSize: 14,
+    color: '#64748b',
   },
   methodCard: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: "transparent",
+    borderColor: '#d1fae5',
   },
   methodCardSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + "10",
+    borderColor: '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   methodContent: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  methodImage: {
+  methodIconContainer: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  methodIcon: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   methodInfo: {
     flex: 1,
   },
   methodTitle: {
     fontSize: 16,
-    fontWeight: "500",
-    color: Colors.text,
+    fontWeight: '600',
+    color: '#1e293b',
     marginBottom: 4,
   },
   methodDescription: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: '#64748b',
+    marginBottom: 8,
+  },
+  securityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  securityText: {
+    fontSize: 12,
+    color: '#10b981',
+    fontWeight: '500',
   },
   radioContainer: {
     width: 24,
     height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: Colors.textSecondary,
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#d1fae5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10b981',
   },
   errorText: {
     fontSize: 16,
-    color: Colors.error,
-    textAlign: "center",
+    fontWeight: '600',
+    color: '#1e293b',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   noMethodsText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    textAlign: "center",
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    textAlign: 'center',
     marginBottom: 8,
   },
   noMethodsSubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: "center",
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 24,
+    color: '#64748b',
+    textAlign: 'center',
     marginBottom: 24,
   },
+  button: {
+    backgroundColor: '#10b981',
+    borderRadius: 28,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
   buttonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   buttonText: {
-    color: Colors.white,
+    color: '#ffffff',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  // Add to styles:
   retryButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#10b981',
+    borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
     marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   retryButtonText: {
-    color: Colors.white,
+    color: '#ffffff',
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   backButton: {
-    backgroundColor: Colors.cardBackground,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#d1fae5',
   },
   backButtonText: {
-    color: Colors.text,
+    color: '#1e293b',
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
 });
 

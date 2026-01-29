@@ -5,9 +5,6 @@ import {
   AlertCircle,
   RefreshCw,
   Bug,
-  Tag,
-  X,
-  Check,
 } from "lucide-react-native";
 import React, { useState, useCallback, useEffect } from "react";
 import {
@@ -47,17 +44,12 @@ export default function CartScreen() {
     isLoading,
     cartDetails,
     hasError,
-    debugCart,
-    applyCoupon,
-    removeCoupon,
+    debugCart
   } = useCart();
 
   const [refreshing, setRefreshing] = useState(false);
   const [manualLoading, setManualLoading] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
-  const [couponCode, setCouponCode] = useState('');
-  const [applyingCoupon, setApplyingCoupon] = useState(false);
-  const [showCouponInput, setShowCouponInput] = useState(false);
   const displayCurrency = currencyCode || APP_CURRENCY;
 
   // Check if coupon is already applied
@@ -68,8 +60,6 @@ export default function CartScreen() {
   useEffect(() => {
     console.log("🔍 [CART SCREEN DEBUG] Current state:", {
       itemsCount: items.length,
-      couponApplied: isCouponApplied,
-      couponCode: appliedCouponCode,
       discountAmount: cartDetails?.discountAmount,
       items: items.map((item) => ({
         id: item.id,
@@ -92,7 +82,7 @@ export default function CartScreen() {
           }
         : null,
     });
-  }, [items, subtotal, cartDetails, isCouponApplied, appliedCouponCode]);
+  }, [items, subtotal, cartDetails]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -123,53 +113,6 @@ export default function CartScreen() {
       );
     } finally {
       setManualLoading(false);
-    }
-  };
-
-  const handleDebug = async () => {
-    console.log("🐛 [CART SCREEN] Debug triggered");
-    await debugCart();
-    setShowDebug(!showDebug);
-  };
-
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
-      Alert.alert('Invalid Coupon', 'Please enter a coupon code');
-      return;
-    }
-
-    try {
-      setApplyingCoupon(true);
-      const result = await applyCoupon(couponCode);
-      
-      if (result.success) {
-        Alert.alert('Success', result.message || 'Coupon applied successfully');
-        setCouponCode('');
-        setShowCouponInput(false);
-      } else {
-        Alert.alert('Failed', result.message || 'Invalid coupon code');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to apply coupon');
-    } finally {
-      setApplyingCoupon(false);
-    }
-  };
-
-  const handleRemoveCoupon = async () => {
-    try {
-      setApplyingCoupon(true);
-      const result = await removeCoupon();
-      
-      if (result.success) {
-        Alert.alert('Success', result.message || 'Coupon removed successfully');
-      } else {
-        Alert.alert('Failed', result.message || 'Failed to remove coupon');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to remove coupon');
-    } finally {
-      setApplyingCoupon(false);
     }
   };
 
@@ -290,13 +233,6 @@ export default function CartScreen() {
           <Pressable onPress={() => router.push("/")} style={styles.shopButton}>
             <Text style={styles.shopButtonText}>Browse Products</Text>
           </Pressable>
-
-          <Pressable onPress={handleDebug} style={styles.debugButton}>
-            <Bug size={16} color={Colors.textSecondary} />
-            <Text style={styles.debugButtonText}>
-              {showDebug ? "Hide Debug" : "Show Debug"}
-            </Text>
-          </Pressable>
         </View>
       </View>
     );
@@ -309,9 +245,6 @@ export default function CartScreen() {
       {/* Header with debug button */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Cart ({items.length} items)</Text>
-        <Pressable onPress={handleDebug} style={styles.debugHeaderButton}>
-          <Bug size={18} color={Colors.textSecondary} />
-        </Pressable>
       </View>
 
       <ScrollView
@@ -340,14 +273,6 @@ export default function CartScreen() {
               • Cart ID: {cartDetails?.id || "None"}
             </Text>
             <Text style={styles.debugInfoText}>
-              • Coupon Applied: {isCouponApplied ? 'Yes' : 'No'}
-            </Text>
-            {isCouponApplied && (
-              <Text style={styles.debugInfoText}>
-                • Coupon Code: {appliedCouponCode}
-              </Text>
-            )}
-            <Text style={styles.debugInfoText}>
               • Last Updated: {new Date().toLocaleTimeString()}
             </Text>
             {/* Add formatted price debugging */}
@@ -371,81 +296,6 @@ export default function CartScreen() {
             )}
           </View>
         )}
-
-        {/* Coupon Section */}
-        <View style={styles.couponSection}>
-          {isCouponApplied ? (
-            <View style={styles.couponAppliedContainer}>
-              <View style={styles.couponAppliedInfo}>
-                <Tag size={16} color={Colors.success} />
-                <Text style={styles.couponAppliedText}>
-                  Coupon "{appliedCouponCode}" applied
-                </Text>
-              </View>
-              <Pressable
-                onPress={handleRemoveCoupon}
-                disabled={applyingCoupon}
-                style={styles.removeCouponButton}
-              >
-                {applyingCoupon ? (
-                  <ActivityIndicator size={16} color={Colors.error} />
-                ) : (
-                  <>
-                    <X size={16} color={Colors.error} />
-                    <Text style={styles.removeCouponText}>Remove</Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-          ) : showCouponInput ? (
-            <View style={styles.couponInputContainer}>
-              <TextInput
-                style={styles.couponInput}
-                placeholder="Enter coupon code"
-                value={couponCode}
-                onChangeText={setCouponCode}
-                autoCapitalize="characters"
-                placeholderTextColor={Colors.textSecondary}
-              />
-              <View style={styles.couponInputActions}>
-                <Pressable
-                  onPress={handleApplyCoupon}
-                  disabled={applyingCoupon || !couponCode.trim()}
-                  style={[
-                    styles.applyCouponButton,
-                    (applyingCoupon || !couponCode.trim()) && styles.applyCouponButtonDisabled,
-                  ]}
-                >
-                  {applyingCoupon ? (
-                    <ActivityIndicator size={16} color={Colors.white} />
-                  ) : (
-                    <>
-                      <Check size={16} color={Colors.white} />
-                      <Text style={styles.applyCouponText}>Apply</Text>
-                    </>
-                  )}
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    setShowCouponInput(false);
-                    setCouponCode('');
-                  }}
-                  style={styles.cancelCouponButton}
-                >
-                  <X size={16} color={Colors.textSecondary} />
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <Pressable
-              style={styles.addCouponButton}
-              onPress={() => setShowCouponInput(true)}
-            >
-              <Tag size={16} color={Colors.primary} />
-              <Text style={styles.addCouponText}>Add Coupon Code</Text>
-            </Pressable>
-          )}
-        </View>
 
         <View style={styles.itemsContainer}>
           {items.map((item) => {
@@ -906,100 +756,6 @@ const styles = StyleSheet.create({
     color: "#0c4a6e",
     marginBottom: 4,
     lineHeight: 16,
-  },
-  // Coupon Styles
-  couponSection: {
-    margin: 20,
-    marginBottom: 10,
-  },
-  addCouponButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.cardBackground,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  addCouponText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.primary,
-  },
-  couponInputContainer: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 12,
-  },
-  couponInput: {
-    fontSize: 16,
-    color: Colors.text,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    marginBottom: 12,
-  },
-  couponInputActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  applyCouponButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  applyCouponButtonDisabled: {
-    opacity: 0.5,
-  },
-  applyCouponText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cancelCouponButton: {
-    padding: 8,
-  },
-  couponAppliedContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-  },
-  couponAppliedInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  couponAppliedText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.success,
-  },
-  removeCouponButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  removeCouponText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: Colors.error,
   },
   itemsContainer: {
     padding: 20,
