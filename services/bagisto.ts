@@ -1,4 +1,4 @@
-// services/bagisto.ts - COMPLETE VERSION
+// services/bagisto.ts - COMPLETE UPDATED VERSION
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -9,7 +9,6 @@ interface GraphQLResponse<T> {
   errors?: Array<{ message: string }>;
 }
 
-// Helper function for GraphQL requests
 async function fetchGraphQL<T>(
   query: string,
   variables?: any,
@@ -73,7 +72,6 @@ export class BagistoService {
     return headers;
   }
 
-  // Core GraphQL execution method
   async executeQuery<T>(query: string, variables: any = {}): Promise<T | null> {
     try {
       const response = await fetchGraphQL<T>(
@@ -83,7 +81,8 @@ export class BagistoService {
       );
 
       if (response.errors) {
-        const errorMessage = response.errors[0]?.message || "GraphQL query failed";
+        const errorMessage =
+          response.errors[0]?.message || "GraphQL query failed";
         throw new Error(errorMessage);
       }
 
@@ -91,7 +90,7 @@ export class BagistoService {
     } catch (error: any) {
       console.error(
         "❌ [BAGISTO] Failed to execute query:",
-        error?.response?.errors || error
+        error?.response?.errors || error,
       );
       throw error;
     }
@@ -207,7 +206,9 @@ export class BagistoService {
         }
       `;
 
-      const result = await this.executeQuery<{ addItemToCart: any }>(query, { input });
+      const result = await this.executeQuery<{ addItemToCart: any }>(query, {
+        input,
+      });
       return result?.addItemToCart || null;
     } catch (error) {
       console.error("❌ [BAGISTO] Failed to add to cart:", error);
@@ -215,11 +216,10 @@ export class BagistoService {
     }
   }
 
-  async updateCartItem(items: Array<{ id: string; quantity: number }>): Promise<any> {
+  async updateCartItem(
+    items: Array<{ id: string; quantity: number }>,
+  ): Promise<any> {
     try {
-      console.log('🔄 [BAGISTO] Updating cart items:', items);
-
-      // Map the items to the correct format for the mutation
       const qty = items.map((item) => ({
         cartItemId: item.id,
         quantity: item.quantity,
@@ -239,14 +239,16 @@ export class BagistoService {
         }
       `;
 
-      const variables = {
-        input: { qty },
-      };
-
-      const result = await this.executeQuery<{ updateItemToCart: any }>(query, variables);
-      return result?.updateItemToCart || { success: false, message: 'Update failed' };
+      const variables = { input: { qty } };
+      const result = await this.executeQuery<{ updateItemToCart: any }>(
+        query,
+        variables,
+      );
+      return (
+        result?.updateItemToCart || { success: false, message: "Update failed" }
+      );
     } catch (error: any) {
-      console.error('❌ [BAGISTO] Failed to update cart:', error.message);
+      console.error("❌ [BAGISTO] Failed to update cart:", error.message);
       throw error;
     }
   }
@@ -272,13 +274,17 @@ export class BagistoService {
         }
       `;
 
-      const result = await this.executeQuery<{ removeCartItem: any }>(query, { id });
+      const result = await this.executeQuery<{ removeCartItem: any }>(query, {
+        id,
+      });
       return result?.removeCartItem || null;
     } catch (error) {
       console.error("❌ [BAGISTO] Failed to remove from cart:", error);
       throw error;
     }
   }
+
+  // ==================== COUPON METHODS ====================
 
   async applyCoupon(code: string): Promise<any> {
     try {
@@ -290,6 +296,9 @@ export class BagistoService {
             cart {
               id
               itemsQty
+              baseGrandTotal
+              subTotal
+              customerId
               itemsCount
             }
           }
@@ -297,7 +306,7 @@ export class BagistoService {
       `;
 
       const result = await this.executeQuery<{ applyCoupon: any }>(query, {
-        input: { couponCode: code },
+        input: { code },
       });
       return result?.applyCoupon || null;
     } catch (error) {
@@ -313,11 +322,6 @@ export class BagistoService {
           removeCoupon {
             success
             message
-            cart {
-              id
-              itemsQty
-              itemsCount
-            }
           }
         }
       `;
@@ -332,80 +336,206 @@ export class BagistoService {
 
   // ==================== CHECKOUT METHODS ====================
 
-  // async saveCheckoutAddresses(input: {
-  //   billing: any;
-  //   shipping: any;
-  // }): Promise<any> {
-  //   try {
-  //     console.log('🏠 [BAGISTO] Saving checkout addresses');
-
-  //     const query = `
-  //       mutation SaveCheckoutAddresses($input: SaveCheckoutAddressesInput!) {
-  //         saveCheckoutAddresses(input: $input) {
-  //           message
-  //           shippingMethods {
-  //             title
-  //             methods {
-  //               code
-  //               label
-  //               price
-  //               formattedPrice
-  //               basePrice
-  //               formattedBasePrice
-  //             }
-  //           }
-  //           paymentMethods {
-  //             method
-  //             methodTitle
-  //             description
-  //             sort
-  //           }
-  //           cart {
-  //             id
-  //             itemsQty
-  //             itemsCount
-  //           }
-  //           jumpToSection
-  //         }
-  //       }
-  //     `;
-
-  //     const result = await this.executeQuery<{ saveCheckoutAddresses: any }>(query, { input });
-  //     return result?.saveCheckoutAddresses || null;
-  //   } catch (error: any) {
-  //     console.error('❌ [BAGISTO] Failed to save addresses:', error.message);
-  //     throw error;
-  //   }
-  // }
-
-  async savePayment(method: string): Promise<any> {
+  async saveCheckoutAddresses(input: {
+    billing: any;
+    shipping: any;
+  }): Promise<any> {
     try {
-      console.log('💳 [BAGISTO] Saving payment method:', method);
+      console.log("🏠 [BAGISTO] Saving checkout addresses");
 
       const query = `
-        mutation SavePayment($input: SavePaymentInput!) {
-          savePayment(input: $input) {
-            jumpToSection
+        mutation SaveCheckoutAddresses($input: SaveShippingAddressInput!) {
+          saveCheckoutAddresses(input: $input) {
+            message
             cart {
               id
-              itemsQty
-              itemsCount
+              grandTotal
+              shippingMethod
+            }
+            shippingMethods {
+              title
+              methods {
+                code
+                label
+                price
+                formattedPrice
+                basePrice
+                formattedBasePrice
+              }
+            }
+            paymentMethods {
+              method
+              methodTitle
+              description
+              sort
+              image
             }
           }
         }
       `;
 
-      const result = await this.executeQuery<{ savePayment: any }>(query, {
-        input: { method }
-      });
-      return result?.savePayment || null;
+      const result = await this.executeQuery<{ saveCheckoutAddresses: any }>(
+        query,
+        { input },
+      );
+      return result?.saveCheckoutAddresses || null;
     } catch (error: any) {
-      console.error('❌ [BAGISTO] Failed to save payment:', error.message);
+      console.error("❌ [BAGISTO] Failed to save addresses:", error.message);
       throw error;
     }
   }
 
-  // Debug method
+  async saveShippingMethod(method: string): Promise<any> {
+    try {
+      console.log("🚚 [BAGISTO] Saving shipping method:", method);
+
+      const query = `
+        mutation SaveShippingMethod($input: saveShippingMethodInput!) {
+          saveShipping(input: $input) {
+            message
+            cart {
+              id
+              shippingMethod
+              grandTotal
+            }
+          }
+        }
+      `;
+
+      const result = await this.executeQuery<{ saveShipping: any }>(query, {
+        input: { method },
+      });
+      return result?.saveShipping || null;
+    } catch (error: any) {
+      console.error(
+        "❌ [BAGISTO] Failed to save shipping method:",
+        error.message,
+      );
+      throw error;
+    }
+  }
+
+  async savePayment(method: string): Promise<any> {
+    try {
+      console.log("💳 [BAGISTO] Saving payment method:", method);
+
+      // EXACT MUTATION AS IN YOUR EXAMPLE
+      const query = `
+        mutation SavePayment($input: savePaymentMethodInput!) {
+          savePayment(input: $input) {
+            message
+            cart {
+              id
+              payment {
+                method
+                methodTitle
+              }
+              grandTotal
+            }
+            jumpToSection
+          }
+        }
+      `;
+
+      const result = await this.executeQuery<{ savePayment: any }>(query, {
+        input: { method },
+      });
+      return result?.savePayment || null;
+    } catch (error: any) {
+      console.error("❌ [BAGISTO] Failed to save payment:", error.message);
+      throw error;
+    }
+  }
+
+  async placeOrder(): Promise<any> {
+    try {
+      console.log("🛍️ [BAGISTO] Placing order...");
+
+      // EXACT MUTATION AS IN YOUR EXAMPLE
+      const query = `
+        mutation PlaceOrder {
+          placeOrder(
+            isPaymentCompleted: false
+            error: false
+            message: "Order placed via mobile app"
+            paymentMethod: "cashondelivery"
+            paymentType: "offline"
+          ) {
+            success
+            redirectUrl
+            selectedMethod
+            order {
+              id
+              incrementId
+              status
+              grandTotal
+            }
+          }
+        }
+      `;
+
+      const result = await this.executeQuery<{ placeOrder: any }>(query);
+      return result?.placeOrder || null;
+    } catch (error: any) {
+      console.error("❌ [BAGISTO] Failed to place order:", error.message);
+      throw error;
+    }
+  }
+
+  // ==================== QUERY METHODS ====================
+
+  async getShippingMethods(): Promise<any> {
+    try {
+      const query = `
+        query GetShippingMethods {
+          shippingMethods {
+            shippingMethods {
+              methods {
+                code
+                label
+              }
+            }
+          }
+        }
+      `;
+
+      const result = await this.executeQuery<{ shippingMethods: any }>(query);
+      return result?.shippingMethods || null;
+    } catch (error) {
+      console.error("❌ [BAGISTO] Failed to get shipping methods:", error);
+      throw error;
+    }
+  }
+
+  async getPaymentMethods(shippingMethod: string): Promise<any> {
+    try {
+      console.log(
+        "💳 [BAGISTO] Getting payment methods for shipping:",
+        shippingMethod,
+      );
+
+      const query = `
+        query GetPaymentMethods($input: PaymentMethodsInput!) {
+          paymentMethods(input: $input) {
+            paymentMethods {
+              method
+              methodTitle
+            }
+          }
+        }
+      `;
+
+      const result = await this.executeQuery<{ paymentMethods: any }>(query, {
+        input: { shippingMethod },
+      });
+      return result?.paymentMethods || null;
+    } catch (error) {
+      console.error("❌ [BAGISTO] Failed to get payment methods:", error);
+      throw error;
+    }
+  }
+
+  // Clear cart storage
   async clearCartStorage() {
     try {
       await AsyncStorage.removeItem("@bagisto_cart_token");

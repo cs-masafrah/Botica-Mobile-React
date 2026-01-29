@@ -17,6 +17,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from "react-native";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
@@ -43,7 +44,7 @@ export default function CartScreen() {
     isLoading,
     cartDetails,
     hasError,
-    debugCart,
+    debugCart
   } = useCart();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -51,10 +52,15 @@ export default function CartScreen() {
   const [showDebug, setShowDebug] = useState(false);
   const displayCurrency = currencyCode || APP_CURRENCY;
 
+  // Check if coupon is already applied
+  const isCouponApplied = cartDetails?.couponCode ? true : false;
+  const appliedCouponCode = cartDetails?.couponCode || '';
+
   // Debug effect
   useEffect(() => {
     console.log("🔍 [CART SCREEN DEBUG] Current state:", {
       itemsCount: items.length,
+      discountAmount: cartDetails?.discountAmount,
       items: items.map((item) => ({
         id: item.id,
         name: item.product.name,
@@ -110,10 +116,8 @@ export default function CartScreen() {
     }
   };
 
-  const handleDebug = async () => {
-    console.log("🐛 [CART SCREEN] Debug triggered");
-    await debugCart();
-    setShowDebug(!showDebug);
+  const handleCheckout = () => {
+    router.push('/checkout');
   };
 
   // Show loading state
@@ -229,13 +233,6 @@ export default function CartScreen() {
           <Pressable onPress={() => router.push("/")} style={styles.shopButton}>
             <Text style={styles.shopButtonText}>Browse Products</Text>
           </Pressable>
-
-          <Pressable onPress={handleDebug} style={styles.debugButton}>
-            <Bug size={16} color={Colors.textSecondary} />
-            <Text style={styles.debugButtonText}>
-              {showDebug ? "Hide Debug" : "Show Debug"}
-            </Text>
-          </Pressable>
         </View>
       </View>
     );
@@ -248,9 +245,6 @@ export default function CartScreen() {
       {/* Header with debug button */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Cart ({items.length} items)</Text>
-        <Pressable onPress={handleDebug} style={styles.debugHeaderButton}>
-          <Bug size={18} color={Colors.textSecondary} />
-        </Pressable>
       </View>
 
       <ScrollView
@@ -475,57 +469,47 @@ export default function CartScreen() {
           <View />
         )}
 
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Subtotal</Text>
-          <Text style={styles.totalAmount}>
-            {formatPrice(subtotal, displayCurrency)}
-          </Text>
-        </View>
-
-        {cartDetails && (
-          <View style={styles.bagistoTotals}>
-            <View style={styles.bagistoTotalRow}>
-              <Text style={styles.bagistoTotalLabel}>ORA Subtotal:</Text>
-              <Text style={styles.bagistoTotalValue}>
-                {formatPrice(cartDetails.subTotal, displayCurrency)}
-              </Text>
-            </View>
-
-            {cartDetails.taxTotal > 0 && (
-              <View style={styles.bagistoTotalRow}>
-                <Text style={styles.bagistoTotalLabel}>ORA Tax:</Text>
-                <Text style={styles.bagistoTotalValue}>
-                  {formatPrice(cartDetails.taxTotal, displayCurrency)}
-                </Text>
-              </View>
-            )}
-
-            {cartDetails.discountAmount > 0 && (
-              <View style={styles.bagistoTotalRow}>
-                <Text style={styles.bagistoTotalLabel}>ORA Discount:</Text>
-                <Text style={styles.bagistoTotalValue}>
-                  {formatPrice(cartDetails.discountAmount, displayCurrency)}
-                </Text>
-              </View>
-            )}
-
-            <View style={[styles.bagistoTotalRow, styles.bagistoGrandTotal]}>
-              <Text style={styles.bagistoTotalLabel}>ORA Grand Total:</Text>
-              <Text
-                style={[
-                  styles.bagistoTotalValue,
-                  styles.bagistoGrandTotalValue,
-                ]}
-              >
-                {formatPrice(cartDetails.grandTotal, displayCurrency)}
-              </Text>
-            </View>
+        {/* Order Summary */}
+        <View style={styles.orderSummary}>
+          <Text style={styles.orderSummaryTitle}>Order Summary</Text>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryValue}>
+              {formatPrice(subtotal, displayCurrency)}
+            </Text>
           </View>
-        )}
+
+          {cartDetails?.discountAmount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Discount</Text>
+              <Text style={[styles.summaryValue, styles.discountValue]}>
+                -{formatPrice(cartDetails.discountAmount, displayCurrency)}
+              </Text>
+            </View>
+          )}
+
+          {cartDetails?.taxTotal > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Tax</Text>
+              <Text style={styles.summaryValue}>
+                {formatPrice(cartDetails.taxTotal, displayCurrency)}
+              </Text>
+            </View>
+          )}
+
+          <View style={[styles.summaryRow, styles.grandTotalRow]}>
+            <Text style={styles.grandTotalLabel}>Total</Text>
+            <Text style={styles.grandTotalValue}>
+              {formatPrice(cartDetails?.grandTotal || total, displayCurrency)}
+            </Text>
+          </View>
+        </View>
 
         <Pressable
           style={styles.checkoutButton}
-          onPress={() => router.push("/checkout")}
+          onPress={handleCheckout}
+          disabled={items.length === 0}
         >
           <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
         </Pressable>
@@ -775,6 +759,7 @@ const styles = StyleSheet.create({
   },
   itemsContainer: {
     padding: 20,
+    paddingTop: 10,
   },
   cartItem: {
     flexDirection: "row",
@@ -902,6 +887,52 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
+  orderSummary: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  orderSummaryTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+  },
+  discountValue: {
+    color: Colors.success,
+  },
+  grandTotalRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  grandTotalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  grandTotalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
   shippingProgressContainer: {
     backgroundColor: "transparent",
     marginBottom: 16,
@@ -962,71 +993,6 @@ const styles = StyleSheet.create({
     fontWeight: "900" as const,
     fontSize: 13,
     color: "#000000",
-  },
-  progressTextAchieved: {
-    fontSize: 13,
-    fontWeight: "900" as const,
-    color: "#000000",
-    textAlign: "center" as const,
-  },
-  progressPercentage: {
-    display: "none" as const,
-  },
-  progressPercentageText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: Colors.white,
-  },
-  totalContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: Colors.text,
-  },
-  totalAmount: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: Colors.text,
-  },
-  bagistoTotals: {
-    marginBottom: 16,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    padding: 12,
-  },
-  bagistoTotalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  bagistoTotalLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  bagistoTotalValue: {
-    fontSize: 12,
-    color: Colors.text,
-    fontWeight: "500" as const,
-  },
-  bagistoGrandTotal: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  bagistoGrandTotalValue: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: Colors.primary,
   },
   checkoutButton: {
     backgroundColor: "#10B981",

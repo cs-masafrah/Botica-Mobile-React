@@ -1,18 +1,20 @@
 // app/_layout.tsx - Updated
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect, useState } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AddressContext } from '@/contexts/AddressContext';
-import { AuthContext } from '@/contexts/AuthContext';
-import { CartContext } from '@/contexts/CartContext';
-import { HomepageConfigContext } from '@/contexts/HomepageConfigContext';
-import { LanguageContext } from '@/contexts/LanguageContext';
-import { WishlistContext } from '@/contexts/WishlistContext';
-import { FloatingCart } from '@/components/FloatingCart';
-import { preloadImages, extractImageUrls } from '@/utils/imagePreloader';
-import { Alert } from 'react-native';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import React, { useEffect, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { AddressContext } from "@/contexts/AddressContext";
+import { AuthContext } from "@/contexts/AuthContext";
+import { CartContext } from "@/contexts/CartContext";
+import { HomepageConfigContext } from "@/contexts/HomepageConfigContext";
+import { LanguageContext } from "@/contexts/LanguageContext";
+import { WishlistContext } from "@/contexts/WishlistContext";
+// ADD THIS IMPORT
+import { CheckoutProvider } from "@/contexts/CheckoutContext";
+import { FloatingCart } from "@/components/FloatingCart";
+import { preloadImages, extractImageUrls } from "@/utils/imagePreloader";
+import { Alert } from "react-native";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,16 +28,16 @@ function RootLayoutNav() {
       try {
         const queryCache = queryClient.getQueryCache();
         const allQueries = queryCache.getAll();
-        const allData = allQueries.map(q => q.state.data).filter(Boolean);
-        
+        const allData = allQueries.map((q) => q.state.data).filter(Boolean);
+
         const imageUrls = extractImageUrls(allData);
-        
+
         if (imageUrls.length > 0) {
-          console.log('Found', imageUrls.length, 'images to preload');
+          console.log("Found", imageUrls.length, "images to preload");
           await preloadImages(imageUrls.slice(0, 30));
         }
       } catch (error) {
-        console.error('Error preloading images:', error);
+        console.error("Error preloading images:", error);
       } finally {
         setImagesPreloaded(true);
       }
@@ -50,109 +52,111 @@ function RootLayoutNav() {
 
   return (
     <>
-      <Stack screenOptions={{ headerBackTitle: 'Back' }}>
+      <Stack screenOptions={{ headerBackTitle: "Back" }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="product/[id]"
           options={{
             headerShown: true,
-            headerTitle: '',
+            headerTitle: "",
             headerTransparent: true,
-            headerBackTitle: 'Back',
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen
           name="category/[id]"
           options={{
             headerShown: true,
-            headerBackTitle: 'Back',
+            headerBackTitle: "Back",
           }}
         />
+        {/* UPDATE THIS CHECKOUT SCREEN */}
         <Stack.Screen
           name="checkout"
           options={{
             headerShown: false,
+            presentation: "fullScreenModal",
           }}
         />
         <Stack.Screen
           name="wishlist"
           options={{
             headerShown: true,
-            headerTitle: 'Wishlist',
-            headerBackTitle: 'Back',
+            headerTitle: "Wishlist",
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen
           name="login"
           options={{
             headerShown: true,
-            headerTitle: 'Sign In',
-            headerBackTitle: 'Back',
-            presentation: 'modal',
+            headerTitle: "Sign In",
+            headerBackTitle: "Back",
+            presentation: "modal",
           }}
         />
         <Stack.Screen
           name="signup"
           options={{
             headerShown: true,
-            headerTitle: 'Sign Up',
-            headerBackTitle: 'Back',
-            presentation: 'modal',
+            headerTitle: "Sign Up",
+            headerBackTitle: "Back",
+            presentation: "modal",
           }}
         />
         <Stack.Screen
           name="addresses"
           options={{
             headerShown: true,
-            headerTitle: 'Addresses',
-            headerBackTitle: 'Back',
+            headerTitle: "Addresses",
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen
           name="edit-profile"
           options={{
             headerShown: true,
-            headerTitle: 'Edit Profile',
-            headerBackTitle: 'Back',
+            headerTitle: "Edit Profile",
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen
           name="settings"
           options={{
             headerShown: true,
-            headerTitle: 'Settings',
-            headerBackTitle: 'Back',
+            headerTitle: "Settings",
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen
           name="order-history"
           options={{
             headerShown: true,
-            headerTitle: 'Order History',
-            headerBackTitle: 'Back',
+            headerTitle: "Order History",
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen
           name="order-details"
           options={{
             headerShown: true,
-            headerTitle: 'Order Details',
-            headerBackTitle: 'Back',
+            headerTitle: "Order Details",
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen
           name="vendor/[name]"
           options={{
             headerShown: true,
-            headerBackTitle: 'Back',
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen
           name="customize-homepage"
           options={{
             headerShown: true,
-            headerTitle: 'Customize Homepage',
-            headerBackTitle: 'Back',
+            headerTitle: "Customize Homepage",
+            headerBackTitle: "Back",
           }}
         />
       </Stack>
@@ -172,15 +176,16 @@ export default function RootLayout() {
         <LanguageContext>
           <AuthContext>
             <AddressContext>
-              {/* REMOVED: <ShopifyContext> */}
               <HomepageConfigContext>
-                <CartContext>
-                  <WishlistContext>
-                    <RootLayoutNav />
-                  </WishlistContext>
-                </CartContext>
+                {/* ADD CHECKOUT PROVIDER HERE */}
+                <CheckoutProvider>
+                  <CartContext>
+                    <WishlistContext>
+                      <RootLayoutNav />
+                    </WishlistContext>
+                  </CartContext>
+                </CheckoutProvider>
               </HomepageConfigContext>
-              {/* REMOVED: </ShopifyContext> */}
             </AddressContext>
           </AuthContext>
         </LanguageContext>

@@ -1,4 +1,4 @@
-// app/order-history.tsx
+// app/order-history.tsx - UPDATED WITH CURRENCY FORMATTING
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -21,7 +21,7 @@ import {
 import { orderService } from "@/services/OrderService";
 import { authService } from "@/services/auth";
 import Colors from "@/constants/colors";
-import { formatPrice } from "@/utils/currency";
+import { formatPrice, parseFormattedPrice, APP_CURRENCY } from "@/utils/currency";
 
 const OrderHistoryScreen = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -32,6 +32,9 @@ const OrderHistoryScreen = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const insets = useSafeAreaInsets();
+
+  // Default currency - you might want to get this from user settings or app config
+  const defaultCurrency = APP_CURRENCY; // Default to ILS based on your currency.ts
 
   useEffect(() => {
     checkAuth();
@@ -122,6 +125,95 @@ const OrderHistoryScreen = () => {
     if (!loading && hasMore && isAuthenticated) {
       loadOrders(page + 1);
     }
+  };
+
+  // Helper function to get order total with proper currency formatting
+  const getOrderTotal = (order: any): string => {
+    if (!order) return formatPrice(0, defaultCurrency);
+    
+    // Try to get the total from various possible locations
+    let total = 0;
+    let currency = defaultCurrency;
+    
+    // Try grandTotal first
+    if (order.grandTotal !== undefined && order.grandTotal !== null) {
+      total = parseFormattedPrice(order.grandTotal);
+    }
+    
+    // Try formattedPrice.grandTotal as a fallback
+    if ((total === 0 || isNaN(total)) && order.formattedPrice?.grandTotal) {
+      total = parseFormattedPrice(order.formattedPrice.grandTotal);
+    }
+    
+    // Try to detect currency from formatted price
+    if (order.formattedPrice?.grandTotal) {
+      const priceStr = order.formattedPrice.grandTotal.toString();
+      if (priceStr.includes('₪')) currency = 'ILS';
+      else if (priceStr.includes('$')) currency = 'USD';
+      else if (priceStr.includes('€')) currency = 'EUR';
+      else if (priceStr.includes('£')) currency = 'GBP';
+      else if (priceStr.includes('¥')) currency = 'JPY';
+    }
+    
+    // Use order currency code if available
+    if (order.orderCurrencyCode) {
+      currency = order.orderCurrencyCode;
+    } else if (order.currencyCode) {
+      currency = order.currencyCode;
+    } else if (order.baseCurrencyCode) {
+      currency = order.baseCurrencyCode;
+    } else if (order.channelCurrencyCode) {
+      currency = order.channelCurrencyCode;
+    }
+    
+    return formatPrice(total, currency);
+  };
+
+  // Helper to get order subtotal
+  const getOrderSubtotal = (order: any): string => {
+    if (!order) return formatPrice(0, defaultCurrency);
+    
+    let subtotal = 0;
+    let currency = defaultCurrency;
+    
+    if (order.subTotal !== undefined && order.subTotal !== null) {
+      subtotal = parseFormattedPrice(order.subTotal);
+    }
+    
+    if (order.orderCurrencyCode) {
+      currency = order.orderCurrencyCode;
+    }
+    
+    return formatPrice(subtotal, currency);
+  };
+
+  // Helper to get shipping cost
+  const getShippingCost = (order: any): string => {
+    if (!order) return formatPrice(0, defaultCurrency);
+    
+    let shipping = 0;
+    let currency = defaultCurrency;
+    
+    if (order.shippingAmount !== undefined && order.shippingAmount !== null) {
+      shipping = parseFormattedPrice(order.shippingAmount);
+    }
+    
+    if (order.orderCurrencyCode) {
+      currency = order.orderCurrencyCode;
+    }
+    
+    return formatPrice(shipping, currency);
+  };
+
+  // Helper to get discount amount
+  const getDiscountAmount = (order: any): string => {
+    if (!order) return "";
+    
+    const discount = order.discountAmount || 0;
+    if (discount <= 0) return "";
+    
+    const currency = order.orderCurrencyCode || defaultCurrency;
+    return formatPrice(discount, currency);
   };
 
   const getStatusColor = (status: string) => {
@@ -336,16 +428,38 @@ const OrderHistoryScreen = () => {
                         items
                       </Text>
                     </View>
+                    
+                    {/* Order Summary Row - Optional: Show subtotal, shipping, total */}
+                    <View style={styles.orderSummaryRow}>
+                      <Text style={styles.summaryLabel}>Items:</Text>
+                      <Text style={styles.summaryValue}>
+                        {getOrderSubtotal(order)}
+                      </Text>
+                    </View>
+                    
+                    {order.shippingAmount > 0 && (
+                      <View style={styles.orderSummaryRow}>
+                        <Text style={styles.summaryLabel}>Shipping:</Text>
+                        <Text style={styles.summaryValue}>
+                          {getShippingCost(order)}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {order.discountAmount > 0 && (
+                      <View style={styles.orderSummaryRow}>
+                        <Text style={styles.summaryLabel}>Discount:</Text>
+                        <Text style={[styles.summaryValue, styles.discountValue]}>
+                          -{getDiscountAmount(order)}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.orderFooter}>
                     <Text style={styles.totalLabel}>Total</Text>
                     <Text style={styles.totalAmount}>
-                      {formatPrice(
-                        order.grandTotal ||
-                          order.formattedPrice?.grandTotal ||
-                          0,
-                      )}
+                      {getOrderTotal(order)}
                     </Text>
                   </View>
                 </Pressable>
@@ -508,6 +622,23 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  orderSummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 2,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  summaryValue: {
+    fontSize: 12,
+    color: Colors.text,
+    fontWeight: "500",
+  },
+  discountValue: {
+    color: Colors.success,
   },
   orderFooter: {
     flexDirection: "row",
