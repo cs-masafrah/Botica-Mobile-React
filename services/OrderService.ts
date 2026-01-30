@@ -1,6 +1,4 @@
-import { authService } from '@/services/auth';
-// services/OrderService.ts - UPDATED TO USE AUTH CONTEXT
-// import { useAuthStore } from '@/service/auth'; // Or import your auth context
+import { authService } from "@/services/auth";
 import { bagistoService } from "./bagisto";
 
 export interface OrderItem {
@@ -180,7 +178,7 @@ interface FilterCustomerOrderInput {
 }
 
 class OrderService {
-  // Get order list - SIMPLIFIED
+  // Get order list - FIXED AUTHENTICATION
   async getOrdersList(params?: {
     page?: number;
     limit?: number;
@@ -190,7 +188,14 @@ class OrderService {
 
       console.log("📋 [ORDER SERVICE] Fetching orders list...");
 
-      // Use the comprehensive query
+      // First, get the authentication token from authService
+      const auth = await authService.getStoredAuth();
+      if (!auth) {
+        console.error("❌ [ORDER SERVICE] Not authenticated");
+        throw new Error("Not authenticated. Please log in first.");
+      }
+
+      // Use the comprehensive query with customer-specific query
       const query = `
         query OrdersList($first: Int = 10, $page: Int) {
           ordersList(first: $first, page: $page) {
@@ -240,55 +245,172 @@ class OrderService {
         page: page,
       };
 
-      const result = await bagistoService.executeQuery<OrderListResponse>(
-        query,
-        variables,
-      );
+      // Create headers with the auth token
+      const headers = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${auth.accessToken}`,
+      };
 
-      if (result?.ordersList) {
+      // Use a direct fetch instead of bagistoService to ensure proper auth headers
+      const response = await fetch(authService.baseUrl, {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ query, variables }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          "❌ [ORDER SERVICE] HTTP error:",
+          response.status,
+          response.statusText,
+        );
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const json = await response.json();
+
+      // Check for GraphQL errors
+      if (json.errors?.length) {
+        const errorMessage = json.errors.map((e: any) => e.message).join(", ");
+        console.error("❌ [ORDER SERVICE] GraphQL errors:", errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      if (json.data?.ordersList) {
         console.log(
-          `✅ [ORDER SERVICE] Fetched ${result.ordersList.data.length} orders`,
+          `✅ [ORDER SERVICE] Fetched ${json.data.ordersList.data.length} orders`,
         );
         return {
-          data: result.ordersList.data,
-          paginatorInfo: result.ordersList.paginatorInfo,
+          data: json.data.ordersList.data,
+          paginatorInfo: json.data.ordersList.paginatorInfo,
         };
       }
 
       console.log("⚠️ [ORDER SERVICE] No orders data returned");
-      return { data: [], paginatorInfo: {} };
+      return { data: [], paginatorInfo: this.getEmptyPaginatorInfo() };
     } catch (error) {
       console.error("❌ [ORDER SERVICE] Failed to fetch orders:", error);
-      
+
       // Check if it's an authentication error
       if (error instanceof Error) {
-        if (error.message.includes('HTTP 401') || 
-            error.message.includes('Unauthenticated') ||
-            error.message.includes('Authentication')) {
-          console.error("🔐 [ORDER SERVICE] Authentication error");
+        if (
+          error.message.includes("HTTP 401") ||
+          error.message.includes("Unauthenticated") ||
+          error.message.includes("Authentication") ||
+          error.message.includes("Not authenticated")
+        ) {
+          console.error(
+            "🔐 [ORDER SERVICE] Authentication error - logging out user",
+          );
+          // Clear auth state
+          await authService.logout();
         }
       }
-      
+
       return { data: [], paginatorInfo: this.getEmptyPaginatorInfo() };
     }
   }
 
-  // Get single order detail - SIMPLIFIED (search within ordersList)
+  // Get single order detail - FIXED AUTHENTICATION
   async getOrderDetail(orderId: string): Promise<Order | null> {
     try {
       console.log("📋 [ORDER SERVICE] Fetching order detail:", orderId);
 
-      // Get all orders (with higher limit) to search
-      const ordersList = await this.getOrdersList({ limit: 50 });
-      const order = ordersList.data.find(
-        (o) => o.id.toString() === orderId || o.incrementId === orderId,
-      );
-
-      if (order) {
-        return order;
+      // First, get the authentication token
+      const auth = await authService.getStoredAuth();
+      if (!auth) {
+        console.error("❌ [ORDER SERVICE] Not authenticated for order detail");
+        throw new Error("Not authenticated. Please log in first.");
       }
 
-      console.log("⚠️ [ORDER SERVICE] Order not found in list:", orderId);
+      // Query for a specific order
+      const query = `
+        query OrderDetail($id: ID!) {
+          orderDetail(id: $id) {
+            id
+            incrementId
+            status
+            statusLabel
+            grandTotal
+            subTotal
+            discountAmount
+            taxAmount
+            shippingAmount
+            totalQtyOrdered
+            totalItemCount
+            createdAt
+            formattedPrice {
+              grandTotal
+              subTotal
+              discountAmount
+              taxAmount
+              shippingAmount
+            }
+            payment {
+              method
+              methodTitle
+            }
+            shippingAddress {
+              city
+              postcode
+              country
+            }
+            billingAddress {
+              city
+              postcode
+              country
+            }
+            items {
+              id
+              name
+              sku
+              price
+              qtyOrdered
+              total
+            }
+          }
+        }
+      `;
+
+      const headers = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${auth.accessToken}`,
+      };
+
+      const response = await fetch(bagistoService.baseUrl, {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ query, variables: { id: orderId } }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          "❌ [ORDER SERVICE] HTTP error for order detail:",
+          response.status,
+        );
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const json = await response.json();
+
+      if (json.errors?.length) {
+        const errorMessage = json.errors.map((e: any) => e.message).join(", ");
+        console.error(
+          "❌ [ORDER SERVICE] GraphQL errors for order detail:",
+          errorMessage,
+        );
+        throw new Error(errorMessage);
+      }
+
+      if (json.data?.orderDetail) {
+        return json.data.orderDetail;
+      }
+
+      console.log("⚠️ [ORDER SERVICE] Order not found:", orderId);
       return null;
     } catch (error) {
       console.error("❌ [ORDER SERVICE] Failed to fetch order detail:", error);
@@ -296,12 +418,12 @@ class OrderService {
     }
   }
 
-  // Get order by increment ID (search within ordersList)
+  // Get order by increment ID
   async getOrderByIncrementId(incrementId: string): Promise<Order | null> {
     try {
       console.log("📋 [ORDER SERVICE] Fetching order by number:", incrementId);
 
-      // Search in orders list
+      // First get orders list and search
       const ordersList = await this.getOrdersList({ limit: 50 });
       const order = ordersList.data.find((o) => o.incrementId === incrementId);
 
@@ -330,8 +452,22 @@ class OrderService {
       lastPage: 1,
       total: 0,
       perPage: 10,
-      hasMorePages: false
+      hasMorePages: false,
     };
+  }
+
+  // Add a helper method to check if user is authenticated
+  async checkAuthentication(): Promise<boolean> {
+    try {
+      const auth = await authService.getStoredAuth();
+      return !!auth;
+    } catch (error) {
+      console.error(
+        "❌ [ORDER SERVICE] Failed to check authentication:",
+        error,
+      );
+      return false;
+    }
   }
 }
 

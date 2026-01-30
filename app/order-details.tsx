@@ -1,5 +1,5 @@
-// app/order-details.tsx
-import React, { useState, useEffect } from 'react';
+// app/order-history.tsx
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,52 +7,137 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-} from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Package, Clock, CreditCard, MapPin, Truck } from 'lucide-react-native';
-import { orderService } from '@/services/OrderService';
-import Colors from '@/constants/colors';
-import { formatPrice } from '@/utils/currency';
+  RefreshControl,
+} from "react-native";
+import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  ArrowLeft,
+  Package,
+  Clock,
+  CreditCard,
+  MapPin,
+} from "lucide-react-native";
+import { orderService } from "@/services/OrderService";
+import { authService } from "@/services/auth";
+import Colors from "@/constants/colors";
+import { formatPrice } from "@/utils/currency";
 
-const OrderDetailsScreen = () => {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [order, setOrder] = useState<any>(null);
+const OrderHistoryScreen = () => {
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (id) {
-      loadOrder();
-    }
-  }, [id]);
+    checkAuth();
+  }, []);
 
-  const loadOrder = async () => {
+  // In your OrderHistoryScreen component, update the checkAuth function:
+
+  const checkAuth = async () => {
     try {
-      setLoading(true);
-      const orderData = await orderService.getOrderDetail(id);
-      setOrder(orderData);
+      setAuthLoading(true);
+
+      // Use orderService's authentication check
+      const isAuth = await orderService.checkAuthentication();
+      setIsAuthenticated(isAuth);
+
+      if (isAuth) {
+        console.log("✅ User authenticated, loading orders...");
+        await loadOrders();
+      } else {
+        console.log("⚠️ User not authenticated, redirecting to login...");
+        router.replace("/login");
+      }
     } catch (error) {
-      console.error('Failed to load order:', error);
+      console.error("❌ Authentication check failed:", error);
+      setIsAuthenticated(false);
+      router.replace("/login");
     } finally {
-      setLoading(false);
+      setAuthLoading(false);
     }
   };
 
-  const handleBack = () => {
-    router.back();
+  const loadOrders = async (
+    pageNum: number = 1,
+    isRefresh: boolean = false,
+  ) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const result = await orderService.getOrdersList({
+        page: pageNum,
+        limit: 10,
+      });
+
+      console.log("📋 Orders loaded:", {
+        count: result.data.length,
+        hasMore: result.paginatorInfo.hasMorePages,
+        page: pageNum,
+      });
+
+      if (isRefresh || pageNum === 1) {
+        setOrders(result.data);
+      } else {
+        setOrders((prev) => [...prev, ...result.data]);
+      }
+
+      setHasMore(result.paginatorInfo.hasMorePages || false);
+      setPage(pageNum);
+    } catch (error) {
+      console.error("Failed to load orders:", error);
+      // Check if it's an authentication error
+      if (
+        error.message?.includes("Authentication") ||
+        error.message?.includes("401")
+      ) {
+        console.log("🔐 Authentication error, clearing auth state...");
+        await authService.logout();
+        setIsAuthenticated(false);
+        router.replace("/login");
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    // First check authentication using orderService
+    const isAuth = await orderService.checkAuthentication();
+    if (!isAuth) {
+      setIsAuthenticated(false);
+      router.replace("/login");
+      return;
+    }
+    await loadOrders(1, true);
+  };
+
+  const loadMore = () => {
+    if (!loading && hasMore && isAuthenticated) {
+      loadOrders(page + 1);
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'completed':
-      case 'delivered':
+      case "completed":
+      case "delivered":
         return Colors.success;
-      case 'processing':
-      case 'pending':
+      case "processing":
+      case "pending":
         return Colors.warning;
-      case 'canceled':
-      case 'cancelled':
+      case "canceled":
+      case "cancelled":
         return Colors.error;
       default:
         return Colors.textSecondary;
@@ -60,59 +145,85 @@ const OrderDetailsScreen = () => {
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return '';
+    if (!dateString) return "";
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
     } catch (error) {
       return dateString;
     }
   };
 
-  const handleRefresh = () => {
-    loadOrder();
+  const handleBack = () => {
+    router.back();
   };
 
-  if (loading) {
+  // Show loading while checking authentication
+  if (authLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={handleBack}>
             <ArrowLeft size={24} color={Colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>Order Details</Text>
+          <Text style={styles.headerTitle}>My Orders</Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading order details...</Text>
+          <Text style={styles.loadingText}>Checking authentication...</Text>
         </View>
       </View>
     );
   }
 
-  if (!order) {
+  // Redirect if not authenticated (should have happened already, but as fallback)
+  if (!isAuthenticated) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={handleBack}>
             <ArrowLeft size={24} color={Colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>Order Details</Text>
+          <Text style={styles.headerTitle}>My Orders</Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Order not found</Text>
-          <Pressable style={styles.retryButton} onPress={handleRefresh}>
-            <Text style={styles.retryButtonText}>Refresh</Text>
+          <View style={styles.emptyIcon}>
+            <Package size={64} color={Colors.textSecondary} />
+          </View>
+          <Text style={styles.emptyTitle}>Authentication Required</Text>
+          <Text style={styles.emptySubtitle}>
+            Please login to view your orders
+          </Text>
+          <Pressable
+            style={styles.shopButton}
+            onPress={() => router.push("/login")}
+          >
+            <Text style={styles.shopButtonText}>Go to Login</Text>
           </Pressable>
-          <Pressable style={styles.backToOrdersButton} onPress={() => router.push('/order-history')}>
-            <Text style={styles.backToOrdersText}>Back to Orders</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (loading && orders.length === 0) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Pressable style={styles.backButton} onPress={handleBack}>
+            <ArrowLeft size={24} color={Colors.text} />
           </Pressable>
+          <Text style={styles.headerTitle}>My Orders</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading your orders...</Text>
         </View>
       </View>
     );
@@ -125,118 +236,143 @@ const OrderDetailsScreen = () => {
         <Pressable style={styles.backButton} onPress={handleBack}>
           <ArrowLeft size={24} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Order Details</Text>
+        <Text style={styles.headerTitle}>My Orders</Text>
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Order Header */}
-        <View style={styles.orderHeader}>
-          <View>
-            <Text style={styles.orderNumber}>Order #{order.incrementId}</Text>
-            <Text style={styles.orderDate}>
-              <Clock size={14} color={Colors.textSecondary} /> {formatDate(order.createdAt)}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primary]}
+            tintColor={Colors.primary}
+          />
+        }
+      >
+        {orders.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIcon}>
+              <Package size={64} color={Colors.textSecondary} />
+            </View>
+            <Text style={styles.emptyTitle}>No Orders Yet</Text>
+            <Text style={styles.emptySubtitle}>
+              When you place orders, they will appear here
             </Text>
+            <Pressable
+              style={styles.shopButton}
+              onPress={() => router.push("/(tabs)")}
+            >
+              <Text style={styles.shopButtonText}>Start Shopping</Text>
+            </Pressable>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '20' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
-              {order.statusLabel || order.status}
-            </Text>
-          </View>
-        </View>
+        ) : (
+          <>
+            <View style={styles.ordersList}>
+              {orders.map((order) => (
+                <Pressable
+                  key={order.id}
+                  style={styles.orderCard}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/order-details",
+                      params: { id: order.id },
+                    })
+                  }
+                >
+                  <View style={styles.orderHeader}>
+                    <View>
+                      <Text style={styles.orderNumber}>
+                        Order #{order.incrementId}
+                      </Text>
+                      <Text style={styles.orderDate}>
+                        <Clock size={14} color={Colors.textSecondary} />{" "}
+                        {formatDate(order.createdAt)}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor: getStatusColor(order.status) + "20",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
+                          { color: getStatusColor(order.status) },
+                        ]}
+                      >
+                        {order.statusLabel || order.status}
+                      </Text>
+                    </View>
+                  </View>
 
-        {/* Order Summary */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
-          
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Items</Text>
-            <Text style={styles.summaryValue}>
-              {order.totalItemCount || order.totalQtyOrdered || 0}
-            </Text>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>
-              {formatPrice(order.subTotal || order.formattedPrice?.subTotal || 0)}
-            </Text>
-          </View>
-          
-          {order.shippingAmount > 0 && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Shipping</Text>
-              <Text style={styles.summaryValue}>
-                {formatPrice(order.shippingAmount || order.formattedPrice?.shippingAmount || 0)}
-              </Text>
-            </View>
-          )}
-          
-          {order.taxAmount > 0 && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tax</Text>
-              <Text style={styles.summaryValue}>
-                {formatPrice(order.taxAmount || order.formattedPrice?.taxAmount || 0)}
-              </Text>
-            </View>
-          )}
-          
-          {order.discountAmount > 0 && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Discount</Text>
-              <Text style={[styles.summaryValue, styles.discountValue]}>
-                -{formatPrice(order.discountAmount || order.formattedPrice?.discountAmount || 0)}
-              </Text>
-            </View>
-          )}
-          
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>
-              {formatPrice(order.grandTotal || order.formattedPrice?.grandTotal || 0)}
-            </Text>
-          </View>
-        </View>
+                  <View style={styles.orderInfo}>
+                    {order.payment && (
+                      <View style={styles.infoRow}>
+                        <CreditCard size={16} color={Colors.textSecondary} />
+                        <Text style={styles.infoText}>
+                          {order.payment.methodTitle ||
+                            order.payment.method ||
+                            "N/A"}
+                        </Text>
+                      </View>
+                    )}
 
-        {/* Payment Information */}
-        {order.payment && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              <CreditCard size={16} color={Colors.text} style={styles.sectionIcon} />
-              Payment
-            </Text>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Method</Text>
-              <Text style={styles.infoValue}>
-                {order.payment.methodTitle || order.payment.method || 'N/A'}
-              </Text>
+                    {order.shippingAddress && (
+                      <View style={styles.infoRow}>
+                        <MapPin size={16} color={Colors.textSecondary} />
+                        <Text style={styles.infoText}>
+                          {order.shippingAddress.city},{" "}
+                          {order.shippingAddress.country}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={styles.infoRow}>
+                      <Package size={16} color={Colors.textSecondary} />
+                      <Text style={styles.infoText}>
+                        {order.totalItemCount || order.totalQtyOrdered || 0}{" "}
+                        items
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.orderFooter}>
+                    <Text style={styles.totalLabel}>Total</Text>
+                    <Text style={styles.totalAmount}>
+                      {formatPrice(
+                        order.grandTotal ||
+                          order.formattedPrice?.grandTotal ||
+                          0,
+                      )}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
             </View>
-          </View>
+
+            {hasMore && (
+              <Pressable
+                style={styles.loadMoreButton}
+                onPress={loadMore}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Text style={styles.loadMoreText}>Load More Orders</Text>
+                )}
+              </Pressable>
+            )}
+
+            <View style={styles.footerSpacing} />
+          </>
         )}
-
-        {/* Shipping Information */}
-        {order.shippingAddress && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              <Truck size={16} color={Colors.text} style={styles.sectionIcon} />
-              Shipping
-            </Text>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>City</Text>
-              <Text style={styles.infoValue}>{order.shippingAddress.city || 'N/A'}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Postcode</Text>
-              <Text style={styles.infoValue}>{order.shippingAddress.postcode || 'N/A'}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Country</Text>
-              <Text style={styles.infoValue}>{order.shippingAddress.country || 'N/A'}</Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.footerSpacing} />
       </ScrollView>
     </View>
   );
@@ -248,9 +384,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: Colors.white,
@@ -260,12 +396,12 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   headerRight: {
@@ -276,8 +412,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   loadingText: {
@@ -287,57 +423,71 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
+    minHeight: 400,
   },
-  emptyText: {
-    fontSize: 18,
+  emptyIcon: {
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
     color: Colors.textSecondary,
-    marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
+    marginBottom: 32,
+    lineHeight: 24,
   },
-  retryButton: {
+  shopButton: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
-  retryButtonText: {
+  shopButtonText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
-  backToOrdersButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+  ordersList: {
+    padding: 20,
   },
-  backToOrdersText: {
-    color: Colors.primary,
-    fontSize: 16,
-    fontWeight: '600',
+  orderCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   orderHeader: {
-    backgroundColor: Colors.white,
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
   },
   orderNumber: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 4,
   },
   orderDate: {
     fontSize: 14,
     color: Colors.textSecondary,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   statusBadge: {
@@ -347,79 +497,57 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
-  section: {
-    backgroundColor: Colors.white,
-    marginTop: 12,
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
+  orderInfo: {
     marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
   },
-  sectionIcon: {
-    marginRight: 8,
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  summaryLabel: {
+  infoText: {
     fontSize: 14,
     color: Colors.textSecondary,
   },
-  summaryValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.text,
-  },
-  discountValue: {
-    color: Colors.success,
-  },
-  totalRow: {
-    marginTop: 8,
-    paddingTop: 12,
+  orderFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
   totalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  totalValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  infoItem: {
-    marginBottom: 12,
-  },
-  infoLabel: {
     fontSize: 14,
     color: Colors.textSecondary,
-    marginBottom: 4,
   },
-  infoValue: {
+  totalAmount: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
+  loadMoreButton: {
+    backgroundColor: Colors.cardBackground,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  loadMoreText: {
+    color: Colors.primary,
     fontSize: 16,
-    color: Colors.text,
-    fontWeight: '500',
+    fontWeight: "600",
   },
   footerSpacing: {
     height: 32,
   },
 });
 
-export default OrderDetailsScreen;
+export default OrderHistoryScreen;

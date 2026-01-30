@@ -191,7 +191,15 @@ const AddressStep: React.FC = () => {
           {/* -------- Add new address CTA -------- */}
           <Pressable
             style={styles.addNewButton}
-            onPress={() => router.push("/addresses")}
+            onPress={() => {
+              // If you're in a modal, dismiss first
+              if (router.canDismiss()) {
+                router.dismiss();
+                setTimeout(() => router.push("/addresses"), 100);
+              } else {
+                router.push("/addresses");
+              }
+            }}
           >
             <View style={styles.addNewIcon}>
               <Plus size={18} color={Colors.primary} />
