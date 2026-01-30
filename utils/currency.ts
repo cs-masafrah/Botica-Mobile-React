@@ -1,16 +1,16 @@
-// utils/currency.ts
+// utils/currency.ts - UPDATED VERSION
 const CURRENCY_SYMBOLS: Record<string, string> = {
-  ILS: '₪',
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  SAR: '﷼',
-  AED: 'د.إ',
-  QAR: 'ر.ق',
-  KWD: 'د.ك',
-  BHD: '.د.ب',
-  OMR: 'ر.ع.',
+  ILS: "₪",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  JPY: "¥",
+  SAR: "﷼",
+  AED: "د.إ",
+  QAR: "ر.ق",
+  KWD: "د.ك",
+  BHD: ".د.ب",
+  OMR: "ر.ع.",
 };
 
 const EXCHANGE_RATES_TO_ILS: Record<string, number> = {
@@ -27,31 +27,35 @@ const EXCHANGE_RATES_TO_ILS: Record<string, number> = {
   OMR: 9.6,
 };
 
-export const APP_CURRENCY = 'ILS';
+export const APP_CURRENCY = "ILS";
 
 // Helper function to parse formatted price strings (e.g., "$66.00" -> 66)
-export function parseFormattedPrice(priceString: string | number | undefined | null): number {
+export function parseFormattedPrice(
+  priceString: string | number | undefined | null,
+): number {
   if (!priceString && priceString !== 0) {
     return 0;
   }
-  
-  if (typeof priceString === 'number') {
+
+  if (typeof priceString === "number") {
     return priceString;
   }
-  
-  if (typeof priceString === 'string') {
+
+  if (typeof priceString === "string") {
     // Remove all non-numeric characters except decimal point and minus sign
-    const cleaned = priceString.replace(/[^\d.-]/g, '');
+    const cleaned = priceString.replace(/[^\d.-]/g, "");
     const parsed = parseFloat(cleaned);
-    
+
     if (isNaN(parsed)) {
-      console.warn(`⚠️ [CURRENCY] Could not parse price string: "${priceString}"`);
+      console.warn(
+        `⚠️ [CURRENCY] Could not parse price string: "${priceString}"`,
+      );
       return 0;
     }
-    
+
     return parsed;
   }
-  
+
   return 0;
 }
 
@@ -64,14 +68,14 @@ export function convertCurrency(
   if (!amount && amount !== 0) {
     return 0;
   }
-  
+
   // Parse the amount if it's a string (handles formatted strings like "$66.00")
   const numAmount = parseFormattedPrice(amount);
-  
+
   if (numAmount === 0) {
     return 0;
   }
-  
+
   if (fromCurrency === toCurrency) {
     return numAmount;
   }
@@ -80,83 +84,96 @@ export function convertCurrency(
   const toRate = EXCHANGE_RATES_TO_ILS[toCurrency] ?? 1;
   const amountInILS = numAmount * fromRate;
 
-  if (toCurrency === 'ILS') {
+  if (toCurrency === "ILS") {
     return amountInILS;
   }
 
   return amountInILS / toRate;
 }
 
+// MAIN FIX: Update formatPrice to have a default currency
 export function formatPrice(
-  price: number | string | undefined | null, 
-  currencyCode: string,
+  price: number | string | undefined | null,
+  currencyCode?: string, // Make it optional
+  defaultCurrency: string = APP_CURRENCY, // Add default parameter
 ): string {
   // Parse the price first (handles strings like "$66.00")
   const numPrice = parseFormattedPrice(price);
-  
+
   if (numPrice === 0 && price !== 0) {
-    const symbol = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
+    const symbol =
+      CURRENCY_SYMBOLS[currencyCode || defaultCurrency] ||
+      currencyCode ||
+      defaultCurrency;
     return `${symbol}0.00`;
   }
-  
-  const symbol = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
-  
+
+  // Use provided currency or default
+  const currency = currencyCode || defaultCurrency;
+  const symbol = CURRENCY_SYMBOLS[currency] || currency;
+
   // Format with proper decimal places
-  const formatted = numPrice.toLocaleString('en-US', {
+  const formatted = numPrice.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  
+
   return `${symbol}${formatted}`;
+}
+
+// Overloaded version for backward compatibility
+export function formatCurrency(
+  price: number | string | undefined | null,
+  currencyCode?: string,
+  defaultCurrency: string = APP_CURRENCY,
+): string {
+  return formatPrice(price, currencyCode, defaultCurrency);
 }
 
 export function getCurrencySymbol(currencyCode: string): string {
   return CURRENCY_SYMBOLS[currencyCode] || currencyCode;
 }
 
-export function formatCurrency(
-  price: number | string | undefined | null, 
-  currencyCode: string,
-): string {
-  return formatPrice(price, currencyCode);
-}
-
 // Helper function to safely extract price from Bagisto response
 export function extractPrice(item: any): number {
   if (!item) return 0;
-  
+
   // Try different possible price locations
   if (item.formattedPrice?.price !== undefined) {
     return parseFormattedPrice(item.formattedPrice.price);
   }
-  
+
   if (item.price !== undefined) {
     return parseFormattedPrice(item.price);
   }
-  
+
   if (item.product?.price !== undefined) {
     return parseFormattedPrice(item.product.price);
   }
-  
+
   return 0;
 }
 
-// Helper function to extract currency code
-export function extractCurrency(item: any): string {
-  if (!item) return APP_CURRENCY;
-  
+// Helper function to extract currency code from Bagisto order
+export function extractCurrencyFromOrder(order: any): string {
+  if (!order) return APP_CURRENCY;
+
+  // Try different possible currency code locations
+  if (order.baseCurrencyCode) return order.baseCurrencyCode;
+  if (order.channelCurrencyCode) return order.channelCurrencyCode;
+  if (order.orderCurrencyCode) return order.orderCurrencyCode;
+
   // Check formattedPrice string for currency symbol
-  if (item.formattedPrice?.price) {
-    const priceStr = item.formattedPrice.price;
-    if (priceStr.includes('₪')) return 'ILS';
-    if (priceStr.includes('$')) return 'USD';
-    if (priceStr.includes('€')) return 'EUR';
-    if (priceStr.includes('£')) return 'GBP';
-    if (priceStr.includes('¥')) return 'JPY';
+  if (order.formattedPrice?.grandTotal) {
+    const priceStr = String(order.formattedPrice.grandTotal);
+    if (priceStr.includes("₪")) return "ILS";
+    if (priceStr.includes("$")) return "USD";
+    if (priceStr.includes("€")) return "EUR";
+    if (priceStr.includes("£")) return "GBP";
+    if (priceStr.includes("¥")) return "JPY";
   }
-  
-  // Try to get currency from formattedPrice or default to APP_CURRENCY
-  return item.currencyCode || APP_CURRENCY;
+
+  return APP_CURRENCY;
 }
 
 // Helper to extract all cart totals from Bagisto response
@@ -178,13 +195,21 @@ export function extractCartTotals(cartDetails: any): {
       discountedSubTotal: 0,
     };
   }
-  
+
   return {
     subTotal: parseFormattedPrice(cartDetails.formattedPrice.subTotal),
     taxTotal: parseFormattedPrice(cartDetails.formattedPrice.taxTotal),
-    discountAmount: parseFormattedPrice(cartDetails.formattedPrice.discountAmount),
+    discountAmount: parseFormattedPrice(
+      cartDetails.formattedPrice.discountAmount,
+    ),
     grandTotal: parseFormattedPrice(cartDetails.formattedPrice.grandTotal),
-    baseGrandTotal: parseFormattedPrice(cartDetails.formattedPrice.baseGrandTotal || cartDetails.formattedPrice.grandTotal),
-    discountedSubTotal: parseFormattedPrice(cartDetails.formattedPrice.discountedSubTotal || cartDetails.formattedPrice.subTotal),
+    baseGrandTotal: parseFormattedPrice(
+      cartDetails.formattedPrice.baseGrandTotal ||
+        cartDetails.formattedPrice.grandTotal,
+    ),
+    discountedSubTotal: parseFormattedPrice(
+      cartDetails.formattedPrice.discountedSubTotal ||
+        cartDetails.formattedPrice.subTotal,
+    ),
   };
 }

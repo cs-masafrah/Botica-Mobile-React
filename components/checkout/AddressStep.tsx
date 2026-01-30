@@ -24,7 +24,9 @@ const AddressStep: React.FC = () => {
 
   /* ------------------ ADDRESS LIST STATE ------------------ */
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null,
+  );
   const [loadingAddresses, setLoadingAddresses] = useState(true);
 
   /* ------------------ LOAD CUSTOMER ADDRESSES ------------------ */
@@ -38,8 +40,7 @@ const AddressStep: React.FC = () => {
 
         setAddresses(result);
 
-        const defaultAddress =
-          result.find((a) => a.isDefault) || result[0];
+        const defaultAddress = result.find((a) => a.isDefault) || result[0];
 
         setSelectedAddressId(defaultAddress?.id || null);
       } catch (error) {
@@ -58,9 +59,7 @@ const AddressStep: React.FC = () => {
   /* ------------------ SAVE ADDRESSES ------------------ */
   const handleSave = async () => {
     try {
-      const selectedAddress = addresses.find(
-        (a) => a.id === selectedAddressId
-      );
+      const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
 
       if (!selectedAddress) {
         Alert.alert("Error", "Please select an address");
@@ -82,9 +81,7 @@ const AddressStep: React.FC = () => {
       };
 
       const billing = mappedAddress;
-      const shipping = useBillingForShipping
-        ? mappedAddress
-        : mappedAddress; // future-proof if you add separate shipping later
+      const shipping = useBillingForShipping ? mappedAddress : mappedAddress; // future-proof if you add separate shipping later
 
       await saveAddresses(billing, shipping);
     } catch (error) {
@@ -94,7 +91,12 @@ const AddressStep: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.header}>
         <View style={styles.iconWrapper}>
           <MapPin size={24} color="#ffffff" />
@@ -118,7 +120,15 @@ const AddressStep: React.FC = () => {
       ) : addresses.length === 0 ? (
         <Pressable
           style={styles.emptyState}
-          onPress={() => router.push("/addresses")}
+          onPress={() => {
+            // If you're in a modal, dismiss first
+            if (router.canDismiss()) {
+              router.dismiss();
+              setTimeout(() => router.push("/checkout-addresses"), 100);
+            } else {
+              router.push("/checkout-addresses");
+            }
+          }}
         >
           <View style={styles.emptyIcon}>
             <Plus size={32} color={Colors.primary} />
@@ -148,25 +158,25 @@ const AddressStep: React.FC = () => {
                     <Text style={styles.defaultBadgeText}>Default</Text>
                   </View>
                 )}
-                
+
                 <View style={styles.addressContent}>
                   <View style={styles.addressHeader}>
                     <Text style={styles.addressName}>
                       {address.firstName} {address.lastName}
                     </Text>
                     <View style={styles.checkmarkContainer}>
-                      <View style={[
-                        styles.checkmark,
-                        isSelected && styles.checkmarkSelected
-                      ]}>
+                      <View
+                        style={[
+                          styles.checkmark,
+                          isSelected && styles.checkmarkSelected,
+                        ]}
+                      >
                         {isSelected && <Check size={12} color="#ffffff" />}
                       </View>
                     </View>
                   </View>
 
-                  <Text style={styles.addressLine}>
-                    {address.address1}
-                  </Text>
+                  <Text style={styles.addressLine}>{address.address1}</Text>
                   <Text style={styles.addressDetails}>
                     {address.city}, {address.country} - {address.zip}
                   </Text>
@@ -181,14 +191,20 @@ const AddressStep: React.FC = () => {
           {/* -------- Add new address CTA -------- */}
           <Pressable
             style={styles.addNewButton}
-            onPress={() => router.push('/addresses')}
+            onPress={() => {
+              // If you're in a modal, dismiss first
+              if (router.canDismiss()) {
+                router.dismiss();
+                setTimeout(() => router.push("/addresses"), 100);
+              } else {
+                router.push("/addresses");
+              }
+            }}
           >
             <View style={styles.addNewIcon}>
               <Plus size={18} color={Colors.primary} />
             </View>
-            <Text style={styles.addNewText}>
-              Add a new address
-            </Text>
+            <Text style={styles.addNewText}>Add a new address</Text>
           </Pressable>
         </>
       )}
@@ -204,13 +220,9 @@ const AddressStep: React.FC = () => {
             useBillingForShipping && styles.checkboxChecked,
           ]}
         >
-          {useBillingForShipping && (
-            <Check size={10} color="#ffffff" />
-          )}
+          {useBillingForShipping && <Check size={10} color="#ffffff" />}
         </View>
-        <Text style={styles.checkboxLabel}>
-          Use same address for billing
-        </Text>
+        <Text style={styles.checkboxLabel}>Use same address for billing</Text>
       </Pressable>
 
       {/* ------------------ CONTINUE ------------------ */}
@@ -231,7 +243,7 @@ const AddressStep: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   contentContainer: {
     padding: 24,
@@ -239,26 +251,26 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 48,
   },
   loadingPulse: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 16,
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 32,
     gap: 16,
   },
@@ -266,10 +278,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#10b981', // Emerald green
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#10b981',
+    backgroundColor: "#10b981", // Emerald green
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#10b981",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -277,13 +289,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: "700",
+    color: "#1e293b",
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
   },
   addressGrid: {
     gap: 12,
@@ -292,29 +304,29 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   addressCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 20,
     borderWidth: 2,
-    borderColor: '#d1fae5', // Light green border
-    position: 'relative',
+    borderColor: "#d1fae5", // Light green border
+    position: "relative",
   },
   addressCardSelected: {
-    borderColor: '#10b981', // Emerald green
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
-    shadowColor: '#10b981',
+    borderColor: "#10b981", // Emerald green
+    backgroundColor: "rgba(16, 185, 129, 0.05)",
+    shadowColor: "#10b981",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
   },
   defaultBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 12,
     right: 12,
-    backgroundColor: '#059669', // Darker green
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "#059669", // Darker green
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -322,117 +334,117 @@ const styles = StyleSheet.create({
   },
   defaultBadgeText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: "600",
+    color: "#ffffff",
   },
   addressContent: {
     flex: 1,
   },
   addressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   addressName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
     flex: 1,
   },
   checkmarkContainer: {
     width: 24,
     height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   checkmark: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#d1fae5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#d1fae5",
+    justifyContent: "center",
+    alignItems: "center",
   },
   checkmarkSelected: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: "#10b981",
+    borderColor: "#10b981",
   },
   addressLine: {
     fontSize: 14,
-    color: '#1e293b',
+    color: "#1e293b",
     marginBottom: 4,
     lineHeight: 20,
   },
   addressDetails: {
     fontSize: 13,
-    color: '#64748b',
+    color: "#64748b",
     marginBottom: 4,
   },
   addressPhone: {
     fontSize: 13,
-    color: '#059669', // Dark green
-    fontWeight: '500',
+    color: "#059669", // Dark green
+    fontWeight: "500",
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 48,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: '#d1fae5',
-    borderStyle: 'dashed',
+    borderColor: "#d1fae5",
+    borderStyle: "dashed",
   },
   emptyIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
+    color: "#64748b",
+    textAlign: "center",
   },
   addNewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 20,
     marginTop: 8,
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#d1fae5',
+    borderColor: "#d1fae5",
     gap: 12,
   },
   addNewIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   addNewText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#10b981',
+    fontWeight: "600",
+    color: "#10b981",
   },
   checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 32,
     gap: 12,
   },
@@ -441,26 +453,26 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#d1fae5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    borderColor: "#d1fae5",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
   },
   checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: "#10b981",
+    borderColor: "#10b981",
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#1e293b',
-    fontWeight: '500',
+    color: "#1e293b",
+    fontWeight: "500",
   },
   button: {
-    backgroundColor: '#10b981', // Emerald green
+    backgroundColor: "#10b981", // Emerald green
     borderRadius: 28,
     paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#10b981',
+    alignItems: "center",
+    shadowColor: "#10b981",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -470,9 +482,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.5,
   },
 });

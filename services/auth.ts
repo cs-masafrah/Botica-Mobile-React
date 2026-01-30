@@ -643,6 +643,8 @@ class AuthService {
     }
   }
 
+  // Update the addAddress method in services/auth.ts
+
   async addAddress(
     address: Omit<Address, "id"> & {
       email: string;
@@ -651,54 +653,76 @@ class AuthService {
     },
   ): Promise<Address> {
     try {
-      console.log("Adding customer address (Bagisto)...", address);
+      console.log(
+        "🛠️ [AUTH] Adding customer address...",
+        JSON.stringify(address, null, 2),
+      );
 
       const auth = await this.getStoredAuth();
-      if (!auth) throw new Error("Not authenticated");
+      if (!auth) {
+        console.error("❌ [AUTH] Not authenticated");
+        throw new Error("Not authenticated. Please log in again.");
+      }
 
+      // Get customer email
+      let customerEmail = address.email;
+      if (!customerEmail && auth.customer?.email) {
+        customerEmail = auth.customer.email;
+      }
+
+      // Create GraphQL mutation - SIMPLIFIED VERSION
       const query = `
-        mutation createAddress($input: AddressInput!) {
-          createAddress(input: $input) {
-            success
-            message
-            address {
-              id
-              companyName
-              firstName
-              lastName
-              email
-              vatId
-              address
-              country
-              state
-              stateName
-              city
-              postcode
-              phone
-              defaultAddress
-            }
+      mutation CreateAddress($input: AddressInput!) {
+        createAddress(input: $input) {
+          success
+          message
+          address {
+            id
+            firstName
+            lastName
+            companyName
+            address
+            city
+            state
+            country
+            postcode
+            email
+            phone
+            vatId
+            defaultAddress
           }
         }
-      `;
+      }
+    `;
 
-      const customer = await this.getCustomer();
+      // IMPORTANT: Based on your GraphQL response, address is a STRING not an array
+      // The example shows "address": "Street 1\nBuilding 5\nApartment 3"
+      // So we need to format it as a multi-line string
+      let addressString = address.address1;
+      if (address.address2 && address.address2.trim()) {
+        addressString += `\n${address.address2}`;
+      }
 
-      const variables = {
-        input: {
-          email: customer.email,
-          companyName: address.companyName ?? null,
-          firstName: address.firstName,
-          lastName: address.lastName,
-          address: address.address1,
-          country: address.country,
-          state: address.province ?? "",
-          city: address.city,
-          postcode: address.zip,
-          phone: address.phone ?? "",
-          vatId: address.vatId ?? null,
-          defaultAddress: address.isDefault ?? false,
-        },
+      // Build the input object - SIMPLIFIED to match your working example
+      const input = {
+        companyName: address.companyName || "",
+        firstName: address.firstName,
+        lastName: address.lastName,
+        email: customerEmail || address.email || "",
+        address: addressString, // This is a STRING, not an array
+        country: address.country || "PS",
+        state: address.province || "WB",
+        city: address.city || "Ramallah",
+        postcode: address.zip || "00970",
+        phone: address.phone || "",
+        vatId: address.vatId || "",
+        defaultAddress: address.isDefault || false,
       };
+
+      console.log(
+        "📤 [AUTH] Sending GraphQL request with input:",
+        JSON.stringify(input, null, 2),
+      );
 
       const response = await fetch(this.baseUrl, {
         method: "POST",
@@ -706,30 +730,133 @@ class AuthService {
           ...this.headers,
           Authorization: `Bearer ${auth.accessToken}`,
         },
-        body: JSON.stringify({ query, variables }),
+        body: JSON.stringify({ query, variables: { input } }),
       });
 
-      const json = await response.json();
-      console.log("Create address response:", JSON.stringify(json, null, 2));
+      console.log(
+        "📥 [AUTH] Response status:",
+        response.status,
+        response.statusText,
+      );
 
+      // Get response text
+      const responseText = await response.text();
+      console.log("📥 [AUTH] Full response:", responseText);
+
+      let json;
+      try {
+        json = JSON.parse(responseText);
+        console.log("📥 [AUTH] Parsed JSON:", JSON.stringify(json, null, 2));
+      } catch (parseError) {
+        console.error("❌ [AUTH] Failed to parse JSON:", parseError);
+        console.error("Raw response:", responseText);
+        throw new Error("Server returned invalid JSON response");
+      }
+
+      // First check for HTTP errors
+      if (!response.ok) {
+        const errorMsg =
+          json.errors?.[0]?.message ||
+          json.message ||
+          `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMsg);
+      }
+
+      // Check for GraphQL errors
       if (json.errors?.length) {
-        throw new Error(json.errors.map((e: any) => e.message).join(", "));
+        const errorMessage = json.errors.map((e: any) => e.message).join(", ");
+        console.error("❌ [AUTH] GraphQL errors:", errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      // Check if data exists
+      if (!json.data) {
+        console.error("❌ [AUTH] No data in response. Full response:", json);
+        throw new Error(
+          "Server returned no data. The address may not have been created.",
+        );
       }
 
       const result = json.data?.createAddress;
 
-      if (!result?.success) {
-        throw new Error(result?.message || "Failed to create address");
+      if (!result) {
+        console.error("❌ [AUTH] No createAddress in data. Data:", json.data);
+        throw new Error("Address creation failed - no result from server.");
+      }
+
+      if (!result.success) {
+        const errorMessage = result.message || "Failed to create address";
+        console.error("❌ [AUTH] Create address failed:", errorMessage);
+        throw new Error(errorMessage);
       }
 
       if (!result.address) {
-        throw new Error("Address was created but no address data returned");
+        console.error("❌ [AUTH] No address data in result:", result);
+        throw new Error("Address created but no details returned.");
       }
 
-      return mapGraphQLAddressToAddress(result.address);
+      console.log("✅ [AUTH] Address created successfully:", result.address.id);
+
+      // Map the GraphQL response to Address interface
+      // IMPORTANT: The address field in response is a string with newlines
+      const addressLines = result.address.address?.split("\n") || [];
+
+      return {
+        id: result.address.id,
+        firstName: result.address.firstName || "",
+        lastName: result.address.lastName || "",
+        address1: addressLines[0] || "",
+        address2:
+          addressLines.length > 1
+            ? addressLines.slice(1).join("\n")
+            : undefined,
+        city: result.address.city || "",
+        province: result.address.state || "",
+        zip: result.address.postcode || "",
+        country: result.address.country || "",
+        phone: result.address.phone || undefined,
+        isDefault: result.address.defaultAddress || false,
+        companyName: result.address.companyName || undefined,
+        email: result.address.email || undefined,
+        vatId: result.address.vatId || undefined,
+      };
     } catch (error) {
-      console.error("Add address error:", error);
-      throw error;
+      console.error("❌ [AUTH] Add address error:", error);
+
+      // Provide user-friendly error messages
+      if (error instanceof Error) {
+        // Check for specific error patterns
+        if (
+          error.message.includes("validation") ||
+          error.message.includes("required")
+        ) {
+          throw new Error(
+            "Please check all required fields are filled correctly.",
+          );
+        } else if (
+          error.message.includes("country") ||
+          error.message.includes("PS")
+        ) {
+          throw new Error(
+            "Please use 'PS' for country (Palestine) and 'WB' for state (West Bank).",
+          );
+        } else if (
+          error.message.includes("SQL") ||
+          error.message.includes("database")
+        ) {
+          throw new Error("Server database error. Please try again.");
+        } else if (
+          error.message.includes("token") ||
+          error.message.includes("auth")
+        ) {
+          throw new Error("Session expired. Please log in again.");
+        }
+
+        // Return the original error message
+        throw error;
+      }
+
+      throw new Error("Failed to create address. Please try again.");
     }
   }
 

@@ -19,9 +19,22 @@ const SuccessStep: React.FC = () => {
   };
 
   const handleViewOrders = () => {
+    console.log("handleViewOrders triggered");
+
     clearCart();
     resetCheckout();
-    router.push("/order-history");
+
+    if (router.canDismiss()) {
+      console.log("Router can dismiss");
+      router.dismiss();
+      setTimeout(() => {
+        console.log("Navigating to /order-history");
+        router.push("/order-history");
+      }, 200);
+    } else {
+      console.log("Router cannot dismiss, pushing directly");
+      router.push("/order-history");
+    }
   };
 
   return (

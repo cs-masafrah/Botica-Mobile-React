@@ -271,12 +271,12 @@ const OrderHistoryScreen = () => {
                 <Pressable
                   key={order.id}
                   style={styles.orderCard}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/order-details",
-                      params: { id: order.id },
-                    })
-                  }
+                  // onPress={() =>
+                  //   // router.push({
+                  //   //   // pathname: "/order-details",
+                  //   //   // params: { id: order.id },
+                  //   // })
+                  // }
                 >
                   <View style={styles.orderHeader}>
                     <View>
