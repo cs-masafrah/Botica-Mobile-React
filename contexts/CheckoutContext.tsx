@@ -20,6 +20,7 @@ interface CheckoutAddress {
   postcode: string;
   phone: string;
   useForShipping?: boolean;
+  defaultAddress?: boolean;
   companyName?: string;
 }
 
@@ -99,7 +100,6 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
   const [orderResult, setOrderResult] = useState<any | null>(null);
 
-  // contexts/CheckoutContext.tsx - FIX THE saveAddresses METHOD
   const saveAddresses = useCallback(
     async (billing: CheckoutAddress, shipping: CheckoutAddress) => {
       try {
@@ -107,6 +107,8 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
         setError(null);
 
         console.log("🏠 Saving checkout addresses...");
+        console.log("Billing address:", JSON.stringify(billing, null, 2));
+        console.log("Shipping address:", JSON.stringify(shipping, null, 2));
 
         const result = await bagistoService.saveCheckoutAddresses({
           billing: {
@@ -120,6 +122,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
             postcode: billing.postcode,
             phone: billing.phone,
             useForShipping: billing.useForShipping || false,
+            defaultAddress: billing.defaultAddress || false,
             companyName: billing.companyName || "",
           },
           shipping: {
@@ -132,6 +135,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
             city: shipping.city,
             postcode: shipping.postcode,
             phone: shipping.phone,
+            defaultAddress: shipping.defaultAddress || false,
             companyName: shipping.companyName || "",
           },
         });
@@ -139,10 +143,11 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
         console.log("✅ Addresses saved:", JSON.stringify(result, null, 2));
 
         if (result) {
+          // Store addresses in state
           setBillingAddress(billing);
           setShippingAddress(shipping);
 
-          // FIX: Extract and set shipping methods with proper array handling
+          // Extract shipping methods
           if (result.shippingMethods && result.shippingMethods.length > 0) {
             console.log(
               "🚚 Shipping methods structure:",
@@ -193,15 +198,16 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
             setPaymentMethods(result.paymentMethods);
           }
 
-          // Move to next step
+          // Move to shipping methods step
           setStep(2);
         }
 
         return result;
       } catch (error: any) {
         console.error("❌ Failed to save addresses:", error);
-        setError(error.message || "Failed to save addresses");
-        Alert.alert("Error", "Failed to save addresses. Please try again.");
+        const errorMessage = error.message || "Failed to save addresses";
+        setError(errorMessage);
+        Alert.alert("Error", errorMessage);
         throw error;
       } finally {
         setIsLoading(false);
@@ -210,7 +216,6 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
     [],
   );
 
-  // contexts/CheckoutContext.tsx - UPDATE selectShippingMethod METHOD
   const selectShippingMethod = useCallback(async (methodCode: string) => {
     try {
       setIsLoading(true);
@@ -218,9 +223,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("🚚 Selecting shipping method:", methodCode);
 
-      // First save the shipping method
-      const shippingResult =
-        await bagistoService.saveShippingMethod(methodCode);
+      const shippingResult = await bagistoService.saveShippingMethod(methodCode);
 
       if (shippingResult) {
         setSelectedShippingMethod(methodCode);
@@ -305,33 +308,32 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
- // contexts/CheckoutContext.tsx - UPDATE placeOrder METHOD
-const placeOrder = useCallback(async () => {
-  try {
-    setIsLoading(true);
-    setError(null);
+  const placeOrder = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-    console.log('🛍️ Placing order...');
+      console.log("🛍️ Placing order...");
 
-    const result = await bagistoService.placeOrder();
+      const result = await bagistoService.placeOrder();
 
-    console.log('✅ Order placed:', result);
+      console.log("✅ Order placed:", result);
 
-    if (result?.success) {
-      setOrderResult(result);
-      setStep(5); // Move to success step
+      if (result?.success) {
+        setOrderResult(result);
+        setStep(5); // Move to success step
+      }
+
+      return result;
+    } catch (error: any) {
+      console.error("❌ Failed to place order:", error);
+      setError(error.message || "Failed to place order");
+      Alert.alert("Error", "Failed to place order. Please try again.");
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
-
-    return result;
-  } catch (error: any) {
-    console.error('❌ Failed to place order:', error);
-    setError(error.message || 'Failed to place order');
-    Alert.alert('Error', 'Failed to place order. Please try again.');
-    throw error;
-  } finally {
-    setIsLoading(false);
-  }
-}, []);
+  }, []);
 
   const resetCheckout = useCallback(() => {
     setStep(1);
@@ -358,7 +360,7 @@ const placeOrder = useCallback(async () => {
     isLoading,
     error,
     orderResult,
-    setStep, // Make sure this is included
+    setStep,
     saveAddresses,
     setUseBillingForShipping,
     selectShippingMethod,
