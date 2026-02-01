@@ -7,10 +7,11 @@ import {
   FlatList,
   Pressable,
   ActivityIndicator,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft, Grid3x3, List } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useProductsByBrand } from '@/app/hooks/useProductsByBrand';
 import ProductCard from '@/components/ProductCard';
@@ -20,62 +21,18 @@ const BrandProductsScreen = () => {
     id: string; 
     name: string; 
     brandId: string;
-    // The "id" param is actually the brandValue, and "brandId" is the option_id
   }>();
-  const insets = useSafeAreaInsets();
-  const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   
-  // DEBUG: Log what we're receiving
-  console.log('🔍 [BrandProductsScreen] Params received:', {
-    id: params.id,
-    name: params.name,
-    brandId: params.brandId,
-    allParams: params
-  });
-  
-  // The "id" parameter from the URL should be the brandValue
-  // The "brandId" parameter is the option_id (numeric ID)
-  const brandValue = params.id; // This is what the hook expects
+  const brandValue = params.id;
   const brandName = params.name || 'Brand Products';
   
-  console.log('🔍 [BrandProductsScreen] Calling useProductsByBrand with:', {
-    brandValue,
-    type: typeof brandValue
-  });
-  
-   const { data: productsData, isLoading, error } = useProductsByBrand(brandValue) as {
+  const { data: productsData, isLoading, error } = useProductsByBrand(brandValue) as {
     data: { data: any[] } | null;
     isLoading: boolean;
     error: Error | null;
   };
   
-  // DEBUG: Log the response
-  console.log('🔍 [BrandProductsScreen] Hook response:', {
-    isLoading,
-    error: error?.message,
-    dataCount: productsData?.data?.length || 0,
-    hasData: !!productsData,
-    hasProducts: !!productsData?.data
-  });
-  
   const products = productsData?.data || [];
-
-  const renderProductItem = ({ item }: { item: any }) => {
-    if (viewMode === 'grid') {
-      return (
-        <View style={styles.gridItem}>
-          <ProductCard product={item} />
-        </View>
-      );
-    }
-    
-    // List view
-    return (
-      <View style={styles.listItem}>
-        <ProductCard product={item} />
-      </View>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -99,8 +56,10 @@ const BrandProductsScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Header - Minimal padding */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ArrowLeft size={24} color={Colors.text} />
@@ -111,34 +70,25 @@ const BrandProductsScreen = () => {
             {products.length} products
           </Text>
         </View>
-        <View style={styles.viewModeContainer}>
-          <Pressable 
-            style={[styles.viewModeButton, viewMode === 'grid' && styles.viewModeButtonActive]}
-            onPress={() => setViewMode('grid')}
-          >
-            <Grid3x3 size={20} color={viewMode === 'grid' ? Colors.primary : Colors.textSecondary} />
-          </Pressable>
-          <Pressable 
-            style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
-            onPress={() => setViewMode('list')}
-          >
-            <List size={20} color={viewMode === 'list' ? Colors.primary : Colors.textSecondary} />
-          </Pressable>
-        </View>
+        <View style={styles.headerRight} />
       </View>
 
-      {/* Products */}
+      {/* Products Grid - Only grid view */}
       <FlatList
         data={products}
-        renderItem={renderProductItem}
+        renderItem={({ item }) => (
+          <View style={styles.gridItem}>
+            <ProductCard product={item} />
+          </View>
+        )}
         keyExtractor={(item) => item.id}
-        numColumns={viewMode === 'grid' ? 2 : 1}
-        columnWrapperStyle={viewMode === 'grid' ? styles.productsRow : undefined}
+        numColumns={2}
+        columnWrapperStyle={styles.productsRow}
         contentContainerStyle={styles.productsContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No products found for &quot;{brandName}&quot;</Text>
+            <Text style={styles.emptyText}>No products found for "{brandName}"</Text>
             <Pressable style={styles.backButtonEmpty} onPress={() => router.back()}>
               <Text style={styles.backButtonText}>Go Back to Brands</Text>
             </Pressable>
@@ -157,20 +107,25 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 0,
   },
+  // Header - Minimal padding
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 15,
+    paddingTop: 20,
+    paddingBottom: 12,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   backButton: {
-    padding: 8,
-    marginRight: 12,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: -8,
   },
   headerContent: {
     flex: 1,
@@ -183,36 +138,23 @@ const styles = StyleSheet.create({
   productCount: {
     fontSize: 14,
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
-  viewModeContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  viewModeButton: {
+  headerRight: {
     width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: Colors.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  viewModeButtonActive: {
-    backgroundColor: Colors.primary + '20',
-  },
+  // Products Grid
   productsContainer: {
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   productsRow: {
     justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 12,
   },
   gridItem: {
     width: '48%',
-    marginBottom: 12,
-  },
-  listItem: {
-    marginBottom: 16,
   },
   loadingText: {
     marginTop: 12,
@@ -243,8 +185,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyContainer: {
-    padding: 40,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 60,
   },
   emptyText: {
     fontSize: 16,
