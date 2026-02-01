@@ -252,8 +252,7 @@ const fetchAllProducts = async (
 
 export const useAllProducts = (
   filters: FilterHomeCategoriesInput[] = [
-    { key: "category_slug", value: "men" },
-    { key: "status", value: "1" }
+    { key: "status", value: "1" },
   ],
   options?: {
     enabled?: boolean;

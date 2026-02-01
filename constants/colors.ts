@@ -1,3 +1,4 @@
+// constants/colors.ts
 const Colors = {
   primary: '#000000',
   secondary: '#333333',
@@ -6,6 +7,8 @@ const Colors = {
   text: '#2D2D2D',
   textSecondary: '#8E8E8E',
   border: '#F0F0F0',
+  borderLight: '#F5F5F5', // Added
+  shadow: 'rgba(0, 0, 0, 0.08)', // Added
   success: '#4CAF50',
   warning: '#FF9800',
   error: '#FF5252',
