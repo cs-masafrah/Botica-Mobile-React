@@ -135,7 +135,7 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
           
           body {
             margin: 0;
-            padding: 0 10px 0 10px;
+            padding: 0 0px 0 0px;
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 16px;
             line-height: 1.5;
