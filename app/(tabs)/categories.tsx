@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   categoryCard: {
-    width: (Dimensions.get("window").width - 40 - 24) / 3,
+    width: (Dimensions.get("window").width - 40 - 24) / 2,
     aspectRatio: 0.9,
     borderRadius: 16,
     overflow: "hidden",
