@@ -65,8 +65,6 @@ export const useCategories = () => {
       }
     },
     select: (data) => {
-      console.log("\n=== PROCESSING CATEGORIES ===");
-      console.log("Input data length:", data.length);
 
       // Simple deduplication - only show top-level categories with images
       const seenIds = new Set();
@@ -91,10 +89,6 @@ export const useCategories = () => {
           });
         }
       });
-
-      console.log("Final result count:", result.length);
-      console.log("Result:", result);
-      console.log("============================\n");
 
       return result;
     },
