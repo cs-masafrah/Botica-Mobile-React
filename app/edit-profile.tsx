@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
   Text,
   TextInput,
   View,
+  StatusBar,
 } from 'react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -80,17 +80,22 @@ export default function EditProfileScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <StatusBar barStyle="dark-content" />
+      
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ArrowLeft size={24} color={Colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        style={styles.content} 
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
 
@@ -159,7 +164,7 @@ export default function EditProfileScreen() {
             />
           </View>
 
-          <Text style={styles.sectionTitle}>Security</Text>
+          <Text style={[styles.sectionTitle, styles.securityTitle]}>Security</Text>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Current Password</Text>
@@ -226,52 +231,105 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { 
+    flex: 1, 
+    backgroundColor: Colors.background 
+  },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.cardBackground,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: -8,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: Colors.text },
-  content: { flex: 1 },
-  section: { padding: 20, backgroundColor: Colors.white, marginTop: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 20 },
-  inputContainer: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
+  headerTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: Colors.text 
+  },
+  headerRight: {
+    width: 40,
+  },
+  content: { 
+    flex: 1 
+  },
+  section: { 
+    padding: 16, 
+    backgroundColor: Colors.white, 
+    marginTop: 1 
+  },
+  sectionTitle: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    marginBottom: 16,
+    color: Colors.text,
+  },
+  securityTitle: {
+    marginTop: 8,
+  },
+  inputContainer: { 
+    marginBottom: 16 
+  },
+  label: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    marginBottom: 8,
+    color: Colors.text,
+  },
   input: {
     height: 48,
     borderRadius: 12,
     backgroundColor: Colors.cardBackground,
     paddingHorizontal: 16,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    color: Colors.text,
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginTop: 8,
+    paddingVertical: 8,
   },
-  footer: { padding: 20, backgroundColor: Colors.white },
+  footer: { 
+    padding: 16, 
+    backgroundColor: Colors.white,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
   saveButton: {
     backgroundColor: Colors.primary,
-    borderRadius: 16,
-    height: 56,
+    borderRadius: 14,
+    height: 52,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  saveButtonDisabled: { 
+    opacity: 0.6 
+  },
+  saveButtonText: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: Colors.white 
+  },
 });
