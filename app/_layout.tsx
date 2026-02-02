@@ -57,7 +57,7 @@ function RootLayoutNav() {
         <Stack.Screen
           name="product/[id]"
           options={{
-            headerShown: true,
+            headerShown: false,
             headerTitle: "",
             headerTransparent: true,
             headerBackTitle: "Back",
@@ -67,6 +67,14 @@ function RootLayoutNav() {
           name="category/[id]"
           options={{
             headerShown: true,
+            headerBackTitle: "Back",
+          }}
+        />
+        <Stack.Screen
+          name="brand/[id]"
+          options={{
+            headerShown: true,
+            // title: "Brand",
             headerBackTitle: "Back",
           }}
         />

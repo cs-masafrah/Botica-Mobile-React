@@ -573,17 +573,6 @@ export default function ReelsScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* CTA Button */}
-            {item.product && (
-              <TouchableOpacity
-                style={styles.ctaButton}
-                onPress={() => handleProductPress(item.product)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.ctaButtonText}>Shop Now</Text>
-              </TouchableOpacity>
-            )}
-
             {/* Bottom section */}
             <View style={styles.bottomSection}>
               <View style={styles.textContainer}>
@@ -596,6 +585,17 @@ export default function ReelsScreen() {
                   <Text style={styles.productName} numberOfLines={1}>
                     {item.product.name}
                   </Text>
+                )}
+
+                {/* CTA Button */}
+                {item.product && (
+                  <TouchableOpacity
+                    style={styles.ctaButton}
+                    onPress={() => handleProductPress(item.product)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.ctaButtonText}>Shop Now</Text>
+                  </TouchableOpacity>
                 )}
 
                 {/* Stats */}
@@ -620,18 +620,6 @@ export default function ReelsScreen() {
                   <View style={styles.authHint}>
                     <Text style={styles.authHintText}>
                       👆 Login to like reels
-                    </Text>
-                  </View>
-                )}
-
-                {/* Debug info */}
-                {__DEV__ && (
-                  <View style={styles.debugContainer}>
-                    <Text style={styles.debugText} numberOfLines={1}>
-                      Video: {videoDims.width.toFixed(0)}x
-                      {videoDims.height.toFixed(0)} | Screen: {dimensions.width}
-                      x{dimensions.height} | Aspect:{" "}
-                      {videoAspectRatios[item.id]?.toFixed(2) || "unknown"}
                     </Text>
                   </View>
                 )}
@@ -836,6 +824,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    alignItems: "center",
   },
   ctaButtonText: {
     fontSize: 14,
@@ -858,6 +847,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+
   productName: {
     fontSize: 16,
     fontWeight: "600",
@@ -865,6 +855,8 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+    flex: 1, // يأخذ المساحة المتبقية
+    marginRight: 12,
   },
   statsContainer: {
     flexDirection: "row",
