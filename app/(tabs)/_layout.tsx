@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import { Tabs } from "expo-router";
 import {
   Home,
@@ -9,7 +10,6 @@ import {
 import React from "react";
 import Colors from "@/constants/colors";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Alert } from "react-native";
 
 export default function TabLayout() {
   const { t, isRTL } = useLanguage();
@@ -19,7 +19,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textSecondary,
-        headerShown: true,
+        headerShown: false, // 👈 No default headers - each screen controls its own
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopColor: Colors.border,
@@ -36,8 +36,6 @@ export default function TabLayout() {
         name="index"
         options={{
           title: t("home"),
-          headerTitle: "",
-          headerTransparent: true,
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
@@ -52,7 +50,6 @@ export default function TabLayout() {
         name="reels"
         options={{
           title: t("reels"),
-          headerShown: false,
           tabBarIcon: ({ color }) => <Video size={24} color={color} />,
         }}
       />
