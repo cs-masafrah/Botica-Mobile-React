@@ -163,8 +163,8 @@ const styles = StyleSheet.create({
 
   brandItem: {
     alignItems: "center",
-    marginRight: 20,
-    width: BRAND_SIZE + 50,
+    marginRight: 0,
+    width: BRAND_SIZE + 30,
   },
 
   /* ===== CIRCLE IMAGE ===== */
