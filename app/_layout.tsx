@@ -70,6 +70,14 @@ function RootLayoutNav() {
             headerBackTitle: "Back",
           }}
         />
+        <Stack.Screen
+          name="brand/[id]"
+          options={{
+            headerShown: true,
+            // title: "Brand",
+            headerBackTitle: "Back",
+          }}
+        />
         {/* UPDATE THIS CHECKOUT SCREEN */}
         <Stack.Screen
           name="checkout"

@@ -90,7 +90,6 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
         renderItem={({ item }) => {
           // Split the name by words
           const { line1, line2 } = splitTwoLinesByWords(item.name || "");
-
           return (
             <Pressable
               style={styles.brandItem}
