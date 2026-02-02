@@ -1,12 +1,12 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
-import { Image } from 'expo-image';
-import { Theme, ThemeImage } from '@/types/theme';
-import Colors from '@/constants/colors';
-import { router } from 'expo-router';
+import React, { useMemo, useRef, useState, useEffect } from "react";
+import { View, StyleSheet, Pressable, Dimensions } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
+import { Image } from "expo-image";
+import { Theme, ThemeImage } from "@/types/theme";
+import Colors from "@/constants/colors";
+import { router } from "expo-router";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CAROUSEL_HEIGHT = 220;
 
 interface ImageCarouselThemeProps {
@@ -16,14 +16,14 @@ interface ImageCarouselThemeProps {
 
 const ImageCarouselTheme: React.FC<ImageCarouselThemeProps> = ({
   theme,
-  locale = 'en',
+  locale = "en",
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const translation = useMemo(() => {
     return (
-      theme.translations?.find(t => t.localeCode === locale) ||
+      theme.translations?.find((t) => t.localeCode === locale) ||
       theme.translations?.[0]
     );
   }, [theme.translations, locale]);
@@ -54,9 +54,9 @@ const ImageCarouselTheme: React.FC<ImageCarouselThemeProps> = ({
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={event => {
+        onScroll={(event) => {
           const index = Math.round(
-            event.nativeEvent.contentOffset.x / SCREEN_WIDTH
+            event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
           );
           setCurrentIndex(index);
         }}
@@ -68,9 +68,9 @@ const ImageCarouselTheme: React.FC<ImageCarouselThemeProps> = ({
             style={styles.slide}
             onPress={() =>
               router.push({
-                pathname: '/image-viewer',
+                pathname: "/image-viewer",
                 params: {
-                  images: JSON.stringify(images.map(i => i.imageUrl)),
+                  images: JSON.stringify(images.map((i) => i.imageUrl)),
                   index,
                 },
               })
@@ -79,7 +79,7 @@ const ImageCarouselTheme: React.FC<ImageCarouselThemeProps> = ({
             <Image
               source={{ uri: image.imageUrl }}
               style={styles.image}
-              contentFit="contain"
+              contentFit="fill"
               cachePolicy="memory-disk"
             />
           </Pressable>
@@ -113,21 +113,21 @@ const styles = StyleSheet.create({
   slide: {
     width: SCREEN_WIDTH,
     height: CAROUSEL_HEIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: Colors.white,
   },
 
   image: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
 
   pagination: {
     marginTop: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   indicator: {

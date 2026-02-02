@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -6,12 +6,12 @@ import {
   Pressable,
   FlatList,
   ActivityIndicator,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import Colors from '@/constants/colors';
-import { Theme } from '@/types/theme';
-import { useBrands } from '@/app/hooks/useBrands';
+} from "react-native";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import Colors from "@/constants/colors";
+import { Theme } from "@/types/theme";
+import { useBrands } from "@/app/hooks/useBrands";
 
 interface ProductByBrandThemeProps {
   theme: Theme;
@@ -19,6 +19,33 @@ interface ProductByBrandThemeProps {
 }
 
 const BRAND_SIZE = 100;
+const MAX_WORDS_PER_LINE = 2; // Max words per line
+
+const splitTwoLinesByWords = (text: string) => {
+  if (!text) return { line1: "", line2: "" };
+
+  const words = text.trim().split(/\s+/);
+
+  if (words.length <= MAX_WORDS_PER_LINE) {
+    return {
+      line1: words.join(" "),
+      line2: "",
+    };
+  }
+
+  const line1Words = words.slice(0, MAX_WORDS_PER_LINE);
+  const line2Words = words.slice(MAX_WORDS_PER_LINE, MAX_WORDS_PER_LINE * 2);
+  const hasMore = words.length > MAX_WORDS_PER_LINE * 2;
+
+  let line1 = line1Words.join(" ");
+  let line2 = line2Words.join(" ");
+
+  if (hasMore) {
+    line2 = line2 + "...";
+  }
+
+  return { line1, line2 };
+};
 
 const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
   theme,
@@ -26,12 +53,12 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
 }) => {
   const translation = useMemo(() => {
     return (
-      theme.translations?.find(t => t.localeCode === locale) ||
+      theme.translations?.find((t) => t.localeCode === locale) ||
       theme.translations?.[0]
     );
   }, [theme.translations, locale]);
 
-  const title = translation?.options?.title || 'Shop By Brand';
+  const title = translation?.options?.title || "Shop By Brand";
 
   const { data: brands, isLoading } = useBrands();
 
@@ -58,40 +85,51 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
         data={brands}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={item => item.option_id.toString()}
+        keyExtractor={(item) => item.option_id.toString()}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.brandItem}
-            onPress={() =>
-              router.push({
-                pathname: '/brand/[id]',
-                params: {
-                  id: item.value,
-                  name: item.name,
-                  brandId: item.option_id.toString(),
-                },
-              })
-            }
-          >
-            <View style={styles.circle}>
-              {item.image ? (
-                <Image
-                  source={{ uri: item.image }}
-                  style={styles.brandImage}
-                  contentFit="contain"
-                  cachePolicy="memory-disk"
-                />
-              ) : (
-                <View style={styles.placeholder} />
-              )}
-            </View>
+        renderItem={({ item }) => {
+          // Split the name by words
+          const { line1, line2 } = splitTwoLinesByWords(item.name || "");
 
-            <Text style={styles.brandName} numberOfLines={2}>
-              {item.name}
-            </Text>
-          </Pressable>
-        )}
+          return (
+            <Pressable
+              style={styles.brandItem}
+              onPress={() =>
+                router.push({
+                  pathname: "/brand/[id]",
+                  params: {
+                    id: item.value,
+                    name: item.name,
+                    brandId: item.option_id.toString(),
+                  },
+                })
+              }
+            >
+              <View style={styles.circle}>
+                {item.image ? (
+                  <Image
+                    source={{ uri: item.image }}
+                    style={styles.brandImage}
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                  />
+                ) : (
+                  <View style={styles.placeholder} />
+                )}
+              </View>
+
+              {/* Brand name with word-based splitting */}
+              <View style={styles.brandNameContainer}>
+                <Text style={styles.brandNameLine}>{line1}</Text>
+                {line2 ? (
+                  <Text style={styles.brandNameLine}>{line2}</Text>
+                ) : null}
+              </View>
+
+              <Text style={styles.brandCount}>{item.count} items</Text>
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -110,7 +148,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
   },
 
@@ -125,48 +163,68 @@ const styles = StyleSheet.create({
   },
 
   brandItem: {
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 20,
-    width: BRAND_SIZE + 20,
+    width: BRAND_SIZE + 50,
   },
 
+  /* ===== CIRCLE IMAGE ===== */
   circle: {
     width: BRAND_SIZE,
     height: BRAND_SIZE,
     borderRadius: BRAND_SIZE / 2,
-    backgroundColor: Colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: Colors.black,
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    backgroundColor: "#FFFFFF",
+
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.7)",
+
+    padding: 14,
+    justifyContent: "center",
+    alignItems: "center",
+
+    elevation: 0,
+    shadowColor: "transparent",
   },
 
   brandImage: {
-    width: '60%',
-    height: '60%',
+    width: "100%",
+    height: "100%",
   },
 
   placeholder: {
-    width: '60%',
-    height: '60%',
-    borderRadius: 8,
+    width: "100%",
+    height: "100%",
     backgroundColor: Colors.cardBackground,
   },
 
-  brandName: {
-    marginTop: 10,
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.text,
-    textAlign: 'center',
+  /* ===== BRAND NAME CONTAINER ===== */
+  brandNameContainer: {
+    marginTop: 12,
+    height: 36, // Fixed height for 2 lines
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  brandNameLine: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#222",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+
+  /* ===== COUNT ===== */
+  brandCount: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#9CA3AF",
+    textAlign: "center",
+    height: 16, // keeps layout stable
   },
 
   loading: {
     paddingVertical: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
 });
 
