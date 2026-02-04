@@ -339,8 +339,6 @@ export default function ProductDetailScreen() {
           )}
         </View>
 
-        <ShippingStrip />
-
 {/* Product Details */}
 <View style={styles.detailsContainer}>
   {/* Brand and Name */}

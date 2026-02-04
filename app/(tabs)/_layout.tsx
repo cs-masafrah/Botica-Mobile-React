@@ -44,6 +44,7 @@ export default function TabLayout() {
         options={{
           title: t("categories"),
           tabBarIcon: ({ color }) => <LayoutGrid size={24} color={color} />,
+          headerShown: true,
         }}
       />
       <Tabs.Screen
@@ -58,6 +59,7 @@ export default function TabLayout() {
         options={{
           title: t("cart"),
           tabBarIcon: ({ color }) => <ShoppingCart size={24} color={color} />,
+          headerShown: true,
         }}
       />
       <Tabs.Screen

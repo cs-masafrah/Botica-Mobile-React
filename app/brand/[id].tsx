@@ -269,7 +269,6 @@ export default function BrandProductsScreen() {
 
   return (
     <View style={styles.container}>
-      <ShippingStrip />
       <Stack.Screen
         options={{
           title: brandName,

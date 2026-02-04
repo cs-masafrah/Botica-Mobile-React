@@ -235,7 +235,6 @@ export default function CategoryScreen() {
 
   return (
     <View style={styles.container}>
-      <ShippingStrip />
       <Stack.Screen 
         options={{ 
           title: name || 'Category',

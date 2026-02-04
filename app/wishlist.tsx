@@ -54,7 +54,6 @@ export default function WishlistScreen() {
 
   return (
     <View style={styles.container}>
-      <ShippingStrip />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}

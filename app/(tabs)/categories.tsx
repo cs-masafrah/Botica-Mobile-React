@@ -117,7 +117,6 @@ export default function CategoriesScreen() {
 
   return (
     <View style={styles.container}>
-      <ShippingStrip />
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
