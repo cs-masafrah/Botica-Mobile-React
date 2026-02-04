@@ -8,6 +8,8 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -93,8 +95,8 @@ const OrderHistoryScreen = () => {
       console.error("Failed to load orders:", error);
       // Check if it's an authentication error
       if (
-        error.message?.includes("Authentication") ||
-        error.message?.includes("401")
+        (error instanceof Error && error.message?.includes("Authentication")) ||
+        (error instanceof Error && error.message?.includes("401"))
       ) {
         console.log("🔐 Authentication error, clearing auth state...");
         await authService.logout();
@@ -154,21 +156,11 @@ const OrderHistoryScreen = () => {
     }
   };
 
-  const handleBack = () => {
-    router.back();
-  };
-
   // Show loading while checking authentication
   if (authLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={Colors.text} />
-          </Pressable>
-          <Text style={styles.headerTitle}>My Orders</Text>
-          <View style={styles.headerRight} />
-        </View>
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Checking authentication...</Text>
@@ -180,14 +172,8 @@ const OrderHistoryScreen = () => {
   // Redirect if not authenticated (should have happened already, but as fallback)
   if (!isAuthenticated) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={Colors.text} />
-          </Pressable>
-          <Text style={styles.headerTitle}>My Orders</Text>
-          <View style={styles.headerRight} />
-        </View>
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIcon}>
             <Package size={64} color={Colors.textSecondary} />
@@ -209,14 +195,8 @@ const OrderHistoryScreen = () => {
 
   if (loading && orders.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={Colors.text} />
-          </Pressable>
-          <Text style={styles.headerTitle}>My Orders</Text>
-          <View style={styles.headerRight} />
-        </View>
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Loading your orders...</Text>
@@ -226,16 +206,7 @@ const OrderHistoryScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={Colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>My Orders</Text>
-        <View style={styles.headerRight} />
-      </View>
-
+    <View style={styles.container}>
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
@@ -382,26 +353,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "700",
     color: Colors.text,
-  },
-  headerRight: {
-    width: 40,
   },
   content: {
     flex: 1,
@@ -452,18 +415,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   ordersList: {
-    padding: 20,
+    padding: 16,
   },
   orderCard: {
     backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.black,
+    borderColor: Colors.borderLight,
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -515,7 +478,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: Colors.borderLight,
   },
   totalLabel: {
     fontSize: 14,
@@ -528,8 +491,8 @@ const styles = StyleSheet.create({
   },
   loadMoreButton: {
     backgroundColor: Colors.cardBackground,
-    marginHorizontal: 20,
-    marginBottom: 20,
+    marginHorizontal: 16,
+    marginBottom: 16,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
