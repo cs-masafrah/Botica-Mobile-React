@@ -81,7 +81,7 @@ export default function EditProfileScreen() {
     <KeyboardAvoidingView
       style={styles.container}
     >
-      <StatusBar barStyle="dark-content" />
+      {/* <StatusBar barStyle="dark-content" />
       
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
@@ -89,7 +89,7 @@ export default function EditProfileScreen() {
         </Pressable>
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={styles.headerRight} />
-      </View>
+      </View> */}
 
       <ScrollView 
         style={styles.content} 

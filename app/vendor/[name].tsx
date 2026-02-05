@@ -208,7 +208,6 @@ export default function VendorScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ShippingStrip />
         <Stack.Screen 
           options={{ 
             title: name || 'Brand',
