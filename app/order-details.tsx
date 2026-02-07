@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   StatusBar,
-  Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -424,7 +423,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 8,
+    paddingTop: 12,
     paddingBottom: 12,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,

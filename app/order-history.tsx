@@ -716,8 +716,6 @@ const styles = StyleSheet.create({
 
 export default OrderHistoryScreen;
 
-// 'use client';
-
 // // app/order-history.tsx
 // import React, { useState, useEffect, useCallback } from "react";
 // import {
