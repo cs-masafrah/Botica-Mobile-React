@@ -1,5 +1,5 @@
-// app/order-history.tsx
-import React, { useState, useEffect } from "react";
+// app/order-details.tsx
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,126 +7,33 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  RefreshControl,
+  Alert,
+  StatusBar,
+  Platform,
 } from "react-native";
-import { router } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
   Package,
   Clock,
   CreditCard,
   MapPin,
+  RefreshCw,
+  ShoppingBag,
+  Layers,
+  Receipt,
+  Truck,
 } from "lucide-react-native";
-import { orderService } from "@/services/OrderService";
-import { authService } from "@/services/auth";
+import { useCart } from "@/contexts/CartContext";
 import Colors from "@/constants/colors";
 import { formatPrice } from "@/utils/currency";
 
-const OrderHistoryScreen = () => {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const insets = useSafeAreaInsets();
+const OrderDetailsScreen = () => {
+  const { orderData } = useLocalSearchParams<{ orderData: string }>();
+  const [reordering, setReordering] = useState(false);
+  const { addToCart } = useCart();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  // In your OrderHistoryScreen component, update the checkAuth function:
-
-  const checkAuth = async () => {
-    try {
-      setAuthLoading(true);
-
-      // Use orderService's authentication check
-      const isAuth = await orderService.checkAuthentication();
-      setIsAuthenticated(isAuth);
-
-      if (isAuth) {
-        console.log("✅ User authenticated, loading orders...");
-        await loadOrders();
-      } else {
-        console.log("⚠️ User not authenticated, redirecting to login...");
-        router.replace("/login");
-      }
-    } catch (error) {
-      console.error("❌ Authentication check failed:", error);
-      setIsAuthenticated(false);
-      router.replace("/login");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const loadOrders = async (
-    pageNum: number = 1,
-    isRefresh: boolean = false,
-  ) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
-      const result = await orderService.getOrdersList({
-        page: pageNum,
-        limit: 10,
-      });
-
-      console.log("📋 Orders loaded:", {
-        count: result.data.length,
-        hasMore: result.paginatorInfo.hasMorePages,
-        page: pageNum,
-      });
-
-      if (isRefresh || pageNum === 1) {
-        setOrders(result.data);
-      } else {
-        setOrders((prev) => [...prev, ...result.data]);
-      }
-
-      setHasMore(result.paginatorInfo.hasMorePages || false);
-      setPage(pageNum);
-    } catch (error) {
-      console.error("Failed to load orders:", error);
-      // Check if it's an authentication error
-      if (
-        error.message?.includes("Authentication") ||
-        error.message?.includes("401")
-      ) {
-        console.log("🔐 Authentication error, clearing auth state...");
-        await authService.logout();
-        setIsAuthenticated(false);
-        router.replace("/login");
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = async () => {
-    // First check authentication using orderService
-    const isAuth = await orderService.checkAuthentication();
-    if (!isAuth) {
-      setIsAuthenticated(false);
-      router.replace("/login");
-      return;
-    }
-    await loadOrders(1, true);
-  };
-
-  const loadMore = () => {
-    if (!loading && hasMore && isAuthenticated) {
-      loadOrders(page + 1);
-    }
-  };
+  const order = orderData ? JSON.parse(orderData) : null;
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -144,236 +51,363 @@ const OrderHistoryScreen = () => {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "completed":
+      case "delivered":
+        return Package;
+      case "processing":
+        return Truck;
+      case "pending":
+        return Clock;
+      case "canceled":
+      case "cancelled":
+        return Package;
+      default:
+        return Package;
+    }
+  };
+
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-US", {
+        weekday: "short",
         year: "numeric",
-        month: "short",
+        month: "long",
         day: "numeric",
       });
-    } catch (error) {
+    } catch {
       return dateString;
     }
   };
 
-  const handleBack = () => {
-    router.back();
-  };
+  const handleReorder = useCallback(
+    async () => {
+      if (!order?.items || order.items.length === 0) {
+        Alert.alert("Unable to Reorder", "No items found for this order.");
+        return;
+      }
 
-  // Show loading while checking authentication
-  if (authLoading) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={Colors.text} />
-          </Pressable>
-          <Text style={styles.headerTitle}>My Orders</Text>
-          <View style={styles.headerRight} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Checking authentication...</Text>
-        </View>
-      </View>
-    );
-  }
+      setReordering(true);
 
-  // Redirect if not authenticated (should have happened already, but as fallback)
-  if (!isAuthenticated) {
+      try {
+        let successCount = 0;
+        let failCount = 0;
+        const failedItems: string[] = [];
+
+        for (const item of order.items) {
+          try {
+            const productId = item.product?.id?.toString() || item.id.toString();
+            const productType = item.product?.type || "simple";
+
+            const product: Record<string, any> = {
+              id: productId,
+              productId: productId,
+              name: item.name,
+              price: item.price,
+              sku: item.sku,
+              type: productType,
+              inStock: true,
+              image: "",
+              brand: item.sku || "",
+              currencyCode: "USD",
+            };
+
+            if (productType === "configurable" && item.product?.id) {
+              product.selectedConfigurableOption = parseInt(item.product.id, 10);
+            }
+
+            const result = await addToCart(product, item.qtyOrdered || 1);
+
+            if (result?.success) {
+              successCount++;
+            } else {
+              failCount++;
+              failedItems.push(item.name);
+            }
+          } catch {
+            failCount++;
+            failedItems.push(item.name);
+          }
+        }
+
+        if (failCount === 0) {
+          Alert.alert(
+            "Reorder Successful",
+            `All ${successCount} item${successCount > 1 ? "s" : ""} have been added to your cart.`,
+            [
+              { text: "Continue Shopping", style: "cancel" },
+              { text: "Go to Cart", onPress: () => router.push("/(tabs)/cart") },
+            ],
+          );
+        } else if (successCount > 0) {
+          Alert.alert(
+            "Partially Added",
+            `${successCount} added, ${failCount} failed:\n${failedItems.join(", ")}`,
+            [
+              { text: "OK", style: "cancel" },
+              { text: "Go to Cart", onPress: () => router.push("/(tabs)/cart") },
+            ],
+          );
+        } else {
+          Alert.alert("Reorder Failed", "Items may no longer be available.");
+        }
+      } catch {
+        Alert.alert("Reorder Failed", "Something went wrong. Please try again.");
+      } finally {
+        setReordering(false);
+      }
+    },
+    [addToCart, order],
+  );
+
+  if (!order) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={Colors.text} />
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <ArrowLeft size={22} color={Colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>My Orders</Text>
-          <View style={styles.headerRight} />
+          <Text style={styles.headerTitle}>Order Details</Text>
+          <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
-            <Package size={64} color={Colors.textSecondary} />
-          </View>
-          <Text style={styles.emptyTitle}>Authentication Required</Text>
-          <Text style={styles.emptySubtitle}>
-            Please login to view your orders
+        <View style={styles.errorContainer}>
+          <Package size={56} color={Colors.textSecondary} />
+          <Text style={styles.errorTitle}>Order Not Found</Text>
+          <Text style={styles.errorSubtitle}>
+            We could not load this order. Please try again.
           </Text>
-          <Pressable
-            style={styles.shopButton}
-            onPress={() => router.push("/login")}
-          >
-            <Text style={styles.shopButtonText}>Go to Login</Text>
+          <Pressable style={styles.backToOrdersBtn} onPress={() => router.back()}>
+            <Text style={styles.backToOrdersBtnText}>Back to Orders</Text>
           </Pressable>
         </View>
       </View>
     );
   }
 
-  if (loading && orders.length === 0) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={Colors.text} />
-          </Pressable>
-          <Text style={styles.headerTitle}>My Orders</Text>
-          <View style={styles.headerRight} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading your orders...</Text>
-        </View>
-      </View>
-    );
-  }
+  const StatusIcon = getStatusIcon(order.status);
+  const statusColor = getStatusColor(order.status);
+  const itemCount = order.totalItemCount || order.totalQtyOrdered || order.items?.length || 0;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+
       {/* Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={Colors.text} />
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <ArrowLeft size={22} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>My Orders</Text>
-        <View style={styles.headerRight} />
+        <Text style={styles.headerTitle}>Order #{order.incrementId}</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
-        style={styles.content}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[Colors.primary]}
-            tintColor={Colors.primary}
-          />
-        }
       >
-        {orders.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIcon}>
-              <Package size={64} color={Colors.textSecondary} />
-            </View>
-            <Text style={styles.emptyTitle}>No Orders Yet</Text>
-            <Text style={styles.emptySubtitle}>
-              When you place orders, they will appear here
-            </Text>
-            <Pressable
-              style={styles.shopButton}
-              onPress={() => router.push("/(tabs)")}
-            >
-              <Text style={styles.shopButtonText}>Start Shopping</Text>
-            </Pressable>
+        {/* Status Banner */}
+        <View style={[styles.statusBanner, { backgroundColor: statusColor + "0A" }]}>
+          <View style={[styles.statusIconCircle, { backgroundColor: statusColor + "18" }]}>
+            <StatusIcon size={24} color={statusColor} />
           </View>
-        ) : (
-          <>
-            <View style={styles.ordersList}>
-              {orders.map((order) => (
-                <Pressable
-                  key={order.id}
-                  style={styles.orderCard}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/order-details",
-                      params: { id: order.id },
-                    })
-                  }
+          <View style={styles.statusInfo}>
+            <Text style={[styles.statusLabel, { color: statusColor }]}>
+              {order.statusLabel || order.status}
+            </Text>
+            <Text style={styles.statusDate}>
+              Placed on {formatDate(order.createdAt)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Order Items */}
+        {order.items && order.items.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ShoppingBag size={18} color={Colors.text} />
+              <Text style={styles.sectionTitle}>
+                Items ({order.items.length})
+              </Text>
+            </View>
+            <View style={styles.itemsCard}>
+              {order.items.map((item: any, index: number) => (
+                <View
+                  key={item.id || index}
+                  style={[
+                    styles.itemRow,
+                    index < order.items.length - 1 && styles.itemDivider,
+                  ]}
                 >
-                  <View style={styles.orderHeader}>
-                    <View>
-                      <Text style={styles.orderNumber}>
-                        Order #{order.incrementId}
-                      </Text>
-                      <Text style={styles.orderDate}>
-                        <Clock size={14} color={Colors.textSecondary} />{" "}
-                        {formatDate(order.createdAt)}
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        {
-                          backgroundColor: getStatusColor(order.status) + "20",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusText,
-                          { color: getStatusColor(order.status) },
-                        ]}
-                      >
-                        {order.statusLabel || order.status}
-                      </Text>
-                    </View>
+                  <View style={styles.itemIconBox}>
+                    <Layers size={18} color={Colors.textSecondary} />
                   </View>
-
-                  <View style={styles.orderInfo}>
-                    {order.payment && (
-                      <View style={styles.infoRow}>
-                        <CreditCard size={16} color={Colors.textSecondary} />
-                        <Text style={styles.infoText}>
-                          {order.payment.methodTitle ||
-                            order.payment.method ||
-                            "N/A"}
-                        </Text>
-                      </View>
-                    )}
-
-                    {order.shippingAddress && (
-                      <View style={styles.infoRow}>
-                        <MapPin size={16} color={Colors.textSecondary} />
-                        <Text style={styles.infoText}>
-                          {order.shippingAddress.city},{" "}
-                          {order.shippingAddress.country}
-                        </Text>
-                      </View>
-                    )}
-
-                    <View style={styles.infoRow}>
-                      <Package size={16} color={Colors.textSecondary} />
-                      <Text style={styles.infoText}>
-                        {order.totalItemCount || order.totalQtyOrdered || 0}{" "}
-                        items
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.orderFooter}>
-                    <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalAmount}>
-                      {formatPrice(
-                        order.grandTotal ||
-                          order.formattedPrice?.grandTotal ||
-                          0,
-                      )}
+                  <View style={styles.itemDetails}>
+                    <Text style={styles.itemName} numberOfLines={2}>
+                      {item.name}
                     </Text>
+                    <View style={styles.itemMetaRow}>
+                      <Text style={styles.itemSku}>SKU: {item.sku}</Text>
+                      <View style={styles.itemQtyBadge}>
+                        <Text style={styles.itemQtyText}>
+                          Qty: {item.qtyOrdered || 1}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                </Pressable>
+                  <View style={styles.itemPriceCol}>
+                    <Text style={styles.itemUnitPrice}>
+                      {formatPrice(item.price || 0)}
+                    </Text>
+                    {(item.qtyOrdered || 1) > 1 && (
+                      <Text style={styles.itemTotalPrice}>
+                        {formatPrice(item.total || item.price || 0)}
+                      </Text>
+                    )}
+                  </View>
+                </View>
               ))}
             </View>
-
-            {hasMore && (
-              <Pressable
-                style={styles.loadMoreButton}
-                onPress={loadMore}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color={Colors.primary} />
-                ) : (
-                  <Text style={styles.loadMoreText}>Load More Orders</Text>
-                )}
-              </Pressable>
-            )}
-
-            <View style={styles.footerSpacing} />
-          </>
+          </View>
         )}
+
+        {/* Price Breakdown */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Receipt size={18} color={Colors.text} />
+            <Text style={styles.sectionTitle}>Price Summary</Text>
+          </View>
+          <View style={styles.priceCard}>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>
+                Subtotal ({itemCount} item{itemCount !== 1 ? "s" : ""})
+              </Text>
+              <Text style={styles.priceValue}>
+                {formatPrice(order.subTotal || order.formattedPrice?.subTotal || 0)}
+              </Text>
+            </View>
+
+            {(order.shippingAmount || order.formattedPrice?.shippingAmount) ? (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Shipping</Text>
+                <Text style={styles.priceValue}>
+                  {formatPrice(order.shippingAmount || order.formattedPrice?.shippingAmount || 0)}
+                </Text>
+              </View>
+            ) : null}
+
+            {(order.taxAmount || order.formattedPrice?.taxAmount) ? (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Tax</Text>
+                <Text style={styles.priceValue}>
+                  {formatPrice(order.taxAmount || order.formattedPrice?.taxAmount || 0)}
+                </Text>
+              </View>
+            ) : null}
+
+            {(order.discountAmount || order.formattedPrice?.discountAmount) ? (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Discount</Text>
+                <Text style={[styles.priceValue, { color: Colors.success }]}>
+                  -{formatPrice(Math.abs(order.discountAmount || order.formattedPrice?.discountAmount || 0))}
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.totalDivider} />
+
+            <View style={styles.priceRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>
+                {formatPrice(order.grandTotal || order.formattedPrice?.grandTotal || 0)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Payment & Shipping */}
+        {(order.payment || order.shippingAddress) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Truck size={18} color={Colors.text} />
+              <Text style={styles.sectionTitle}>Payment & Delivery</Text>
+            </View>
+            <View style={styles.infoCard}>
+              {order.payment && (
+                <View style={styles.infoItem}>
+                  <View style={[styles.infoIconCircle, { backgroundColor: "#F0F0FF" }]}>
+                    <CreditCard size={16} color={Colors.text} />
+                  </View>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoItemLabel}>Payment Method</Text>
+                    <Text style={styles.infoItemValue}>
+                      {order.payment.methodTitle || order.payment.method || "N/A"}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {order.payment && order.shippingAddress && (
+                <View style={styles.infoDivider} />
+              )}
+
+              {order.shippingAddress && (
+                <View style={styles.infoItem}>
+                  <View style={[styles.infoIconCircle, { backgroundColor: "#F0FFF4" }]}>
+                    <MapPin size={16} color={Colors.text} />
+                  </View>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoItemLabel}>Shipping Address</Text>
+                    <Text style={styles.infoItemValue}>
+                      {[
+                        order.shippingAddress.city,
+                        order.shippingAddress.postcode,
+                        order.shippingAddress.country,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      {/* Bottom Reorder Bar */}
+      <View style={styles.bottomBar}>
+        <View style={styles.bottomBarTotal}>
+          <Text style={styles.bottomBarTotalLabel}>Order Total</Text>
+          <Text style={styles.bottomBarTotalValue}>
+            {formatPrice(order.grandTotal || order.formattedPrice?.grandTotal || 0)}
+          </Text>
+        </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.reorderBtn,
+            pressed && styles.reorderBtnPressed,
+            reordering && styles.reorderBtnDisabled,
+          ]}
+          onPress={handleReorder}
+          disabled={reordering || !order.items || order.items.length === 0}
+        >
+          {reordering ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <RefreshCw size={18} color={Colors.white} />
+          )}
+          <Text style={styles.reorderBtnText}>
+            {reordering ? "Adding..." : "Reorder All"}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 };
@@ -381,173 +415,347 @@ const OrderHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.cardBackground,
   },
+
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 12 : 8,
+    paddingBottom: 12,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.cardBackground,
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-  },
-  headerRight: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: Colors.textSecondary,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-    minHeight: 400,
-  },
-  emptyIcon: {
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: "700",
     color: Colors.text,
-    marginBottom: 8,
   },
-  emptySubtitle: {
-    fontSize: 16,
+  headerSpacer: {
+    width: 36,
+  },
+
+  // Error
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+    gap: 12,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.text,
+    marginTop: 8,
+  },
+  errorSubtitle: {
+    fontSize: 15,
     color: Colors.textSecondary,
     textAlign: "center",
-    marginBottom: 32,
-    lineHeight: 24,
+    lineHeight: 22,
   },
-  shopButton: {
+  backToOrdersBtn: {
+    marginTop: 12,
     backgroundColor: Colors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
-  shopButtonText: {
+  backToOrdersBtnText: {
     color: Colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
-  ordersList: {
-    padding: 20,
+
+  // Scroll
+  scrollView: {
+    flex: 1,
   },
-  orderCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
+  scrollContent: {
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 100, // Space for bottom bar
+  },
+
+  // Status Banner
+  statusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 20,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  statusIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  statusInfo: {
+    flex: 1,
+  },
+  statusLabel: {
+    fontSize: 17,
+    fontWeight: "700",
+    textTransform: "capitalize",
+    marginBottom: 2,
+  },
+  statusDate: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+
+  // Section
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+
+  // Items
+  itemsCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  orderHeader: {
+  itemRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
+    alignItems: "center",
+    padding: 14,
+    gap: 12,
   },
-  orderNumber: {
-    fontSize: 16,
+  itemDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  itemIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Colors.cardBackground,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  itemDetails: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 14,
     fontWeight: "600",
     color: Colors.text,
     marginBottom: 4,
+    lineHeight: 20,
   },
-  orderDate: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+  itemMetaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 8,
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  statusText: {
+  itemSku: {
     fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  orderInfo: {
-    marginBottom: 16,
-    gap: 8,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  infoText: {
-    fontSize: 14,
     color: Colors.textSecondary,
   },
-  orderFooter: {
+  itemQtyBadge: {
+    backgroundColor: Colors.cardBackground,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  itemQtyText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+  },
+  itemPriceCol: {
+    alignItems: "flex-end",
+  },
+  itemUnitPrice: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  itemTotalPrice: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+
+  // Price Summary
+  priceCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    gap: 10,
+  },
+  priceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
-  totalLabel: {
+  priceLabel: {
     fontSize: 14,
     color: Colors.textSecondary,
   },
-  totalAmount: {
+  priceValue: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.text,
+  },
+  totalDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginVertical: 4,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  totalValue: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.primary,
+    color: Colors.text,
   },
-  loadMoreButton: {
-    backgroundColor: Colors.cardBackground,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
+
+  // Info Card
+  infoCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.borderLight,
   },
-  loadMoreText: {
-    color: Colors.primary,
-    fontSize: 16,
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  infoIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoItemLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: "500",
+    marginBottom: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  infoItemValue: {
+    fontSize: 14,
     fontWeight: "600",
+    color: Colors.text,
   },
-  footerSpacing: {
+  infoDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginVertical: 14,
+    marginLeft: 48,
+  },
+
+  bottomSpacing: {
     height: 32,
+  },
+
+  // Bottom Bar
+  bottomBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 30,
+    backgroundColor: Colors.white,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  bottomBarTotal: {
+    gap: 2,
+  },
+  bottomBarTotalLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  bottomBarTotalValue: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  reorderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  reorderBtnPressed: {
+    opacity: 0.85,
+  },
+  reorderBtnDisabled: {
+    opacity: 0.5,
+  },
+  reorderBtnText: {
+    color: Colors.white,
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
 
-export default OrderHistoryScreen;
+export default OrderDetailsScreen;
