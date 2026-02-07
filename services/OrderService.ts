@@ -1,5 +1,4 @@
 import { authService } from "@/services/auth";
-import { bagistoService } from "./bagisto";
 
 export interface OrderItem {
   id: string;
@@ -8,6 +7,10 @@ export interface OrderItem {
   price: number;
   qtyOrdered: number;
   total: number;
+  product?: {
+    id: string;
+    type?: string;
+  };
 }
 
 export interface OrderComment {
@@ -235,6 +238,18 @@ class OrderService {
                 postcode
                 country
               }
+              items {
+                id
+                name
+                sku
+                price
+                qtyOrdered
+                total
+                product {
+                  id
+                  type
+                }
+              }
             }
           }
         }
@@ -369,6 +384,12 @@ class OrderService {
               price
               qtyOrdered
               total
+              product {
+                id
+                type
+                name
+                sku
+              }
             }
           }
         }
@@ -380,7 +401,7 @@ class OrderService {
         Authorization: `Bearer ${auth.accessToken}`,
       };
 
-      const response = await fetch(bagistoService.baseUrl, {
+      const response = await fetch(authService.baseUrl, {
         method: "POST",
         headers: headers,
         body: JSON.stringify({ query, variables: { id: orderId } }),
