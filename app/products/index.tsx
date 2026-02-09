@@ -76,11 +76,10 @@ export default function AllProductsScreen() {
       <StatusBar 
         barStyle="dark-content" 
         backgroundColor={Colors.background} 
-        translucent={Platform.OS === 'android'}
       />
       
       {/* Header - No extra tab header above this */}
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <View style={styles.headerContent}>
           <Pressable 
             style={styles.backButton} 
@@ -91,10 +90,10 @@ export default function AllProductsScreen() {
           <Text style={styles.headerTitle}>{t('allProducts')}</Text>
           <View style={styles.headerRight} />
         </View>
-      </View>
+      </View> */}
       
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      {/* <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Search size={20} color={Colors.textSecondary} style={styles.searchIcon} />
           <TextInput
@@ -116,7 +115,7 @@ export default function AllProductsScreen() {
             </Pressable>
           )}
         </View>
-      </View>
+      </View> */}
       
       {/* Results Count and Sort */}
       <View style={styles.resultsHeader}>
