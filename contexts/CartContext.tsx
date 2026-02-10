@@ -507,9 +507,7 @@ export const [CartContext, useCart] = createContextHook(() => {
       console.log("🚚 [CART] Getting shipping methods");
 
       // Use shippingService instead of checkoutService
-      const result = await shippingService.getShippingMethods(
-        shippingMethod || "",
-      );
+      const result = await shippingService.getShippingMethods();
 
       console.log("✅ [CART] Shipping methods result:", {
         message: result.message,

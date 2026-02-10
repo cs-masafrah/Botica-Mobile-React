@@ -1,3 +1,5 @@
+'use client';
+
 // app/checkout.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -69,7 +71,10 @@ const CheckoutScreen = () => {
   // Address state
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedBillingAddressId, setSelectedBillingAddressId] = useState<string | null>(null);
+  const [showBillingSheet, setShowBillingSheet] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const billingSheetAnim = useRef(new Animated.Value(0)).current;
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -110,7 +115,8 @@ const CheckoutScreen = () => {
         const result = await authService.getAddresses();
         if (!mounted) return;
         setAddresses(result);
-        const defaultAddress = result.find((a) => a.isDefault) || result[0];
+        // Find default address - property name changed from isDefault to defaultAddress
+        const defaultAddress = result.find((a) => a.defaultAddress) || result[0];
         setSelectedAddressId(defaultAddress?.id || null);
       } catch (error) {
         console.error('Failed to load addresses:', error);
@@ -130,6 +136,65 @@ const CheckoutScreen = () => {
     }));
   };
 
+  // Map an address to the format expected by saveAddresses
+  const mapAddress = (address: Address, useForShipping: boolean) => ({
+    companyName: address.companyName || '',
+    firstName: address.firstName,
+    lastName: address.lastName,
+    email: address.email,
+    vatId: address.vatId || '',
+    address: [address.address], // Convert to array
+    country: address.country,
+    state: address.state,
+    city: address.city,
+    postcode: address.postcode,
+    phone: address.phone,
+    defaultAddress: address.defaultAddress,
+    useForShipping,
+  });
+
+  // Open billing address bottom sheet
+  const openBillingSheet = () => {
+    // Default billing selection to the current shipping address
+    if (!selectedBillingAddressId) {
+      setSelectedBillingAddressId(selectedAddressId);
+    }
+    setShowBillingSheet(true);
+    Animated.timing(billingSheetAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // Close billing address bottom sheet
+  const closeBillingSheet = () => {
+    Animated.timing(billingSheetAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowBillingSheet(false);
+    });
+  };
+
+  // Confirm the billing address selection from the sheet
+  const confirmBillingAddress = () => {
+    closeBillingSheet();
+  };
+
+  // Handle toggling the "use same address" checkbox
+  const handleToggleBillingForShipping = (newValue: boolean) => {
+    setUseBillingForShipping(newValue);
+    if (!newValue) {
+      // User wants a different billing address - open the sheet
+      openBillingSheet();
+    } else {
+      // Reset billing address to match shipping
+      setSelectedBillingAddressId(null);
+    }
+  };
+
   // Handle address save and continue
   const handleSaveAddress = async () => {
     try {
@@ -139,26 +204,38 @@ const CheckoutScreen = () => {
         return;
       }
 
-      const mappedAddress = {
-        firstName: selectedAddress.firstName,
-        lastName: selectedAddress.lastName,
-        email: selectedAddress.email || '',
-        address: [selectedAddress.address1],
-        country: selectedAddress.country,
-        state: selectedAddress.province || '',
-        city: selectedAddress.city,
-        postcode: selectedAddress.zip,
-        phone: selectedAddress.phone || '',
-        companyName: selectedAddress.companyName || '',
-        useForShipping: true,
-      };
+      // Determine the billing address
+      let billingAddr;
+      if (useBillingForShipping) {
+        // Same address for both
+        billingAddr = selectedAddress;
+      } else {
+        // Separate billing address
+        const billingAddrObj = addresses.find((a) => a.id === selectedBillingAddressId);
+        if (!billingAddrObj) {
+          Alert.alert('Error', 'Please select a billing address');
+          return;
+        }
+        billingAddr = billingAddrObj;
+      }
 
-      await saveAddresses(mappedAddress, mappedAddress);
+      const mappedShipping = mapAddress(selectedAddress, true);
+      const mappedBilling = mapAddress(billingAddr, false);
+
+      console.log('Shipping address:', mappedShipping);
+      console.log('Billing address:', mappedBilling);
+
+      await saveAddresses(mappedBilling, mappedShipping);
       setCompletedSections(prev => ({ ...prev, address: true }));
       setExpandedSections(prev => ({ ...prev, address: false, shipping: true }));
+      
+      // Scroll to shipping section
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 200, animated: true });
+      }, 100);
     } catch (error) {
       console.error('Error saving addresses:', error);
-      Alert.alert('Error', 'Failed to save address.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save address.');
     }
   };
 
@@ -166,6 +243,8 @@ const CheckoutScreen = () => {
   const handleSelectShipping = async (methodCode: string) => {
     try {
       await selectShippingMethod(methodCode);
+
+      loadCart(true); // Refresh cart to get updated totals based on shipping method
     } catch (error) {
       console.error('Failed to select shipping method:', error);
     }
@@ -467,7 +546,7 @@ const CheckoutScreen = () => {
                         style={[styles.addressCard, isSelected && styles.addressCardSelected]}
                         onPress={() => setSelectedAddressId(address.id)}
                       >
-                        {address.isDefault && (
+                        {address.defaultAddress && (
                           <View style={styles.defaultBadge}>
                             <Sparkles size={10} color={Colors.white} />
                             <Text style={styles.defaultBadgeText}>Default</Text>
@@ -482,9 +561,9 @@ const CheckoutScreen = () => {
                               {isSelected && <Check size={12} color={Colors.white} />}
                             </View>
                           </View>
-                          <Text style={styles.addressLine}>{address.address1}</Text>
+                          <Text style={styles.addressLine}>{address.address}</Text>
                           <Text style={styles.addressDetails}>
-                            {address.city}, {address.country} - {address.zip}
+                            {address.city}, {address.country} - {address.postcode}
                           </Text>
                           {address.phone && <Text style={styles.addressPhone}>{address.phone}</Text>}
                         </View>
@@ -513,7 +592,7 @@ const CheckoutScreen = () => {
 
               <Pressable
                 style={styles.checkboxRow}
-                onPress={() => setUseBillingForShipping(!useBillingForShipping)}
+                onPress={() => handleToggleBillingForShipping(!useBillingForShipping)}
               >
                 <View style={[styles.checkbox, useBillingForShipping && styles.checkboxChecked]}>
                   {useBillingForShipping && <Check size={10} color={Colors.white} />}
@@ -521,10 +600,39 @@ const CheckoutScreen = () => {
                 <Text style={styles.checkboxLabel}>Use same address for billing</Text>
               </Pressable>
 
+              {/* Billing address summary when using a different address */}
+              {!useBillingForShipping && selectedBillingAddressId && (() => {
+                const billingAddr = addresses.find((a) => a.id === selectedBillingAddressId);
+                if (!billingAddr) return null;
+                return (
+                  <View style={styles.billingAddressSummary}>
+                    <View style={styles.billingAddressHeader}>
+                      <View style={styles.billingAddressLabel}>
+                        <CreditCard size={14} color={Colors.primary} />
+                        <Text style={styles.billingAddressLabelText}>Billing Address</Text>
+                      </View>
+                      <Pressable onPress={openBillingSheet}>
+                        <Text style={styles.billingChangeText}>Change</Text>
+                      </Pressable>
+                    </View>
+                    <Text style={styles.billingAddressName}>
+                      {billingAddr.firstName} {billingAddr.lastName}
+                    </Text>
+                    <Text style={styles.billingAddressLine}>{billingAddr.address}</Text>
+                    <Text style={styles.billingAddressDetails}>
+                      {billingAddr.city}, {billingAddr.country} - {billingAddr.postcode}
+                    </Text>
+                  </View>
+                );
+              })()}
+
               <Pressable
-                style={[styles.continueButton, isLoading && styles.buttonDisabled]}
+                style={[
+                  styles.continueButton,
+                  (isLoading || !selectedAddressId || (!useBillingForShipping && !selectedBillingAddressId)) && styles.buttonDisabled,
+                ]}
                 onPress={handleSaveAddress}
-                disabled={isLoading || !selectedAddressId}
+                disabled={isLoading || !selectedAddressId || (!useBillingForShipping && !selectedBillingAddressId)}
               >
                 <Text style={styles.continueButtonText}>
                   {isLoading ? 'Saving...' : 'Continue to Shipping'}
@@ -536,12 +644,30 @@ const CheckoutScreen = () => {
           {/* Collapsed summary */}
           {!expandedSections.address && completedSections.address && shippingAddress && (
             <View style={styles.collapsedSummary}>
+              <View style={styles.collapsedAddressRow}>
+                <MapPin size={12} color={Colors.primary} />
+                <Text style={styles.collapsedAddressLabel}>Shipping</Text>
+              </View>
               <Text style={styles.collapsedText}>
                 {shippingAddress.firstName} {shippingAddress.lastName}
               </Text>
               <Text style={styles.collapsedSubtext}>
-                {shippingAddress.address[0]}, {shippingAddress.city}
+                {shippingAddress.address}, {shippingAddress.city}
               </Text>
+              {!useBillingForShipping && billingAddress && (
+                <View style={styles.collapsedBillingSection}>
+                  <View style={styles.collapsedAddressRow}>
+                    <CreditCard size={12} color={Colors.primary} />
+                    <Text style={styles.collapsedAddressLabel}>Billing</Text>
+                  </View>
+                  <Text style={styles.collapsedText}>
+                    {billingAddress.firstName} {billingAddress.lastName}
+                  </Text>
+                  <Text style={styles.collapsedSubtext}>
+                    {billingAddress.address}, {billingAddress.city}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -829,14 +955,31 @@ const CheckoutScreen = () => {
                 <View style={styles.reviewCard}>
                   <View style={styles.reviewCardHeader}>
                     <MapPin size={16} color={Colors.primary} />
-                    <Text style={styles.reviewCardTitle}>Delivery Address</Text>
+                    <Text style={styles.reviewCardTitle}>Shipping Address</Text>
                   </View>
                   <Text style={styles.reviewText}>
                     {shippingAddress.firstName} {shippingAddress.lastName}
                   </Text>
-                  <Text style={styles.reviewTextLight}>{shippingAddress.address[0]}</Text>
+                  <Text style={styles.reviewTextLight}>{shippingAddress.address}</Text>
                   <Text style={styles.reviewTextLight}>
                     {shippingAddress.city}, {shippingAddress.state} {shippingAddress.postcode}
+                  </Text>
+                </View>
+              )}
+
+              {/* Billing Address Summary (shown when different from shipping) */}
+              {!useBillingForShipping && billingAddress && (
+                <View style={styles.reviewCard}>
+                  <View style={styles.reviewCardHeader}>
+                    <CreditCard size={16} color={Colors.primary} />
+                    <Text style={styles.reviewCardTitle}>Billing Address</Text>
+                  </View>
+                  <Text style={styles.reviewText}>
+                    {billingAddress.firstName} {billingAddress.lastName}
+                  </Text>
+                  <Text style={styles.reviewTextLight}>{billingAddress.address}</Text>
+                  <Text style={styles.reviewTextLight}>
+                    {billingAddress.city}, {billingAddress.state} {billingAddress.postcode}
                   </Text>
                 </View>
               )}
@@ -889,6 +1032,119 @@ const CheckoutScreen = () => {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* ========== BILLING ADDRESS BOTTOM SHEET ========== */}
+      {showBillingSheet && (
+        <>
+          {/* Backdrop */}
+          <Pressable style={styles.sheetBackdrop} onPress={closeBillingSheet}>
+            <Animated.View
+              style={[
+                styles.sheetBackdropInner,
+                { opacity: billingSheetAnim },
+              ]}
+            />
+          </Pressable>
+
+          {/* Sheet */}
+          <Animated.View
+            style={[
+              styles.billingSheet,
+              {
+                transform: [
+                  {
+                    translateY: billingSheetAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [600, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {/* Sheet handle */}
+            <View style={styles.sheetHandle}>
+              <View style={styles.sheetHandleBar} />
+            </View>
+
+            {/* Sheet header */}
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetHeaderLeft}>
+                <CreditCard size={20} color={Colors.primary} />
+                <Text style={styles.sheetTitle}>Select Billing Address</Text>
+              </View>
+              <Pressable onPress={closeBillingSheet} style={styles.sheetCloseButton}>
+                <X size={20} color={Colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.sheetSubtitle}>
+              Choose an address for billing purposes
+            </Text>
+
+            {/* Address list */}
+            <ScrollView
+              style={styles.sheetScrollView}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.sheetScrollContent}
+            >
+              {addresses.map((address) => {
+                const isSelected = selectedBillingAddressId === address.id;
+                const isShippingAddr = selectedAddressId === address.id;
+                return (
+                  <Pressable
+                    key={address.id}
+                    style={[styles.addressCard, isSelected && styles.addressCardSelected]}
+                    onPress={() => setSelectedBillingAddressId(address.id)}
+                  >
+                    {isShippingAddr && (
+                      <View style={styles.shippingBadge}>
+                        <Package size={10} color={Colors.white} />
+                        <Text style={styles.defaultBadgeText}>Shipping</Text>
+                      </View>
+                    )}
+                    {address.defaultAddress && !isShippingAddr && (
+                      <View style={styles.defaultBadge}>
+                        <Sparkles size={10} color={Colors.white} />
+                        <Text style={styles.defaultBadgeText}>Default</Text>
+                      </View>
+                    )}
+                    <View style={styles.addressContent}>
+                      <View style={styles.addressHeader}>
+                        <Text style={styles.addressName}>
+                          {address.firstName} {address.lastName}
+                        </Text>
+                        <View style={[styles.checkmark, isSelected && styles.checkmarkSelected]}>
+                          {isSelected && <Check size={12} color={Colors.white} />}
+                        </View>
+                      </View>
+                      <Text style={styles.addressLine}>{address.address}</Text>
+                      <Text style={styles.addressDetails}>
+                        {address.city}, {address.country} - {address.postcode}
+                      </Text>
+                      {address.phone && <Text style={styles.addressPhone}>{address.phone}</Text>}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {/* Confirm button */}
+            <View style={styles.sheetFooter}>
+              <Pressable
+                style={[
+                  styles.continueButton,
+                  !selectedBillingAddressId && styles.buttonDisabled,
+                ]}
+                onPress={confirmBillingAddress}
+                disabled={!selectedBillingAddressId}
+              >
+                <Text style={styles.continueButtonText}>Confirm Billing Address</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </>
+      )}
     </SafeAreaView>
   );
 };
@@ -1629,6 +1885,169 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Billing address summary (inline in address section)
+  billingAddressSummary: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderLeftWidth: 3,
+  },
+  billingAddressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  billingAddressLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  billingAddressLabelText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  billingChangeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+    textDecorationLine: 'underline',
+  },
+  billingAddressName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  billingAddressLine: {
+    fontSize: 13,
+    color: Colors.secondary,
+    marginBottom: 2,
+  },
+  billingAddressDetails: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  // Collapsed summary additions
+  collapsedAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  collapsedAddressLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  collapsedBillingSection: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  // Billing sheet (bottom sheet overlay)
+  sheetBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
+  sheetBackdropInner: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  billingSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: '80%',
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 101,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  sheetHandle: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  sheetHandleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  sheetHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  sheetCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sheetSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  sheetScrollView: {
+    maxHeight: 400,
+  },
+  sheetScrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  sheetFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  shippingBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: Colors.textSecondary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
   },
 });
 
