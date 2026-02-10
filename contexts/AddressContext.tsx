@@ -11,24 +11,22 @@ export const [AddressContext, useAddress] = createContextHook(() => {
   const addressesQuery = useQuery({
     queryKey: ['addresses', customer?.id],
     queryFn: async () => {
+      if (!customer?.id) {
+        throw new Error("Customer ID not available");
+      }
       return authService.getAddresses();
     },
-    enabled: isAuthenticated && !!customer,
+    enabled: isAuthenticated && !!customer?.id, // Ensure customer ID exists
     staleTime: 5 * 60 * 1000,
   });
 
   // Mutation to add address
   const addAddressMutation = useMutation({
-    mutationFn: async (address: Omit<Address, 'id'> & {
-      email: string;
-      companyName?: string;
-      vatId?: string;
-    }) => {
+    mutationFn: async (address: Omit<Address, 'id'>) => {
       return authService.addAddress(address);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      console.log('Address added successfully');
     },
     onError: (error) => {
       console.error('Add address error:', error);
@@ -42,12 +40,11 @@ export const [AddressContext, useAddress] = createContextHook(() => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      console.log('Address updated successfully');
     },
     onError: (error) => {
       console.error('Update address error:', error);
     },
-  });
+});
 
   // Mutation to delete address
   const deleteAddressMutation = useMutation({

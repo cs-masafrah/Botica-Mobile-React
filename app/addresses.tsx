@@ -13,16 +13,26 @@ import {
   Text,
   TextInput,
   View,
+  Switch,
 } from "react-native";
 import Colors from "@/constants/colors";
 import { useAddress } from "@/contexts/AddressContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Address } from "@/services/auth";
 
-type AddressFormData = Omit<Address, "id"> & {
-  email?: string;
-  companyName?: string;
-  vatId?: string;
+type AddressFormData = {
+  companyName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  vatId: string;
+  address: string;
+  country: string;
+  state: string;
+  city: string;
+  postcode: string;
+  phone: string;
+  defaultAddress: boolean;
 };
 
 export default function AddressesScreen() {
@@ -44,36 +54,36 @@ export default function AddressesScreen() {
   const [showModal, setShowModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [formData, setFormData] = useState<AddressFormData>({
+    companyName: "",
     firstName: "",
     lastName: "",
-    address1: "",
-    address2: "",
-    city: "",
-    province: "",
-    zip: "",
-    country: "",
-    phone: "",
-    companyName: "",
     email: customer?.email || "",
     vatId: "",
+    address: "",
+    country: "PS", // Default to Palestine
+    state: "WB", // Default to West Bank
+    city: "",
+    postcode: "",
+    phone: "",
+    defaultAddress: false,
   });
 
   const [formError, setFormError] = useState<string | null>(null);
 
   const resetForm = () => {
     setFormData({
+      companyName: "",
       firstName: "",
       lastName: "",
-      address1: "",
-      address2: "",
-      city: "",
-      province: "", // Leave empty, user should enter
-      zip: "",
-      country: "", // Leave empty, user should enter
-      phone: "",
-      companyName: "",
       email: customer?.email || "",
       vatId: "",
+      address: "",
+      country: "PS",
+      state: "WB",
+      city: "",
+      postcode: "",
+      phone: "",
+      defaultAddress: false,
     });
     setEditingAddress(null);
     setFormError(null);
@@ -90,18 +100,18 @@ export default function AddressesScreen() {
   const handleEdit = (address: Address) => {
     setEditingAddress(address);
     setFormData({
+      companyName: address.companyName || "",
       firstName: address.firstName,
       lastName: address.lastName,
-      address1: address.address1,
-      address2: address.address2 || "",
-      city: address.city,
-      province: address.province || "",
-      zip: address.zip,
-      country: address.country,
-      phone: address.phone || "",
-      companyName: address.companyName || "",
-      email: address.email || customer?.email || "",
+      email: address.email,
       vatId: address.vatId || "",
+      address: address.address,
+      country: address.country,
+      state: address.state,
+      city: address.city,
+      postcode: address.postcode,
+      phone: address.phone,
+      defaultAddress: address.defaultAddress,
     });
     setFormError(null);
     setShowModal(true);
@@ -158,54 +168,60 @@ export default function AddressesScreen() {
     if (
       !formData.firstName.trim() ||
       !formData.lastName.trim() ||
-      !formData.address1.trim() ||
+      !formData.address.trim() ||
       !formData.city.trim() ||
-      !formData.zip.trim() ||
-      !formData.country.trim()
+      !formData.postcode.trim() ||
+      !formData.country.trim() ||
+      !formData.state.trim() ||
+      !formData.email.trim() ||
+      !formData.phone.trim()
     ) {
       setFormError("Please fill in all required fields (*)");
       return;
     }
 
-    // Validate country code (should be 2 characters)
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setFormError("Please enter a valid email address");
+      return;
+    }
+
+    // Validate country and state codes
     if (formData.country.length !== 2) {
       setFormError("Country must be a 2-letter code (e.g., PS for Palestine)");
       return;
     }
 
-    // Validate state code (should be 2 characters for Palestine)
-    if (
-      formData.province &&
-      formData.country === "PS" &&
-      formData.province.length !== 2
-    ) {
-      setFormError(
-        "For Palestine, state must be a 2-letter code (e.g., WB for West Bank)",
-      );
+    if (formData.state.length !== 2) {
+      setFormError("State must be a 2-letter code (e.g., WB for West Bank)");
       return;
     }
 
     console.log("Saving address data:", JSON.stringify(formData, null, 2));
 
     try {
+      // Prepare the input for GraphQL
+      const addressInput = {
+        companyName: formData.companyName.trim() || undefined,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        vatId: formData.vatId.trim() || undefined,
+        address: formData.address.trim(),
+        country: formData.country.toUpperCase(),
+        state: formData.state.toUpperCase(),
+        city: formData.city.trim(),
+        postcode: formData.postcode.trim(),
+        phone: formData.phone.trim(),
+        defaultAddress: formData.defaultAddress,
+      };
+
       if (editingAddress) {
         console.log("Updating address with ID:", editingAddress.id);
         await updateAddress({
           id: editingAddress.id,
-          address: {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            address1: formData.address1,
-            address2: formData.address2 || "",
-            city: formData.city,
-            province: formData.province || "",
-            zip: formData.zip,
-            country: formData.country,
-            phone: formData.phone,
-            companyName: formData.companyName,
-            email: formData.email,
-            vatId: formData.vatId,
-          },
+          address: addressInput,
         });
         Alert.alert("Success", "Address updated successfully");
         setShowModal(false);
@@ -213,30 +229,7 @@ export default function AddressesScreen() {
         refetchAddresses();
       } else {
         console.log("Creating new address...");
-
-        // Prepare address data with proper defaults
-        const addressData = {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address1: formData.address1,
-          address2: formData.address2 || "",
-          city: formData.city,
-          province: formData.province || "WB", // Default to WB for Palestine
-          zip: formData.zip,
-          country: formData.country || "PS", // Default to PS
-          phone: formData.phone || "",
-          email: formData.email || customer?.email || "",
-          companyName: formData.companyName || "",
-          vatId: formData.vatId || "",
-          isDefault: false, // Default to false for new addresses
-        };
-
-        console.log(
-          "Address data to send:",
-          JSON.stringify(addressData, null, 2),
-        );
-
-        await addAddress(addressData);
+        await addAddress(addressInput);
         Alert.alert("Success", "Address added successfully");
         setShowModal(false);
         resetForm();
@@ -251,17 +244,15 @@ export default function AddressesScreen() {
       setFormError(errorMessage);
     }
   };
-  const updateField = (field: keyof AddressFormData, value: string) => {
+
+  const updateField = <K extends keyof AddressFormData>(
+    field: K,
+    value: AddressFormData[K],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (formError) {
       setFormError(null);
     }
-  };
-
-  // Helper function to format country/state codes
-  const formatCode = (value: string) => {
-    return value.toUpperCase().trim();
   };
 
   if (authLoading) {
@@ -316,7 +307,7 @@ export default function AddressesScreen() {
                       {address.firstName} {address.lastName}
                     </Text>
                   </View>
-                  {address.isDefault && (
+                  {address.defaultAddress && (
                     <View style={styles.defaultBadge}>
                       <Text style={styles.defaultBadgeText}>Default</Text>
                     </View>
@@ -329,28 +320,22 @@ export default function AddressesScreen() {
                       {address.companyName}
                     </Text>
                   )}
-                  <Text style={styles.addressText}>{address.address1}</Text>
-                  {address.address2 && address.address2 !== "" && (
-                    <Text style={styles.addressText}>{address.address2}</Text>
-                  )}
+                  <Text style={styles.addressText}>{address.address}</Text>
                   <Text style={styles.addressText}>
-                    {address.city}, {address.province || ""} {address.zip}
+                    {address.city}, {address.state} {address.postcode}
                   </Text>
                   <Text style={styles.addressText}>{address.country}</Text>
                   {address.phone && (
-                    <Text style={styles.addressText}>
-                      Phone: {address.phone}
-                    </Text>
+                    <Text style={styles.addressText}>Phone: {address.phone}</Text>
                   )}
-                  {address.email && (
-                    <Text style={styles.addressText}>
-                      Email: {address.email}
-                    </Text>
+                  <Text style={styles.addressText}>Email: {address.email}</Text>
+                  {address.vatId && (
+                    <Text style={styles.addressText}>VAT ID: {address.vatId}</Text>
                   )}
                 </View>
 
                 <View style={styles.addressActions}>
-                  {!address.isDefault && (
+                  {!address.defaultAddress && (
                     <Pressable
                       style={styles.actionButton}
                       onPress={() => handleSetDefault(address.id)}
@@ -468,46 +453,11 @@ export default function AddressesScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Error Message Display */}
             {formError && (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{formError}</Text>
               </View>
             )}
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>First Name *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  (isAddingAddress || isUpdatingAddress) &&
-                    styles.disabledInput,
-                ]}
-                value={formData.firstName}
-                onChangeText={(value) => updateField("firstName", value)}
-                placeholder="John"
-                placeholderTextColor={Colors.textSecondary}
-                editable={!isAddingAddress && !isUpdatingAddress}
-                autoCapitalize="words"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Last Name *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  (isAddingAddress || isUpdatingAddress) &&
-                    styles.disabledInput,
-                ]}
-                value={formData.lastName}
-                onChangeText={(value) => updateField("lastName", value)}
-                placeholder="Doe"
-                placeholderTextColor={Colors.textSecondary}
-                editable={!isAddingAddress && !isUpdatingAddress}
-                autoCapitalize="words"
-              />
-            </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Company Name</Text>
@@ -519,10 +469,46 @@ export default function AddressesScreen() {
                 ]}
                 value={formData.companyName}
                 onChangeText={(value) => updateField("companyName", value)}
-                placeholder="Company Name"
+                placeholder="Company Name (Optional)"
                 placeholderTextColor={Colors.textSecondary}
                 editable={!isAddingAddress && !isUpdatingAddress}
               />
+            </View>
+
+            <View style={styles.inputRow}>
+              <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
+                <Text style={styles.label}>First Name *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    (isAddingAddress || isUpdatingAddress) &&
+                      styles.disabledInput,
+                  ]}
+                  value={formData.firstName}
+                  onChangeText={(value) => updateField("firstName", value)}
+                  placeholder="John"
+                  placeholderTextColor={Colors.textSecondary}
+                  editable={!isAddingAddress && !isUpdatingAddress}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={[styles.inputContainer, { flex: 1, marginLeft: 8 }]}>
+                <Text style={styles.label}>Last Name *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    (isAddingAddress || isUpdatingAddress) &&
+                      styles.disabledInput,
+                  ]}
+                  value={formData.lastName}
+                  onChangeText={(value) => updateField("lastName", value)}
+                  placeholder="Doe"
+                  placeholderTextColor={Colors.textSecondary}
+                  editable={!isAddingAddress && !isUpdatingAddress}
+                  autoCapitalize="words"
+                />
+              </View>
             </View>
 
             <View style={styles.inputContainer}>
@@ -544,119 +530,115 @@ export default function AddressesScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Address Line 1 *</Text>
+              <Text style={styles.label}>VAT ID (Tax Number)</Text>
               <TextInput
                 style={[
                   styles.input,
                   (isAddingAddress || isUpdatingAddress) &&
                     styles.disabledInput,
                 ]}
-                value={formData.address1}
-                onChangeText={(value) => updateField("address1", value)}
-                placeholder="123 Main St"
+                value={formData.vatId}
+                onChangeText={(value) => updateField("vatId", value)}
+                placeholder="VAT123456 (Optional)"
                 placeholderTextColor={Colors.textSecondary}
                 editable={!isAddingAddress && !isUpdatingAddress}
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Address Line 2</Text>
+              <Text style={styles.label}>Address *</Text>
               <TextInput
                 style={[
                   styles.input,
+                  styles.textArea,
                   (isAddingAddress || isUpdatingAddress) &&
                     styles.disabledInput,
                 ]}
-                value={formData.address2}
-                onChangeText={(value) => updateField("address2", value)}
-                placeholder="Apt 4B"
+                value={formData.address}
+                onChangeText={(value) => updateField("address", value)}
+                placeholder="Street, Building, Apartment"
                 placeholderTextColor={Colors.textSecondary}
                 editable={!isAddingAddress && !isUpdatingAddress}
+                multiline
+                numberOfLines={3}
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>City *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  (isAddingAddress || isUpdatingAddress) &&
-                    styles.disabledInput,
-                ]}
-                value={formData.city}
-                onChangeText={(value) => updateField("city", value)}
-                placeholder="Ramallah"
-                placeholderTextColor={Colors.textSecondary}
-                editable={!isAddingAddress && !isUpdatingAddress}
-              />
+            <View style={styles.inputRow}>
+              <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
+                <Text style={styles.label}>City *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    (isAddingAddress || isUpdatingAddress) &&
+                      styles.disabledInput,
+                  ]}
+                  value={formData.city}
+                  onChangeText={(value) => updateField("city", value)}
+                  placeholder="Ramallah"
+                  placeholderTextColor={Colors.textSecondary}
+                  editable={!isAddingAddress && !isUpdatingAddress}
+                />
+              </View>
+
+              <View style={[styles.inputContainer, { flex: 1, marginLeft: 8 }]}>
+                <Text style={styles.label}>Postcode *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    (isAddingAddress || isUpdatingAddress) &&
+                      styles.disabledInput,
+                  ]}
+                  value={formData.postcode}
+                  onChangeText={(value) => updateField("postcode", value)}
+                  placeholder="00970"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="numeric"
+                  editable={!isAddingAddress && !isUpdatingAddress}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputRow}>
+              <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
+                <Text style={styles.label}>Country *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    (isAddingAddress || isUpdatingAddress) &&
+                      styles.disabledInput,
+                  ]}
+                  value={formData.country}
+                  onChangeText={(value) => updateField("country", value.toUpperCase())}
+                  placeholder="PS"
+                  placeholderTextColor={Colors.textSecondary}
+                  editable={!isAddingAddress && !isUpdatingAddress}
+                  autoCapitalize="characters"
+                  maxLength={2}
+                />
+              </View>
+
+              <View style={[styles.inputContainer, { flex: 1, marginLeft: 8 }]}>
+                <Text style={styles.label}>State *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    (isAddingAddress || isUpdatingAddress) &&
+                      styles.disabledInput,
+                  ]}
+                  value={formData.state}
+                  onChangeText={(value) => updateField("state", value.toUpperCase())}
+                  placeholder="WB"
+                  placeholderTextColor={Colors.textSecondary}
+                  editable={!isAddingAddress && !isUpdatingAddress}
+                  autoCapitalize="characters"
+                  maxLength={2}
+                />
+              </View>
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>State/Province *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  (isAddingAddress || isUpdatingAddress) &&
-                    styles.disabledInput,
-                ]}
-                value={formData.province}
-                onChangeText={(value) =>
-                  updateField("province", value.toUpperCase())
-                }
-                placeholder="WB"
-                placeholderTextColor={Colors.textSecondary}
-                editable={!isAddingAddress && !isUpdatingAddress}
-                autoCapitalize="characters"
-                maxLength={2}
-              />
-              <Text style={styles.helperText}>
-                Use 2-letter code (e.g., WB for West Bank)
-              </Text>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>ZIP/Postal Code *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  (isAddingAddress || isUpdatingAddress) &&
-                    styles.disabledInput,
-                ]}
-                value={formData.zip}
-                onChangeText={(value) => updateField("zip", value)}
-                placeholder="00970"
-                placeholderTextColor={Colors.textSecondary}
-                keyboardType="numeric"
-                editable={!isAddingAddress && !isUpdatingAddress}
-                maxLength={10}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Country *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  (isAddingAddress || isUpdatingAddress) &&
-                    styles.disabledInput,
-                ]}
-                value={formData.country}
-                onChangeText={(value) =>
-                  updateField("country", value.toUpperCase())
-                }
-                placeholder="PS"
-                placeholderTextColor={Colors.textSecondary}
-                editable={!isAddingAddress && !isUpdatingAddress}
-                autoCapitalize="characters"
-                maxLength={2}
-              />
-              <Text style={styles.helperText}>
-                Use 2-letter country code (e.g., PS for Palestine)
-              </Text>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Phone</Text>
+              <Text style={styles.label}>Phone *</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -672,26 +654,21 @@ export default function AddressesScreen() {
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>VAT ID (Tax Number)</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  (isAddingAddress || isUpdatingAddress) &&
-                    styles.disabledInput,
-                ]}
-                value={formData.vatId}
-                onChangeText={(value) => updateField("vatId", value)}
-                placeholder="VAT123456"
-                placeholderTextColor={Colors.textSecondary}
-                editable={!isAddingAddress && !isUpdatingAddress}
+            <View style={styles.switchContainer}>
+              <Text style={styles.label}>Set as default address</Text>
+              <Switch
+                value={formData.defaultAddress}
+                onValueChange={(value) => updateField("defaultAddress", value)}
+                trackColor={{ false: Colors.border, true: Colors.primary }}
+                thumbColor={Colors.white}
+                disabled={isAddingAddress || isUpdatingAddress}
               />
             </View>
 
             <View style={styles.noteContainer}>
               <Text style={styles.noteText}>
-                Note: Make sure to use valid country and state codes. For
-                Palestine, use "PS" for country and "WB" for West Bank.
+                Note: For Palestine, use &quot;PS&quot; for country and &quot;WB&quot; for West Bank.
+                Phone number and email are required fields.
               </Text>
             </View>
 
@@ -727,7 +704,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 24,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.text,
     marginTop: 24,
     marginBottom: 8,
@@ -746,7 +723,7 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     fontSize: 16,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.white,
   },
   addressList: {
@@ -757,7 +734,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    shadowColor: Colors.black,
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -776,7 +753,7 @@ const styles = StyleSheet.create({
   },
   addressName: {
     fontSize: 18,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.text,
   },
   defaultBadge: {
@@ -787,7 +764,7 @@ const styles = StyleSheet.create({
   },
   defaultBadgeText: {
     fontSize: 12,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.white,
   },
   addressBody: {
@@ -815,7 +792,7 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 14,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.primary,
   },
   deleteButton: {
@@ -844,7 +821,7 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     fontSize: 17,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.white,
   },
   modalContainer: {
@@ -868,32 +845,30 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.text,
   },
   modalSave: {
     fontSize: 16,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.primary,
   },
   modalContent: {
     flex: 1,
     padding: 20,
   },
+  inputRow: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
   inputContainer: {
     marginBottom: 16,
   },
   label: {
     fontSize: 14,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 8,
-  },
-  helperText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 4,
-    fontStyle: "italic",
   },
   input: {
     height: 48,
@@ -904,6 +879,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  textArea: {
+    height: 100,
+    paddingTop: 12,
+    paddingBottom: 12,
+    textAlignVertical: "top",
   },
   disabledInput: {
     backgroundColor: Colors.cardBackground,
@@ -926,13 +907,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
+  switchContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
   noteContainer: {
     backgroundColor: "#EFF6FF",
     borderWidth: 1,
     borderColor: "#93C5FD",
     borderRadius: 8,
     padding: 12,
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 8,
   },
   noteText: {
