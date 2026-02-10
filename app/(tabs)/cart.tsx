@@ -31,6 +31,7 @@ import {
   parseFormattedPrice,
 } from "@/utils/currency";
 import { ShippingStrip } from "@/components/ShippingStrip";
+import { useAuth } from "@/contexts/AuthContext"; // Add this import
 
 export default function CartScreen() {
   const {
@@ -47,6 +48,8 @@ export default function CartScreen() {
     cartDetails,
     hasError,
   } = useCart();
+
+  const { isAuthenticated } = useAuth(); // Add authentication hook
 
   const [refreshing, setRefreshing] = useState(false);
   const [manualLoading, setManualLoading] = useState(false);
@@ -75,7 +78,23 @@ export default function CartScreen() {
   };
 
   const handleCheckout = () => {
+    if (!isAuthenticated) {
+      // Redirect to sign-in page if not logged in
+      Alert.alert(
+        "Sign In Required",
+        "Please sign in to proceed to checkout",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Sign In", onPress: () => router.push("/login") }
+        ]
+      );
+      return;
+    }
     router.push("/checkout");
+  };
+
+  const handleContinueShopping = () => {
+    router.push("/");
   };
 
   // Loading state
@@ -83,7 +102,7 @@ export default function CartScreen() {
     return (
       <View style={styles.loadingContainer}>
         <View style={styles.loadingIconWrapper}>
-          <ShoppingBag size={40} color="#10b981" />
+          <ShoppingBag size={40} color={Colors.primary} />
         </View>
         <Text style={styles.loadingText}>
           {manualLoading ? "Refreshing cart..." : "Loading cart..."}
@@ -98,7 +117,7 @@ export default function CartScreen() {
     return (
       <View style={styles.errorContainer}>
         <View style={styles.errorIconWrapper}>
-          <AlertCircle size={48} color="#ef4444" />
+          <AlertCircle size={48} color={Colors.error} />
         </View>
         <Text style={styles.errorTitle}>Unable to Load Cart</Text>
         <Text style={styles.errorSubtitle}>
@@ -110,13 +129,13 @@ export default function CartScreen() {
             style={styles.retryButton}
             disabled={manualLoading}
           >
-            <RefreshCw size={18} color="#ffffff" />
+            <RefreshCw size={18} color={Colors.white} />
             <Text style={styles.retryButtonText}>
               {manualLoading ? "Retrying..." : "Retry"}
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => router.push("/")}
+            onPress={handleContinueShopping}
             style={styles.browseButton}
           >
             <Text style={styles.browseButtonText}>Continue Shopping</Text>
@@ -131,7 +150,7 @@ export default function CartScreen() {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconWrapper}>
-          <ShoppingBag size={56} color="#10b981" />
+          <ShoppingBag size={56} color={Colors.primary} />
         </View>
         <Text style={styles.emptyTitle}>Your cart is empty</Text>
         <Text style={styles.emptySubtitle}>
@@ -143,12 +162,12 @@ export default function CartScreen() {
             style={styles.refreshButton}
             disabled={manualLoading}
           >
-            <RefreshCw size={18} color="#ffffff" />
+            <RefreshCw size={18} color={Colors.white} />
             <Text style={styles.refreshButtonText}>
               {manualLoading ? "Refreshing..." : "Refresh Cart"}
             </Text>
           </Pressable>
-          <Pressable onPress={() => router.push("/")} style={styles.shopButton}>
+          <Pressable onPress={handleContinueShopping} style={styles.shopButton}>
             <Text style={styles.shopButtonText}>Browse Products</Text>
           </Pressable>
         </View>
@@ -158,11 +177,10 @@ export default function CartScreen() {
 
   return (
     <View style={styles.container}>
-
       {/* Enhanced Header */}
       <View style={styles.header}>
         <LinearGradient
-          colors={["#ecfdf5", "#f0fdf4", "#ffffff"]}
+          colors={[Colors.borderLight, Colors.background, Colors.white]}
           style={StyleSheet.absoluteFill}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -170,7 +188,7 @@ export default function CartScreen() {
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
             <View style={styles.headerIconWrapper}>
-              <ShoppingBag size={22} color="#10b981" />
+              <ShoppingBag size={22} color={Colors.primary} />
             </View>
             <View>
               <Text style={styles.headerTitle}>My Cart</Text>
@@ -180,7 +198,7 @@ export default function CartScreen() {
             </View>
           </View>
           <Pressable onPress={handleManualRefresh} style={styles.headerRefresh}>
-            <RefreshCw size={18} color="#64748b" />
+            <RefreshCw size={18} color={Colors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -193,8 +211,8 @@ export default function CartScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#10b981"
-            colors={["#10b981"]}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
           />
         }
       >
@@ -243,7 +261,7 @@ export default function CartScreen() {
                       </Text>
                       {isUnavailable && (
                         <View style={styles.unavailableBadge}>
-                          <AlertCircle size={12} color="#ef4444" />
+                          <AlertCircle size={12} color={Colors.error} />
                           <Text style={styles.unavailableText}>Not available</Text>
                         </View>
                       )}
@@ -252,7 +270,7 @@ export default function CartScreen() {
                       style={styles.deleteButton}
                       onPress={() => removeFromCart(item.id)}
                     >
-                      <Trash2 size={16} color="#ef4444" />
+                      <Trash2 size={16} color={Colors.error} />
                     </Pressable>
                   </View>
 
@@ -285,7 +303,7 @@ export default function CartScreen() {
                         >
                           <Minus
                             size={14}
-                            color={item.quantity <= 1 ? "#cbd5e1" : "#1e293b"}
+                            color={item.quantity <= 1 ? Colors.lightGray : Colors.text}
                           />
                         </Pressable>
                         <Text style={styles.quantityText}>{item.quantity}</Text>
@@ -293,7 +311,7 @@ export default function CartScreen() {
                           style={styles.quantityButton}
                           onPress={() => updateQuantity(item.id, item.quantity + 1)}
                         >
-                          <Plus size={14} color="#1e293b" />
+                          <Plus size={14} color={Colors.text} />
                         </Pressable>
                       </View>
                     </View>
@@ -310,7 +328,7 @@ export default function CartScreen() {
         {/* Shipping Progress */}
         {applicableShippingDiscount ? (
           <View style={styles.freeShippingBadge}>
-            <Package size={18} color="#059669" />
+            <Package size={18} color={Colors.primary} />
             <Text style={styles.freeShippingText}>
               You qualify for free shipping!
             </Text>
@@ -335,7 +353,7 @@ export default function CartScreen() {
               return (
                 <View style={styles.shippingProgressContainer}>
                   <View style={styles.progressHeader}>
-                    <Package size={16} color="#10b981" />
+                    <Package size={16} color={Colors.primary} />
                     <Text style={styles.progressHeaderText}>
                       Add{" "}
                       <Text style={styles.progressAmount}>
@@ -389,14 +407,26 @@ export default function CartScreen() {
           </View>
         </View>
 
+        {/* Authentication reminder for guests */}
+        {!isAuthenticated && (
+          <View style={styles.authReminder}>
+            <AlertCircle size={16} color={Colors.warning} />
+            <Text style={styles.authReminderText}>
+              Sign in to complete your purchase
+            </Text>
+          </View>
+        )}
+
         {/* Checkout Button */}
         <Pressable
-          style={styles.checkoutButton}
+          style={[styles.checkoutButton, !isAuthenticated && styles.checkoutButtonDisabled]}
           onPress={handleCheckout}
           disabled={items.length === 0}
         >
-          <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
-          <ArrowRight size={20} color="#ffffff" />
+          <Text style={styles.checkoutButtonText}>
+            {isAuthenticated ? "Proceed to Checkout" : "Sign In to Checkout"}
+          </Text>
+          <ArrowRight size={20} color={Colors.white} />
         </Pressable>
       </View>
     </View>
@@ -406,21 +436,21 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: Colors.background,
   },
   // Loading
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: Colors.background,
     padding: 20,
   },
   loadingIconWrapper: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    backgroundColor: Colors.borderLight,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -428,12 +458,12 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#1e293b",
+    color: Colors.text,
     marginBottom: 4,
   },
   loadingSubtext: {
     fontSize: 14,
-    color: "#64748b",
+    color: Colors.textSecondary,
   },
   // Error
   errorContainer: {
@@ -441,13 +471,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
-    backgroundColor: "#f8fafc",
+    backgroundColor: Colors.background,
   },
   errorIconWrapper: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    backgroundColor: Colors.borderLight,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
@@ -455,12 +485,12 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1e293b",
+    color: Colors.text,
     marginBottom: 8,
   },
   errorSubtitle: {
     fontSize: 15,
-    color: "#64748b",
+    color: Colors.textSecondary,
     textAlign: "center",
     marginBottom: 32,
     lineHeight: 22,
@@ -474,25 +504,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#10b981",
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 10,
   },
   retryButtonText: {
-    color: "#ffffff",
+    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
   },
   browseButton: {
-    backgroundColor: "#ffffff",
+    backgroundColor: Colors.background,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#e2e8f0",
+    borderColor: Colors.border,
     alignItems: "center",
   },
   browseButtonText: {
-    color: "#1e293b",
+    color: Colors.text,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -502,13 +532,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
-    backgroundColor: "#f8fafc",
+    backgroundColor: Colors.background,
   },
   emptyIconWrapper: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    backgroundColor: Colors.borderLight,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
@@ -516,12 +546,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1e293b",
+    color: Colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: "#64748b",
+    color: Colors.textSecondary,
     textAlign: "center",
     marginBottom: 32,
     lineHeight: 22,
@@ -535,25 +565,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#10b981",
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 10,
   },
   refreshButtonText: {
-    color: "#ffffff",
+    color: Colors.white,
     fontSize: 16,
     fontWeight: "600",
   },
   shopButton: {
-    backgroundColor: "#ffffff",
+    backgroundColor: Colors.background,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#e2e8f0",
+    borderColor: Colors.border,
     alignItems: "center",
   },
   shopButtonText: {
-    color: "#1e293b",
+    color: Colors.text,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -564,7 +594,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#d1fae5",
+    borderBottomColor: Colors.border,
   },
   headerContent: {
     flexDirection: "row",
@@ -580,30 +610,30 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    backgroundColor: Colors.borderLight,
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1e293b",
+    color: Colors.text,
     letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "#64748b",
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   headerRefresh: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#ffffff",
+    backgroundColor: Colors.background,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: Colors.border,
   },
   // Content
   content: {
@@ -618,18 +648,23 @@ const styles = StyleSheet.create({
   // Cart Item
   cartItem: {
     flexDirection: "row",
-    backgroundColor: "#ffffff",
-    borderRadius: 18,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: Colors.border,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   itemImage: {
     width: 90,
     height: 110,
-    borderRadius: 14,
-    backgroundColor: "#f1f5f9",
+    borderRadius: 10,
+    backgroundColor: Colors.cardBackground,
   },
   placeholderImage: {
     justifyContent: "center",
@@ -638,7 +673,7 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#94a3b8",
+    color: Colors.textSecondary,
   },
   itemImageUnavailable: {
     opacity: 0.5,
@@ -659,7 +694,7 @@ const styles = StyleSheet.create({
   brandText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#64748b",
+    color: Colors.textSecondary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -667,7 +702,7 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1e293b",
+    color: Colors.text,
     lineHeight: 20,
     marginBottom: 6,
   },
@@ -675,7 +710,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    backgroundColor: Colors.borderLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -685,13 +720,13 @@ const styles = StyleSheet.create({
   unavailableText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#ef4444",
+    color: Colors.error,
   },
   deleteButton: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    backgroundColor: Colors.borderLight,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -704,15 +739,15 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#10b981",
+    color: Colors.primary,
   },
   itemTotalLabel: {
     fontSize: 13,
-    color: "#64748b",
+    color: Colors.textSecondary,
   },
   itemTotalValue: {
     fontWeight: "600",
-    color: "#1e293b",
+    color: Colors.text,
   },
   quantityContainer: {
     flexDirection: "row",
@@ -721,13 +756,13 @@ const styles = StyleSheet.create({
   },
   quantityLabel: {
     fontSize: 13,
-    color: "#64748b",
+    color: Colors.textSecondary,
     fontWeight: "500",
   },
   quantityControls: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: Colors.cardBackground,
     borderRadius: 10,
     padding: 4,
   },
@@ -735,9 +770,11 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: "#ffffff",
+    backgroundColor: Colors.background,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
   },
   quantityButtonDisabled: {
     opacity: 0.5,
@@ -745,7 +782,7 @@ const styles = StyleSheet.create({
   quantityText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1e293b",
+    color: Colors.text,
     marginHorizontal: 14,
     minWidth: 20,
     textAlign: "center",
@@ -754,35 +791,35 @@ const styles = StyleSheet.create({
   footer: {
     padding: 20,
     paddingBottom: 32,
-    backgroundColor: "#ffffff",
+    backgroundColor: Colors.background,
     borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
+    borderTopColor: Colors.border,
   },
   freeShippingBadge: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#d1fae5",
+    backgroundColor: Colors.borderLight,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 10,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#86efac",
+    borderColor: Colors.border,
   },
   freeShippingText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#059669",
+    color: Colors.primary,
   },
   shippingProgressContainer: {
-    backgroundColor: "#f0fdf4",
-    borderRadius: 12,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 10,
     padding: 14,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#bbf7d0",
+    borderColor: Colors.border,
   },
   progressHeader: {
     flexDirection: "row",
@@ -792,31 +829,31 @@ const styles = StyleSheet.create({
   },
   progressHeaderText: {
     fontSize: 13,
-    color: "#1e293b",
+    color: Colors.text,
     fontWeight: "500",
   },
   progressAmount: {
     fontWeight: "700",
-    color: "#10b981",
+    color: Colors.primary,
   },
   progressBarBackground: {
     height: 8,
-    backgroundColor: "#d1fae5",
+    backgroundColor: Colors.border,
     borderRadius: 4,
     overflow: "hidden",
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#10b981",
+    backgroundColor: Colors.primary,
     borderRadius: 4,
   },
   orderSummary: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 14,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 10,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: Colors.border,
   },
   summaryRow: {
     flexDirection: "row",
@@ -826,44 +863,64 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: "#64748b",
+    color: Colors.textSecondary,
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#1e293b",
+    color: Colors.text,
   },
   discountValue: {
-    color: "#10b981",
+    color: Colors.primary,
   },
   grandTotalRow: {
     marginTop: 10,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
+    borderTopColor: Colors.border,
   },
   grandTotalLabel: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#1e293b",
+    color: Colors.text,
   },
   grandTotalValue: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#10b981",
+    color: Colors.primary,
+  },
+  authReminder: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.borderLight,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  authReminderText: {
+    fontSize: 13,
+    color: Colors.warning,
+    fontWeight: "500",
   },
   checkoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#10b981",
-    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
     height: 56,
+  },
+  checkoutButtonDisabled: {
+    backgroundColor: Colors.secondary,
+    opacity: 0.9,
   },
   checkoutButtonText: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#ffffff",
+    color: Colors.white,
   },
 });

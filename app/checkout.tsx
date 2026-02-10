@@ -34,12 +34,11 @@ import {
 } from 'lucide-react-native';
 import { useCheckout } from '@/contexts/CheckoutContext';
 import { useCart } from '@/contexts/CartContext';
-import { CheckoutColors } from '@/constants/checkoutColors';
-import Colors from '@/constants/colors';
-import { LinearGradient } from 'expo-linear-gradient';
 import { authService, Address } from '@/services/auth';
 import { couponService } from '@/services/CouponService';
 import { formatPrice } from '@/utils/currency';
+import Colors from '@/constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const CheckoutScreen = () => {
   const {
@@ -330,7 +329,7 @@ const CheckoutScreen = () => {
       <View style={styles.sectionHeaderLeft}>
         <View style={[styles.stepBadge, isCompleted && styles.stepBadgeCompleted]}>
           {isCompleted ? (
-            <Check size={14} color="#ffffff" />
+            <Check size={14} color={Colors.white} />
           ) : (
             <Text style={[styles.stepBadgeText, isCompleted && styles.stepBadgeTextCompleted]}>
               {stepNumber}
@@ -338,15 +337,15 @@ const CheckoutScreen = () => {
           )}
         </View>
         <View style={[styles.sectionIcon, { backgroundColor: iconColor }]}>
-          <Icon size={18} color="#ffffff" />
+          <Icon size={18} color={Colors.white} />
         </View>
         <Text style={styles.sectionHeaderTitle}>{title}</Text>
       </View>
       {!disabled && (
         isExpanded ? (
-          <ChevronUp size={20} color="#64748b" />
+          <ChevronUp size={20} color={Colors.textSecondary} />
         ) : (
-          <ChevronDown size={20} color="#64748b" />
+          <ChevronDown size={20} color={Colors.textSecondary} />
         )
       )}
     </Pressable>
@@ -358,7 +357,7 @@ const CheckoutScreen = () => {
       <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.successContainer}>
           <View style={styles.successIconWrapper}>
-            <CheckCircle size={80} color="#10b981" />
+            <CheckCircle size={80} color={Colors.primary} />
           </View>
           <Text style={styles.successTitle}>Order Placed Successfully!</Text>
           <Text style={styles.successMessage}>
@@ -375,11 +374,11 @@ const CheckoutScreen = () => {
 
           <View style={styles.successButtons}>
             <Pressable style={styles.primaryButton} onPress={handleContinueShopping}>
-              <Home size={20} color="#ffffff" />
+              <Home size={20} color={Colors.white} />
               <Text style={styles.primaryButtonText}>Continue Shopping</Text>
             </Pressable>
             <Pressable style={styles.secondaryButton} onPress={handleViewOrders}>
-              <ShoppingBag size={20} color="#10b981" />
+              <ShoppingBag size={20} color={Colors.primary} />
               <Text style={styles.secondaryButtonText}>View My Orders</Text>
             </Pressable>
           </View>
@@ -393,7 +392,7 @@ const CheckoutScreen = () => {
       {/* Background Gradient */}
       <Animated.View style={[{ opacity: fadeAnim }]}>
         <LinearGradient
-          colors={CheckoutColors.primaryGradient as unknown as readonly [string, string, ...string[]]}
+          colors={[Colors.background, Colors.borderLight]}
           style={StyleSheet.absoluteFill}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -403,51 +402,13 @@ const CheckoutScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <ArrowLeft size={24} color="#1e293b" />
+          <ArrowLeft size={24} color={Colors.white} />
         </Pressable>
         <Text style={styles.headerTitle}>Checkout</Text>
         <Pressable style={styles.closeButton} onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <X size={24} color="#1e293b" />
+          <X size={24} color={Colors.white} />
         </Pressable>
       </View>
-
-      {/* Progress Summary */}
-      {/* <View style={styles.progressSummary}>
-        <View style={styles.progressSteps}>
-          {[1, 2, 3, 4].map((num, index) => (
-            <React.Fragment key={num}>
-              <View style={[
-                styles.progressDot,
-                (completedSections.address && num <= 1) && styles.progressDotCompleted,
-                (completedSections.shipping && num <= 2) && styles.progressDotCompleted,
-                (completedSections.payment && num <= 3) && styles.progressDotCompleted,
-              ]}>
-                {((completedSections.address && num === 1) ||
-                  (completedSections.shipping && num === 2) ||
-                  (completedSections.payment && num === 3)) ? (
-                  <Check size={10} color="#ffffff" />
-                ) : (
-                  <Text style={styles.progressDotText}>{num}</Text>
-                )}
-              </View>
-              {index < 3 && (
-                <View style={[
-                  styles.progressLine,
-                  ((completedSections.address && num === 1) ||
-                   (completedSections.shipping && num === 2) ||
-                   (completedSections.payment && num === 3)) && styles.progressLineCompleted,
-                ]} />
-              )}
-            </React.Fragment>
-          ))}
-        </View>
-        <View style={styles.progressLabels}>
-          <Text style={styles.progressLabel}>Address</Text>
-          <Text style={styles.progressLabel}>Shipping</Text>
-          <Text style={styles.progressLabel}>Payment</Text>
-          <Text style={styles.progressLabel}>Review</Text>
-        </View>
-      </View> */}
 
       <ScrollView
         ref={scrollViewRef}
@@ -459,7 +420,7 @@ const CheckoutScreen = () => {
         <View style={styles.section}>
           <SectionHeader
             icon={MapPin}
-            iconColor="#10b981"
+            iconColor={Colors.primary}
             title="Delivery Address"
             stepNumber={1}
             isExpanded={expandedSections.address}
@@ -474,7 +435,7 @@ const CheckoutScreen = () => {
               {loadingAddresses ? (
                 <View style={styles.loadingContainer}>
                   <View style={styles.loadingPulse}>
-                    <MapPin size={32} color="#10b981" />
+                    <MapPin size={32} color={Colors.primary} />
                   </View>
                   <Text style={styles.loadingText}>Finding your addresses...</Text>
                 </View>
@@ -491,7 +452,7 @@ const CheckoutScreen = () => {
                   }}
                 >
                   <View style={styles.emptyIcon}>
-                    <Plus size={24} color="#10b981" />
+                    <Plus size={24} color={Colors.primary} />
                   </View>
                   <Text style={styles.emptyTitle}>No addresses found</Text>
                   <Text style={styles.emptySubtitle}>Add your first address to continue</Text>
@@ -508,7 +469,7 @@ const CheckoutScreen = () => {
                       >
                         {address.isDefault && (
                           <View style={styles.defaultBadge}>
-                            <Sparkles size={10} color="#ffffff" />
+                            <Sparkles size={10} color={Colors.white} />
                             <Text style={styles.defaultBadgeText}>Default</Text>
                           </View>
                         )}
@@ -518,7 +479,7 @@ const CheckoutScreen = () => {
                               {address.firstName} {address.lastName}
                             </Text>
                             <View style={[styles.checkmark, isSelected && styles.checkmarkSelected]}>
-                              {isSelected && <Check size={12} color="#ffffff" />}
+                              {isSelected && <Check size={12} color={Colors.white} />}
                             </View>
                           </View>
                           <Text style={styles.addressLine}>{address.address1}</Text>
@@ -543,7 +504,7 @@ const CheckoutScreen = () => {
                     }}
                   >
                     <View style={styles.addNewIcon}>
-                      <Plus size={16} color="#10b981" />
+                      <Plus size={16} color={Colors.primary} />
                     </View>
                     <Text style={styles.addNewText}>Add a new address</Text>
                   </Pressable>
@@ -555,7 +516,7 @@ const CheckoutScreen = () => {
                 onPress={() => setUseBillingForShipping(!useBillingForShipping)}
               >
                 <View style={[styles.checkbox, useBillingForShipping && styles.checkboxChecked]}>
-                  {useBillingForShipping && <Check size={10} color="#ffffff" />}
+                  {useBillingForShipping && <Check size={10} color={Colors.white} />}
                 </View>
                 <Text style={styles.checkboxLabel}>Use same address for billing</Text>
               </Pressable>
@@ -589,7 +550,7 @@ const CheckoutScreen = () => {
         <View style={[styles.section, !completedSections.address && styles.sectionDisabled]}>
           <SectionHeader
             icon={Package}
-            iconColor="#34d399"
+            iconColor={Colors.primary}
             title="Shipping Method"
             stepNumber={2}
             isExpanded={expandedSections.shipping}
@@ -605,7 +566,7 @@ const CheckoutScreen = () => {
               {shippingMethods.length === 0 ? (
                 <View style={styles.loadingContainer}>
                   <View style={styles.loadingPulse}>
-                    <Package size={32} color="#34d399" />
+                    <Package size={32} color={Colors.primary} />
                   </View>
                   <Text style={styles.loadingText}>Finding shipping options...</Text>
                 </View>
@@ -623,9 +584,9 @@ const CheckoutScreen = () => {
                         <View style={styles.methodHeader}>
                           <View style={styles.methodIconBox}>
                             {method.code.includes('express') ? (
-                              <Clock size={18} color="#ec4899" />
+                              <Clock size={18} color={Colors.white} />
                             ) : (
-                              <Package size={18} color="#3b82f6" />
+                              <Package size={18} color={Colors.white} />
                             )}
                           </View>
                           <View style={styles.methodInfo}>
@@ -638,13 +599,13 @@ const CheckoutScreen = () => {
                         </View>
                         <View style={styles.methodDetails}>
                           <View style={styles.detailItem}>
-                            <Clock size={12} color="#64748b" />
+                            <Clock size={12} color={Colors.textSecondary} />
                             <Text style={styles.detailText}>
                               {method.code.includes('express') ? '1-2 business days' : '3-5 business days'}
                             </Text>
                           </View>
                           <View style={styles.detailItem}>
-                            <Shield size={12} color="#64748b" />
+                            <Shield size={12} color={Colors.textSecondary} />
                             <Text style={styles.detailText}>Fully insured</Text>
                           </View>
                         </View>
@@ -684,7 +645,7 @@ const CheckoutScreen = () => {
         <View style={[styles.section, !completedSections.shipping && styles.sectionDisabled]}>
           <SectionHeader
             icon={CreditCard}
-            iconColor="#059669"
+            iconColor={Colors.primary}
             title="Payment Method"
             stepNumber={3}
             isExpanded={expandedSections.payment}
@@ -700,7 +661,7 @@ const CheckoutScreen = () => {
               {paymentMethods.length === 0 ? (
                 <View style={styles.loadingContainer}>
                   <View style={styles.loadingPulse}>
-                    <CreditCard size={32} color="#059669" />
+                    <CreditCard size={32} color={Colors.primary} />
                   </View>
                   <Text style={styles.loadingText}>Loading payment methods...</Text>
                 </View>
@@ -717,7 +678,7 @@ const CheckoutScreen = () => {
                       >
                         <View style={styles.methodContent}>
                           <View style={styles.methodIconBox}>
-                            <CreditCard size={18} color={method.method === 'cashondelivery' ? '#f59e0b' : '#3b82f6'} />
+                            <CreditCard size={18} color={Colors.white} />
                           </View>
                           <View style={styles.methodInfo}>
                             <Text style={styles.methodLabel}>{method.methodTitle}</Text>
@@ -725,7 +686,7 @@ const CheckoutScreen = () => {
                               <Text style={styles.methodDescription}>{method.description}</Text>
                             )}
                             <View style={styles.securityBadge}>
-                              <Shield size={12} color="#10b981" />
+                              <Shield size={12} color={Colors.primary} />
                               <Text style={styles.securityText}>Secure payment</Text>
                             </View>
                           </View>
@@ -763,7 +724,7 @@ const CheckoutScreen = () => {
         <View style={[styles.section, !completedSections.payment && styles.sectionDisabled]}>
           <SectionHeader
             icon={CheckCircle}
-            iconColor="#10b981"
+            iconColor={Colors.primary}
             title="Review & Place Order"
             stepNumber={4}
             isExpanded={expandedSections.review}
@@ -830,11 +791,11 @@ const CheckoutScreen = () => {
                   <View style={styles.appliedCouponContainer}>
                     <View style={styles.appliedCouponBadge}>
                       <View style={styles.couponIconContainer}>
-                        <Tag size={14} color="#ffffff" />
+                        <Tag size={14} color={Colors.white} />
                       </View>
                       <Text style={styles.appliedCouponText}>{appliedCoupon}</Text>
                       <Pressable onPress={handleRemoveCoupon} style={styles.removeCouponButton}>
-                        <X size={14} color="#ef4444" />
+                        <X size={14} color={Colors.error} />
                       </Pressable>
                     </View>
                   </View>
@@ -845,7 +806,7 @@ const CheckoutScreen = () => {
                       placeholder="Enter coupon code"
                       value={couponCode}
                       onChangeText={setCouponCode}
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={Colors.textSecondary}
                       autoCapitalize="characters"
                     />
                     <Pressable
@@ -854,7 +815,7 @@ const CheckoutScreen = () => {
                       disabled={!couponCode.trim() || isApplyingCoupon}
                     >
                       {isApplyingCoupon ? (
-                        <ActivityIndicator size="small" color="#ffffff" />
+                        <ActivityIndicator size="small" color={Colors.white} />
                       ) : (
                         <Text style={styles.couponButtonText}>Apply</Text>
                       )}
@@ -867,7 +828,7 @@ const CheckoutScreen = () => {
               {shippingAddress && (
                 <View style={styles.reviewCard}>
                   <View style={styles.reviewCardHeader}>
-                    <MapPin size={16} color="#10b981" />
+                    <MapPin size={16} color={Colors.primary} />
                     <Text style={styles.reviewCardTitle}>Delivery Address</Text>
                   </View>
                   <Text style={styles.reviewText}>
@@ -884,7 +845,7 @@ const CheckoutScreen = () => {
               {selectedShipping && (
                 <View style={styles.reviewCard}>
                   <View style={styles.reviewCardHeader}>
-                    <Package size={16} color="#34d399" />
+                    <Package size={16} color={Colors.primary} />
                     <Text style={styles.reviewCardTitle}>Shipping Method</Text>
                   </View>
                   <Text style={styles.reviewText}>{selectedShipping.label}</Text>
@@ -896,7 +857,7 @@ const CheckoutScreen = () => {
               {selectedPayment && (
                 <View style={styles.reviewCard}>
                   <View style={styles.reviewCardHeader}>
-                    <CreditCard size={16} color="#059669" />
+                    <CreditCard size={16} color={Colors.primary} />
                     <Text style={styles.reviewCardTitle}>Payment Method</Text>
                   </View>
                   <Text style={styles.reviewText}>{selectedPayment.methodTitle}</Text>
@@ -917,7 +878,7 @@ const CheckoutScreen = () => {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
+                  <ActivityIndicator size="small" color={Colors.white} />
                 ) : (
                   <Text style={styles.placeOrderButtonText}>Place Order</Text>
                 )}
@@ -935,7 +896,7 @@ const CheckoutScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
   backgroundGradient: {
     position: 'absolute',
@@ -951,15 +912,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: Colors.border,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: Colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -967,21 +928,21 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: Colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: Colors.text,
   },
   progressSummary: {
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.background,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: Colors.border,
   },
   progressSteps: {
     flexDirection: 'row',
@@ -993,26 +954,26 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   progressDotCompleted: {
-    backgroundColor: '#10b981',
+    backgroundColor: Colors.primary,
   },
   progressDotText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   progressLine: {
     width: 40,
     height: 2,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: Colors.border,
     marginHorizontal: 4,
   },
   progressLineCompleted: {
-    backgroundColor: '#10b981',
+    backgroundColor: Colors.primary,
   },
   progressLabels: {
     flexDirection: 'row',
@@ -1021,7 +982,7 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 10,
-    color: '#64748b',
+    color: Colors.textSecondary,
     textAlign: 'center',
     flex: 1,
   },
@@ -1032,12 +993,17 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   section: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
     marginBottom: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: Colors.border,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   sectionDisabled: {
     opacity: 0.6,
@@ -1047,10 +1013,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.background,
   },
   sectionHeaderDisabled: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.cardBackground,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
@@ -1061,20 +1027,20 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: Colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepBadgeCompleted: {
-    backgroundColor: '#10b981',
+    backgroundColor: Colors.primary,
   },
   stepBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   stepBadgeTextCompleted: {
-    color: '#ffffff',
+    color: Colors.white,
   },
   sectionIcon: {
     width: 32,
@@ -1086,17 +1052,17 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+    color: Colors.text,
   },
   sectionContent: {
     padding: 16,
     paddingTop: 0,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: Colors.borderLight,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: Colors.textSecondary,
     marginBottom: 16,
   },
   collapsedSummary: {
@@ -1106,11 +1072,11 @@ const styles = StyleSheet.create({
   collapsedText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
+    color: Colors.text,
   },
   collapsedSubtext: {
     fontSize: 13,
-    color: '#64748b',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   // Loading
@@ -1122,44 +1088,44 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: Colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   // Address cards
   addressCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 10,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: Colors.border,
   },
   addressCardSelected: {
-    borderColor: '#10b981',
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.borderLight,
   },
   defaultBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#10b981',
+    backgroundColor: Colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
     gap: 4,
   },
   defaultBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.white,
   },
   addressContent: {
     flex: 1,
@@ -1173,50 +1139,50 @@ const styles = StyleSheet.create({
   addressName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: Colors.text,
   },
   checkmark: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#d1fae5',
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkmarkSelected: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   addressLine: {
     fontSize: 14,
-    color: '#475569',
+    color: Colors.secondary,
     marginBottom: 4,
   },
   addressDetails: {
     fontSize: 13,
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   addressPhone: {
     fontSize: 13,
-    color: '#10b981',
+    color: Colors.primary,
     fontWeight: '500',
     marginTop: 4,
   },
   emptyState: {
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: Colors.border,
     borderStyle: 'dashed',
   },
   emptyIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: Colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -1224,36 +1190,36 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+    color: Colors.text,
     marginBottom: 4,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   addNewButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 10,
     padding: 14,
     borderWidth: 2,
-    borderColor: '#d1fae5',
+    borderColor: Colors.border,
     gap: 8,
   },
   addNewIcon: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: Colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addNewText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10b981',
+    color: Colors.primary,
   },
   checkboxRow: {
     flexDirection: 'row',
@@ -1267,28 +1233,28 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#d1fae5',
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.background,
   },
   checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#1e293b',
+    color: Colors.text,
     fontWeight: '500',
   },
   continueButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   continueButtonText: {
-    color: '#ffffff',
+    color: Colors.white,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -1297,16 +1263,16 @@ const styles = StyleSheet.create({
   },
   // Method cards
   methodCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 10,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: Colors.border,
   },
   methodCardSelected: {
-    borderColor: '#10b981',
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.borderLight,
   },
   methodHeader: {
     flexDirection: 'row',
@@ -1322,7 +1288,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1333,17 +1299,17 @@ const styles = StyleSheet.create({
   methodLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: Colors.text,
     marginBottom: 2,
   },
   methodDescription: {
     fontSize: 13,
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   methodPrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#10b981',
+    color: Colors.primary,
   },
   methodDetails: {
     flexDirection: 'row',
@@ -1357,7 +1323,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 12,
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   securityBadge: {
     flexDirection: 'row',
@@ -1367,7 +1333,7 @@ const styles = StyleSheet.create({
   },
   securityText: {
     fontSize: 12,
-    color: '#10b981',
+    color: Colors.primary,
     fontWeight: '500',
   },
   radioContainer: {
@@ -1378,27 +1344,27 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#d1fae5',
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   radioOuterSelected: {
-    borderColor: '#10b981',
+    borderColor: Colors.primary,
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#10b981',
+    backgroundColor: Colors.primary,
   },
   // Review section
   reviewCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 10,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: Colors.border,
   },
   reviewCardHeader: {
     flexDirection: 'row',
@@ -1409,24 +1375,24 @@ const styles = StyleSheet.create({
   reviewCardTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: Colors.text,
     marginBottom: 12,
   },
   reviewText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
+    color: Colors.text,
     marginBottom: 2,
   },
   reviewTextLight: {
     fontSize: 13,
-    color: '#64748b',
+    color: Colors.textSecondary,
     marginBottom: 2,
   },
   reviewTextHighlight: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#10b981',
+    color: Colors.primary,
   },
   orderItem: {
     flexDirection: 'row',
@@ -1434,7 +1400,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: Colors.border,
   },
   orderItemInfo: {
     flex: 1,
@@ -1442,17 +1408,17 @@ const styles = StyleSheet.create({
   orderItemName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
+    color: Colors.text,
     marginBottom: 2,
   },
   orderItemQuantity: {
     fontSize: 13,
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   orderItemPrice: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10b981',
+    color: Colors.primary,
   },
   totalsContainer: {
     marginTop: 12,
@@ -1464,31 +1430,31 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 14,
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   totalValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
+    color: Colors.text,
   },
   discountValue: {
-    color: '#10b981',
+    color: Colors.primary,
   },
   grandTotalRow: {
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 2,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: Colors.border,
   },
   grandTotalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e293b',
+    color: Colors.text,
   },
   grandTotalValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#10b981',
+    color: Colors.primary,
   },
   // Coupon
   couponContainer: {
@@ -1498,18 +1464,18 @@ const styles = StyleSheet.create({
   },
   couponInput: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
+    borderColor: Colors.border,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#1e293b',
+    color: Colors.text,
   },
   couponButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
     minWidth: 70,
@@ -1517,20 +1483,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   couponButtonDisabled: {
-    backgroundColor: '#94a3b8',
+    backgroundColor: Colors.textSecondary,
     opacity: 0.7,
   },
   couponButtonText: {
-    color: '#ffffff',
+    color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
   },
   appliedCouponContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderRadius: 10,
+    backgroundColor: Colors.borderLight,
+    borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#10b981',
+    borderColor: Colors.primary,
   },
   appliedCouponBadge: {
     flexDirection: 'row',
@@ -1541,13 +1507,13 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#10b981',
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   appliedCouponText: {
     flex: 1,
-    color: '#10b981',
+    color: Colors.primary,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -1555,35 +1521,35 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: Colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   termsContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
-    borderRadius: 10,
+    backgroundColor: Colors.borderLight,
+    borderRadius: 8,
     padding: 14,
     marginBottom: 16,
   },
   termsText: {
     fontSize: 12,
-    color: '#64748b',
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
   },
   placeOrderButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#10b981',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 1,
     shadowRadius: 8,
     elevation: 4,
   },
   placeOrderButtonText: {
-    color: '#ffffff',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1596,7 +1562,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
   successIconWrapper: {
     marginBottom: 24,
@@ -1604,29 +1570,29 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1e293b',
+    color: Colors.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   successMessage: {
     fontSize: 16,
-    color: '#64748b',
+    color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
   },
   orderInfoCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
+    backgroundColor: Colors.background,
+    borderRadius: 10,
     padding: 16,
     marginBottom: 32,
     width: '100%',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: Colors.border,
   },
   orderInfoText: {
     fontSize: 15,
-    color: '#1e293b',
+    color: Colors.text,
     marginBottom: 8,
     fontWeight: '500',
   },
@@ -1638,13 +1604,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10b981',
-    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
     paddingVertical: 16,
     gap: 8,
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1652,15 +1618,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.background,
     borderWidth: 2,
-    borderColor: '#10b981',
-    borderRadius: 12,
+    borderColor: Colors.primary,
+    borderRadius: 10,
     paddingVertical: 16,
     gap: 8,
   },
   secondaryButtonText: {
-    color: '#10b981',
+    color: Colors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
