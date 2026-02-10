@@ -167,6 +167,14 @@ function RootLayoutNav() {
             headerBackTitle: "Back",
           }}
         />
+        <Stack.Screen
+          name="products/index"
+          options={{
+            headerShown: true,
+            headerTitle: "All Products",
+            headerBackTitle: "Back",
+          }}
+        />
       </Stack>
       <FloatingCart />
     </>
