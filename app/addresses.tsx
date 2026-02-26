@@ -326,12 +326,14 @@ export default function AddressesScreen() {
                   </Text>
                   <Text style={styles.addressText}>{address.country}</Text>
                   {address.phone && (
-                    <Text style={styles.addressText}>Phone: {address.phone}</Text>
+                    <Text style={styles.addressText}>
+                      Phone: {address.phone}
+                    </Text>
                   )}
                   <Text style={styles.addressText}>Email: {address.email}</Text>
-                  {address.vatId && (
+                  {/* {address.vatId && (
                     <Text style={styles.addressText}>VAT ID: {address.vatId}</Text>
-                  )}
+                  )} */}
                 </View>
 
                 <View style={styles.addressActions}>
@@ -476,7 +478,9 @@ export default function AddressesScreen() {
             </View>
 
             <View style={styles.inputRow}>
-              <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
+              <View
+                style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}
+              >
                 <Text style={styles.label}>First Name *</Text>
                 <TextInput
                   style={[
@@ -529,7 +533,7 @@ export default function AddressesScreen() {
               />
             </View>
 
-            <View style={styles.inputContainer}>
+            {/* <View style={styles.inputContainer}>
               <Text style={styles.label}>VAT ID (Tax Number)</Text>
               <TextInput
                 style={[
@@ -543,7 +547,7 @@ export default function AddressesScreen() {
                 placeholderTextColor={Colors.textSecondary}
                 editable={!isAddingAddress && !isUpdatingAddress}
               />
-            </View>
+            </View> */}
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Address *</Text>
@@ -565,7 +569,9 @@ export default function AddressesScreen() {
             </View>
 
             <View style={styles.inputRow}>
-              <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
+              <View
+                style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}
+              >
                 <Text style={styles.label}>City *</Text>
                 <TextInput
                   style={[
@@ -600,7 +606,9 @@ export default function AddressesScreen() {
             </View>
 
             <View style={styles.inputRow}>
-              <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
+              <View
+                style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}
+              >
                 <Text style={styles.label}>Country *</Text>
                 <TextInput
                   style={[
@@ -609,7 +617,9 @@ export default function AddressesScreen() {
                       styles.disabledInput,
                   ]}
                   value={formData.country}
-                  onChangeText={(value) => updateField("country", value.toUpperCase())}
+                  onChangeText={(value) =>
+                    updateField("country", value.toUpperCase())
+                  }
                   placeholder="PS"
                   placeholderTextColor={Colors.textSecondary}
                   editable={!isAddingAddress && !isUpdatingAddress}
@@ -627,7 +637,9 @@ export default function AddressesScreen() {
                       styles.disabledInput,
                   ]}
                   value={formData.state}
-                  onChangeText={(value) => updateField("state", value.toUpperCase())}
+                  onChangeText={(value) =>
+                    updateField("state", value.toUpperCase())
+                  }
                   placeholder="WB"
                   placeholderTextColor={Colors.textSecondary}
                   editable={!isAddingAddress && !isUpdatingAddress}
@@ -667,8 +679,9 @@ export default function AddressesScreen() {
 
             <View style={styles.noteContainer}>
               <Text style={styles.noteText}>
-                Note: For Palestine, use &quot;PS&quot; for country and &quot;WB&quot; for West Bank.
-                Phone number and email are required fields.
+                Note: For Palestine, use &quot;PS&quot; for country and
+                &quot;WB&quot; for West Bank. Phone number and email are
+                required fields.
               </Text>
             </View>
 
