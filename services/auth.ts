@@ -13,15 +13,14 @@ export interface Address {
   lastName: string;
   email: string;
   vatId?: string;
-  address: string; 
+  address: string;
   country: string;
   state: string;
   city: string;
   postcode: string;
   phone: string;
-  defaultAddress: boolean; 
+  defaultAddress: boolean;
 }
-
 
 export interface Customer {
   id: string;
@@ -152,30 +151,32 @@ class AuthService {
       }
 
       const customer: Customer = {
-        id: result.customer.id, 
-          email: result.customer.email,
-          firstName: result.customer.firstName,
-          lastName: result.customer.lastName,
-          name: result.customer.name,
-          phone: result.customer.phone,
-          defaultAddress: result.customer.defaultAddress
-            ? {
-                id: result.customer.defaultAddress.id,
-                companyName: result.customer.defaultAddress.companyName || "",
-                firstName: result.customer.defaultAddress.firstName,
-                lastName: result.customer.defaultAddress.lastName,
-                email: result.customer.defaultAddress.email || result.customer.email,
-                vatId: result.customer.defaultAddress.vatId || "",
-                address: result.customer.defaultAddress.address,
-                country: result.customer.defaultAddress.country,
-                state: result.customer.defaultAddress.state,
-                city: result.customer.defaultAddress.city,
-                postcode: result.customer.defaultAddress.postcode,
-                phone: result.customer.defaultAddress.phone,
-                defaultAddress: result.customer.defaultAddress.defaultAddress || false,
-              }
-            : undefined,
-        };
+        id: result.customer.id,
+        email: result.customer.email,
+        firstName: result.customer.firstName,
+        lastName: result.customer.lastName,
+        name: result.customer.name,
+        phone: result.customer.phone,
+        defaultAddress: result.customer.defaultAddress
+          ? {
+              id: result.customer.defaultAddress.id,
+              companyName: result.customer.defaultAddress.companyName || "",
+              firstName: result.customer.defaultAddress.firstName,
+              lastName: result.customer.defaultAddress.lastName,
+              email:
+                result.customer.defaultAddress.email || result.customer.email,
+              vatId: result.customer.defaultAddress.vatId || "",
+              address: result.customer.defaultAddress.address,
+              country: result.customer.defaultAddress.country,
+              state: result.customer.defaultAddress.state,
+              city: result.customer.defaultAddress.city,
+              postcode: result.customer.defaultAddress.postcode,
+              phone: result.customer.defaultAddress.phone,
+              defaultAddress:
+                result.customer.defaultAddress.defaultAddress || false,
+            }
+          : undefined,
+      };
 
       const expiresAt = new Date(
         Date.now() + result.expiresIn * 1000,
@@ -277,30 +278,32 @@ class AuthService {
       }
 
       const customer: Customer = {
-        id: result.customer.id, 
-          email: result.customer.email,
-          firstName: result.customer.firstName,
-          lastName: result.customer.lastName,
-          name: result.customer.name,
-          phone: result.customer.phone,
-          defaultAddress: result.customer.defaultAddress
-            ? {
-                id: result.customer.defaultAddress.id,
-                companyName: result.customer.defaultAddress.companyName || "",
-                firstName: result.customer.defaultAddress.firstName,
-                lastName: result.customer.defaultAddress.lastName,
-                email: result.customer.defaultAddress.email || result.customer.email,
-                vatId: result.customer.defaultAddress.vatId || "",
-                address: result.customer.defaultAddress.address,
-                country: result.customer.defaultAddress.country,
-                state: result.customer.defaultAddress.state,
-                city: result.customer.defaultAddress.city,
-                postcode: result.customer.defaultAddress.postcode,
-                phone: result.customer.defaultAddress.phone,
-                defaultAddress: result.customer.defaultAddress.defaultAddress || false,
-              }
-            : undefined,
-        };
+        id: result.customer.id,
+        email: result.customer.email,
+        firstName: result.customer.firstName,
+        lastName: result.customer.lastName,
+        name: result.customer.name,
+        phone: result.customer.phone,
+        defaultAddress: result.customer.defaultAddress
+          ? {
+              id: result.customer.defaultAddress.id,
+              companyName: result.customer.defaultAddress.companyName || "",
+              firstName: result.customer.defaultAddress.firstName,
+              lastName: result.customer.defaultAddress.lastName,
+              email:
+                result.customer.defaultAddress.email || result.customer.email,
+              vatId: result.customer.defaultAddress.vatId || "",
+              address: result.customer.defaultAddress.address,
+              country: result.customer.defaultAddress.country,
+              state: result.customer.defaultAddress.state,
+              city: result.customer.defaultAddress.city,
+              postcode: result.customer.defaultAddress.postcode,
+              phone: result.customer.defaultAddress.phone,
+              defaultAddress:
+                result.customer.defaultAddress.defaultAddress || false,
+            }
+          : undefined,
+      };
 
       const expiresAt = new Date(
         Date.now() + result.expiresIn * 1000,
@@ -579,18 +582,18 @@ class AuthService {
   }
 
   async getAddresses(): Promise<Address[]> {
-  try {
-    console.log("Fetching customer addresses...");
+    try {
+      console.log("Fetching customer addresses...");
 
-    const auth = await this.getStoredAuth();
-    if (!auth) throw new Error("Not authenticated");
-    
-    if (!auth.customer?.id) {
-      throw new Error("Customer ID not found");
-    }
+      const auth = await this.getStoredAuth();
+      if (!auth) throw new Error("Not authenticated");
 
-    // Get customer ID and convert to number if needed
-    const customerId = parseInt(auth.customer.id, 10);
+      if (!auth.customer?.id) {
+        throw new Error("Customer ID not found");
+      }
+
+      // Get customer ID and convert to number if needed
+      const customerId = parseInt(auth.customer.id, 10);
       if (isNaN(customerId)) {
         throw new Error("Invalid customer ID");
       }
@@ -649,7 +652,7 @@ class AuthService {
       }
 
       const addressesData = json.data?.addresses?.data || [];
-      
+
       console.log(`Found ${addressesData.length} addresses for customer`);
 
       // Direct mapping without transformation
@@ -675,9 +678,7 @@ class AuthService {
   }
 
   // Update the addAddress method in services/auth.ts
-  async addAddress(
-    address: Omit<Address, "id">,
-  ): Promise<Address> {
+  async addAddress(address: Omit<Address, "id">): Promise<Address> {
     try {
       console.log("Adding new address:", JSON.stringify(address, null, 2));
 
@@ -742,6 +743,8 @@ class AuthService {
       }
 
       const result = json.data?.createAddress;
+
+      console.log("Create Address Result:" + result);
 
       if (!result?.success) {
         throw new Error(result?.message || "Failed to create address");
@@ -948,10 +951,10 @@ class AuthService {
       };
 
       await this.updateAddress(addressId, updatedAddress);
-      
+
       // Also, set other addresses of this customer to not default
-      const otherAddresses = addresses.filter(addr => addr.id !== addressId);
-      
+      const otherAddresses = addresses.filter((addr) => addr.id !== addressId);
+
       for (const address of otherAddresses) {
         if (address.defaultAddress) {
           const nonDefaultAddress = {
@@ -968,7 +971,7 @@ class AuthService {
             phone: address.phone,
             defaultAddress: false,
           };
-          
+
           try {
             await this.updateAddress(address.id, nonDefaultAddress);
           } catch (error) {

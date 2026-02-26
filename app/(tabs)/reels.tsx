@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     backgroundColor: Colors.primary,
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 2,
     borderRadius: 25,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
