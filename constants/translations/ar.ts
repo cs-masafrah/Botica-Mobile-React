@@ -202,6 +202,50 @@ const ar = {
   saving: "جاري الحفظ...",
   termsAndPrivacy:
     "بتأكيد طلبك، فإنك توافق على شروط الخدمة وسياسة الخصوصية الخاصة بنا. جميع المعاملات آمنة ومشفرة.",
+  // Order History
+  checkingAuth: "جاري التحقق من المصادقة...",
+  authRequired: "المصادقة مطلوبة",
+  loginToViewOrders: "الرجاء تسجيل الدخول لعرض طلباتك",
+  goToLogin: "الذهاب إلى تسجيل الدخول",
+  loadingOrders: "جاري تحميل طلباتك...",
+  noOrdersYet: "لا توجد طلبات بعد",
+  ordersWillAppearHere: "عندما تقوم بتقديم الطلبات، ستظهر هنا",
+  na: "غير متوفر",
+  viewDetails: "عرض التفاصيل",
+  reorder: "إعادة الطلب",
+  adding: "جاري الإضافة...",
+  loadMoreOrders: "تحميل المزيد من الطلبات",
+  unableToReorder: "تعذر إعادة الطلب",
+  noItemsFound: "لم يتم العثور على عناصر لهذا الطلب.",
+  reorderSuccessful: "تمت إعادة الطلب بنجاح",
+  allItemsAdded:
+    "تمت إضافة جميع العناصر {count} من الطلب #{orderNumber} إلى سلة التسوق الخاصة بك.",
+  goToCart: "الذهاب إلى السلة",
+  partiallyAdded: "تمت الإضافة جزئياً",
+  partiallyAddedMessage:
+    "تمت إضافة {successCount} عناصر إلى السلة. تعذرت إضافة {failCount} عناصر:\n{failedItems}",
+  ok: "حسناً",
+  reorderFailed: "فشلت إعادة الطلب",
+  reorderFailedMessage:
+    "لم نتمكن من إضافة أي عناصر إلى سلة التسوق الخاصة بك. بعض العناصر قد لا تكون متاحة.",
+  reorderErrorMessage:
+    "حدث خطأ أثناء إضافة العناصر إلى سلة التسوق الخاصة بك. يرجى المحاولة مرة أخرى.",
+
+  // Order Details
+  orderDetails: "تفاصيل الطلب",
+  orderNotFound: "الطلب غير موجود",
+  orderNotFoundMessage: "لم نتمكن من تحميل هذا الطلب. يرجى المحاولة مرة أخرى.",
+  backToOrders: "العودة إلى الطلبات",
+  placedOn: "تم الطلب في",
+  priceSummary: "ملخص الأسعار",
+  paymentAndDelivery: "الدفع والتوصيل",
+  orderTotal: "إجمالي الطلب",
+  reorderAll: "إعادة الطلب كاملاً",
+  allItemsAddedDetails:
+    "تمت إضافة جميع العناصر {count} إلى سلة التسوق الخاصة بك.",
+  partiallyAddedDetails:
+    "تمت إضافة {successCount}، فشل {failCount}:\n{failedItems}",
+  reorderFailedDetails: "بعض العناصر قد لا تكون متاحة.",
 };
 
 export type TranslationKeys = keyof typeof ar;

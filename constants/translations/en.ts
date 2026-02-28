@@ -203,6 +203,50 @@ const en = {
   saving: "Saving...",
   termsAndPrivacy:
     "By placing your order, you agree to our Terms of Service and Privacy Policy. All transactions are secure and encrypted.",
+
+  // Order History
+  checkingAuth: "Checking authentication...",
+  authRequired: "Authentication Required",
+  loginToViewOrders: "Please login to view your orders",
+  goToLogin: "Go to Login",
+  loadingOrders: "Loading your orders...",
+  noOrdersYet: "No Orders Yet",
+  ordersWillAppearHere: "When you place orders, they will appear here",
+  startShopping: "Start Shopping",
+  na: "N/A",
+  viewDetails: "View Details",
+  reorder: "Reorder",
+  adding: "Adding...",
+  loadMoreOrders: "Load More Orders",
+  unableToReorder: "Unable to Reorder",
+  noItemsFound: "No items found for this order.",
+  reorderSuccessful: "Reorder Successful",
+  allItemsAdded:
+    "All {count} items from order #{orderNumber} have been added to your cart.",
+  goToCart: "Go to Cart",
+  partiallyAdded: "Partially Added",
+  partiallyAddedMessage:
+    "{successCount} items added to cart. {failCount} items could not be added:\n{failedItems}",
+  ok: "OK",
+  reorderFailed: "Reorder Failed",
+  reorderFailedMessage:
+    "None of the items could be added to your cart. Some items may no longer be available.",
+  reorderErrorMessage:
+    "Something went wrong while adding items to your cart. Please try again.",
+
+  // Order Details
+  orderDetails: "Order Details",
+  orderNotFound: "Order Not Found",
+  orderNotFoundMessage: "We could not load this order. Please try again.",
+  backToOrders: "Back to Orders",
+  placedOn: "Placed on",
+  paymentAndDelivery: "Payment & Delivery",
+  orderTotal: "Order Total",
+  reorderAll: "Reorder All",
+  allItemsAddedDetails: "All {count} items have been added to your cart.",
+  partiallyAddedDetails:
+    "{successCount} added, {failCount} failed:\n{failedItems}",
+  reorderFailedDetails: "Items may no longer be available.",
 };
 
 export type TranslationKeys = keyof typeof en;
