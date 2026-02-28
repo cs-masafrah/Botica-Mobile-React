@@ -16,6 +16,7 @@ import { Volume2, VolumeX, Play, Heart } from "lucide-react-native";
 import { useReels } from "../hooks/useReels";
 import { useLikeReel, useViewReel } from "../hooks/useReelInteractions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import LoginPrompt from "../../components/LoginPrompt";
 import { Reel } from "../types/reels";
 import Colors from "@/constants/colors";
@@ -40,6 +41,7 @@ export default function ReelsScreen() {
   const { data: reels = [], isLoading, error } = useReels();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const { t, isRTL } = useLanguage();
 
   // State management
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -341,9 +343,13 @@ export default function ReelsScreen() {
   // Render loading state
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View
+        style={[styles.loadingContainer, isRTL && styles.loadingContainerRTL]}
+      >
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading reels...</Text>
+        <Text style={[styles.loadingText, isRTL && styles.loadingTextRTL]}>
+          {t("loadingReels")}
+        </Text>
       </View>
     );
   }
@@ -357,18 +363,26 @@ export default function ReelsScreen() {
       errorMessage.includes("Please login")
     ) {
       return (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Loading personalized content...</Text>
-          <Text style={styles.emptySubtext}>Please wait</Text>
+        <View
+          style={[styles.emptyContainer, isRTL && styles.emptyContainerRTL]}
+        >
+          <Text style={[styles.emptyText, isRTL && styles.emptyTextRTL]}>
+            {t("loadingPersonalizedContent")}
+          </Text>
+          <Text style={[styles.emptySubtext, isRTL && styles.emptySubtextRTL]}>
+            {t("pleaseWait")}
+          </Text>
         </View>
       );
     }
 
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error loading reels</Text>
-        <Text style={styles.errorSubtext}>
-          {error.message || "Please try again later"}
+      <View style={[styles.errorContainer, isRTL && styles.errorContainerRTL]}>
+        <Text style={[styles.errorText, isRTL && styles.errorTextRTL]}>
+          {t("errorLoadingReels")}
+        </Text>
+        <Text style={[styles.errorSubtext, isRTL && styles.errorSubtextRTL]}>
+          {error.message || t("pleaseTryAgain")}
         </Text>
       </View>
     );
@@ -377,10 +391,12 @@ export default function ReelsScreen() {
   // Render empty state
   if (!reels || reels.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No reels available</Text>
-        <Text style={styles.emptySubtext}>
-          Check back later for new content
+      <View style={[styles.emptyContainer, isRTL && styles.emptyContainerRTL]}>
+        <Text style={[styles.emptyText, isRTL && styles.emptyTextRTL]}>
+          {t("noReelsAvailable")}
+        </Text>
+        <Text style={[styles.emptySubtext, isRTL && styles.emptySubtextRTL]}>
+          {t("checkBackLater")}
         </Text>
       </View>
     );
@@ -396,10 +412,12 @@ export default function ReelsScreen() {
 
   if (validReels.length === 0 && reels.length > 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No playable reels</Text>
-        <Text style={styles.emptySubtext}>
-          All reels have invalid media URLs
+      <View style={[styles.emptyContainer, isRTL && styles.emptyContainerRTL]}>
+        <Text style={[styles.emptyText, isRTL && styles.emptyTextRTL]}>
+          {t("noPlayableReels")}
+        </Text>
+        <Text style={[styles.emptySubtext, isRTL && styles.emptySubtextRTL]}>
+          {t("invalidMediaUrls")}
         </Text>
       </View>
     );
@@ -416,7 +434,7 @@ export default function ReelsScreen() {
     const videoDims = getVideoDimensions(item.id);
 
     return (
-      <View style={styles.reelContainer}>
+      <View style={[styles.reelContainer, isRTL && styles.reelContainerRTL]}>
         {/* Touchable for video with double tap support */}
         <TouchableOpacity
           style={styles.videoTouchable}
@@ -446,7 +464,7 @@ export default function ReelsScreen() {
                       setTimeout(() => {
                         ref.playAsync().catch((err) => {
                           console.error("Failed to auto-play:", err);
-                          setVideoError("Failed to play video");
+                          setVideoError(t("failedToPlayVideo"));
                         });
                       }, 100);
                     }
@@ -456,7 +474,7 @@ export default function ReelsScreen() {
                 }}
                 source={{ uri: item.video_url! }}
                 style={styles.video}
-                resizeMode={ResizeMode.CONTAIN} // CHANGED: This shows the entire video
+                resizeMode={ResizeMode.CONTAIN}
                 shouldPlay={false}
                 isLooping
                 isMuted={isMuted}
@@ -479,14 +497,14 @@ export default function ReelsScreen() {
                         `❌ Playback error for ${item.id}:`,
                         status.error,
                       );
-                      setVideoError(`Video error: ${status.error}`);
+                      setVideoError(`${t("videoError")}: ${status.error}`);
                     }
                   }
                 }}
                 onError={(error: any) => {
                   console.error(`❌ Video error for ${item.id}:`, error);
                   setVideoError(
-                    `Video error: ${error?.message || "Unknown error"}`,
+                    `${t("videoError")}: ${error?.message || t("unknownError")}`,
                   );
                 }}
                 onLoad={() => {
@@ -497,12 +515,16 @@ export default function ReelsScreen() {
               <Image
                 source={{ uri: item.thumbnail_url! }}
                 style={styles.video}
-                contentFit="contain" // CHANGED: Show entire thumbnail
+                contentFit="contain"
                 transition={200}
               />
             ) : (
               <View style={[styles.video, styles.noMediaContainer]}>
-                <Text style={styles.noMediaText}>No media available</Text>
+                <Text
+                  style={[styles.noMediaText, isRTL && styles.noMediaTextRTL]}
+                >
+                  {t("noMediaAvailable")}
+                </Text>
               </View>
             )}
           </View>
@@ -519,8 +541,22 @@ export default function ReelsScreen() {
           {/* Error overlay */}
           {isCurrent && videoError && (
             <View style={styles.errorOverlay} pointerEvents="none">
-              <Text style={styles.errorOverlayText}>⚠️ Video Error</Text>
-              <Text style={styles.errorOverlaySubtext}>{videoError}</Text>
+              <Text
+                style={[
+                  styles.errorOverlayText,
+                  isRTL && styles.errorOverlayTextRTL,
+                ]}
+              >
+                ⚠️ {t("videoError")}
+              </Text>
+              <Text
+                style={[
+                  styles.errorOverlaySubtext,
+                  isRTL && styles.errorOverlaySubtextRTL,
+                ]}
+              >
+                {videoError}
+              </Text>
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={() => {
@@ -530,7 +566,14 @@ export default function ReelsScreen() {
                   }
                 }}
               >
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text
+                  style={[
+                    styles.retryButtonText,
+                    isRTL && styles.retryButtonTextRTL,
+                  ]}
+                >
+                  {t("retry")}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -538,9 +581,15 @@ export default function ReelsScreen() {
 
         {/* Overlay UI - only for current item */}
         {isCurrent && (
-          <View style={styles.overlay} pointerEvents="box-none">
+          <View
+            style={[styles.overlay, isRTL && styles.overlayRTL]}
+            pointerEvents="box-none"
+          >
             {/* Top section */}
-            <View style={styles.topSection} pointerEvents="box-none">
+            <View
+              style={[styles.topSection, isRTL && styles.topSectionRTL]}
+              pointerEvents="box-none"
+            >
               <TouchableOpacity
                 style={styles.audioButton}
                 onPress={toggleMute}
@@ -566,7 +615,9 @@ export default function ReelsScreen() {
                   fill={isLiked ? Colors.error : "transparent"}
                 />
                 {!isAuthenticated && (
-                  <View style={styles.authBadge}>
+                  <View
+                    style={[styles.authBadge, isRTL && styles.authBadgeRTL]}
+                  >
                     <Text style={styles.authBadgeText}>!</Text>
                   </View>
                 )}
@@ -574,15 +625,25 @@ export default function ReelsScreen() {
             </View>
 
             {/* Bottom section */}
-            <View style={styles.bottomSection}>
-              <View style={styles.textContainer}>
-                <Text style={styles.title} numberOfLines={2}>
+            <View
+              style={[styles.bottomSection, isRTL && styles.bottomSectionRTL]}
+            >
+              <View
+                style={[styles.textContainer, isRTL && styles.textContainerRTL]}
+              >
+                <Text
+                  style={[styles.title, isRTL && styles.titleRTL]}
+                  numberOfLines={2}
+                >
                   {item.title}
                 </Text>
 
                 {/* Product name */}
                 {item.product?.name && (
-                  <Text style={styles.productName} numberOfLines={1}>
+                  <Text
+                    style={[styles.productName, isRTL && styles.productNameRTL]}
+                    numberOfLines={1}
+                  >
                     {item.product.name}
                   </Text>
                 )}
@@ -590,25 +651,43 @@ export default function ReelsScreen() {
                 {/* CTA Button */}
                 {item.product && (
                   <TouchableOpacity
-                    style={styles.ctaButton}
+                    style={[styles.ctaButton, isRTL && styles.ctaButtonRTL]}
                     onPress={() => handleProductPress(item.product)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.ctaButtonText}>Shop Now</Text>
+                    <Text
+                      style={[
+                        styles.ctaButtonText,
+                        isRTL && styles.ctaButtonTextRTL,
+                      ]}
+                    >
+                      {t("shopNow")}
+                    </Text>
                   </TouchableOpacity>
                 )}
 
                 {/* Stats */}
-                <View style={styles.statsContainer}>
-                  <Text style={styles.statsText}>
-                    {item.views_count?.toLocaleString() || 0} views
+                <View
+                  style={[
+                    styles.statsContainer,
+                    isRTL && styles.statsContainerRTL,
+                  ]}
+                >
+                  <Text
+                    style={[styles.statsText, isRTL && styles.statsTextRTL]}
+                  >
+                    {item.views_count?.toLocaleString() || 0} {t("views")}
                   </Text>
-                  <Text style={styles.statsText}>
-                    {likesCount.toLocaleString()} likes
+                  <Text
+                    style={[styles.statsText, isRTL && styles.statsTextRTL]}
+                  >
+                    {likesCount.toLocaleString()} {t("likes")}
                     {isLiked && " ❤️"}
                   </Text>
                   {item.duration && (
-                    <Text style={styles.statsText}>
+                    <Text
+                      style={[styles.statsText, isRTL && styles.statsTextRTL]}
+                    >
                       {Math.floor(item.duration / 60)}:
                       {(item.duration % 60).toString().padStart(2, "0")}
                     </Text>
@@ -617,9 +696,14 @@ export default function ReelsScreen() {
 
                 {/* Auth status */}
                 {!isAuthenticated && (
-                  <View style={styles.authHint}>
-                    <Text style={styles.authHintText}>
-                      👆 Login to like reels
+                  <View style={[styles.authHint, isRTL && styles.authHintRTL]}>
+                    <Text
+                      style={[
+                        styles.authHintText,
+                        isRTL && styles.authHintTextRTL,
+                      ]}
+                    >
+                      👆 {t("loginToLikeReels")}
                     </Text>
                   </View>
                 )}
@@ -632,7 +716,7 @@ export default function ReelsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       <FlatList
         ref={flatListRef}
         data={validReels.length > 0 ? validReels : reels}
@@ -661,19 +745,23 @@ export default function ReelsScreen() {
             animated: true,
           });
         }}
-        contentContainerStyle={styles.flatListContent}
+        contentContainerStyle={[
+          styles.flatListContent,
+          isRTL && styles.flatListContentRTL,
+        ]}
       />
 
       {/* Login Prompt Modal */}
       <LoginPrompt
         visible={showLoginPrompt}
         onClose={() => setShowLoginPrompt(false)}
-        message="Login to like reels and personalize your experience"
+        message={t("loginToLikeReelsMessage")}
       />
     </View>
   );
 }
 
+// Add RTL styles at the end
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -847,7 +935,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-
   productName: {
     fontSize: 16,
     fontWeight: "600",
@@ -855,7 +942,7 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-    flex: 1, // يأخذ المساحة المتبقية
+    flex: 1,
     marginRight: 12,
   },
   statsContainer: {
@@ -939,5 +1026,78 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: "600",
     fontSize: 14,
+  },
+
+  // RTL specific styles - added at the end
+  containerRTL: {
+    direction: "rtl",
+  },
+  flatListContentRTL: {},
+  loadingContainerRTL: {},
+  loadingTextRTL: {
+    textAlign: "right",
+  },
+  errorContainerRTL: {},
+  errorTextRTL: {
+    textAlign: "right",
+  },
+  errorSubtextRTL: {
+    textAlign: "right",
+  },
+  emptyContainerRTL: {},
+  emptyTextRTL: {
+    textAlign: "right",
+  },
+  emptySubtextRTL: {
+    textAlign: "right",
+  },
+  reelContainerRTL: {},
+  overlayRTL: {},
+  topSectionRTL: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+  },
+  authBadgeRTL: {
+    right: undefined,
+    left: -4,
+  },
+  ctaButtonRTL: {
+    alignSelf: "flex-end",
+  },
+  ctaButtonTextRTL: {
+  },
+  bottomSectionRTL: {},
+  textContainerRTL: {
+    alignItems: "flex-start",
+  },
+  titleRTL: {
+    textAlign: "right",
+  },
+  productNameRTL: {
+    marginRight: 0,
+    marginLeft: 12,
+    textAlign: "right",
+  },
+  statsContainerRTL: {
+    flexDirection: "row",
+  },
+  statsTextRTL: {
+    textAlign: "right",
+  },
+  authHintRTL: {},
+  authHintTextRTL: {
+    textAlign: "right",
+  },
+  noMediaTextRTL: {
+    textAlign: "right",
+  },
+  errorOverlayTextRTL: {
+    textAlign: "right",
+  },
+  errorOverlaySubtextRTL: {
+    textAlign: "right",
+  },
+  retryButtonTextRTL: {
+    textAlign: "right",
   },
 });

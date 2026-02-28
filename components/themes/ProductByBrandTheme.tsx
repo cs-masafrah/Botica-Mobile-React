@@ -12,6 +12,8 @@ import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { Theme } from "@/types/theme";
 import { useBrands } from "@/app/hooks/useBrands";
+import { useLanguage } from "@/contexts/LanguageContext";
+
 
 interface ProductByBrandThemeProps {
   theme: Theme;
@@ -51,6 +53,8 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
   theme,
   locale,
 }) => {
+  const { t, isRTL } = useLanguage();
+
   const translation = useMemo(() => {
     return (
       theme.translations?.find((t) => t.localeCode === locale) ||
@@ -58,7 +62,9 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
     );
   }, [theme.translations, locale]);
 
-  const title = translation?.options?.title || "Shop By Brand";
+  const title =
+    translation?.options?.title || t("shopByBrand") || "Shop By Brand";
+  const subtitle = t("discoverLuxuryBrands") || "Discover luxury brands";
 
   const { data: brands, isLoading } = useBrands();
 
@@ -73,11 +79,13 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
   if (!brands?.length) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>Discover luxury brands</Text>
+      <View style={[styles.header, isRTL && styles.headerRTL]}>
+        <Text style={[styles.title, isRTL && styles.titleRTL]}>{title}</Text>
+        <Text style={[styles.subtitle, isRTL && styles.subtitleRTL]}>
+          {subtitle}
+        </Text>
       </View>
 
       {/* Circular Brands Carousel */}
@@ -86,13 +94,16 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.option_id.toString()}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          isRTL && styles.listContentRTL,
+        ]}
         renderItem={({ item }) => {
           // Split the name by words
           const { line1, line2 } = splitTwoLinesByWords(item.name || "");
           return (
             <Pressable
-              style={styles.brandItem}
+              style={[styles.brandItem, isRTL && styles.brandItemRTL]}
               onPress={() =>
                 router.push({
                   pathname: "/brand/[id]",
@@ -118,14 +129,35 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
               </View>
 
               {/* Brand name with word-based splitting */}
-              <View style={styles.brandNameContainer}>
-                <Text style={styles.brandNameLine}>{line1}</Text>
+              <View
+                style={[
+                  styles.brandNameContainer,
+                  isRTL && styles.brandNameContainerRTL,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.brandNameLine,
+                    isRTL && styles.brandNameLineRTL,
+                  ]}
+                >
+                  {line1}
+                </Text>
                 {line2 ? (
-                  <Text style={styles.brandNameLine}>{line2}</Text>
+                  <Text
+                    style={[
+                      styles.brandNameLine,
+                      isRTL && styles.brandNameLineRTL,
+                    ]}
+                  >
+                    {line2}
+                  </Text>
                 ) : null}
               </View>
 
-              <Text style={styles.brandCount}>{item.count} items</Text>
+              <Text style={[styles.brandCount, isRTL && styles.brandCountRTL]}>
+                {item.count} {t("items")}
+              </Text>
             </Pressable>
           );
         }}
@@ -139,10 +171,17 @@ const styles = StyleSheet.create({
     marginVertical: 24,
     backgroundColor: Colors.background,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
 
   header: {
     paddingHorizontal: 16,
     marginBottom: 16,
+  },
+
+  headerRTL: {
+    alignItems: "flex-start",
   },
 
   title: {
@@ -150,21 +189,35 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.text,
   },
+  titleRTL: {
+    textAlign: "right",
+  },
 
   subtitle: {
     marginTop: 4,
     fontSize: 14,
     color: Colors.textSecondary,
   },
+  subtitleRTL: {
+    textAlign: "right",
+  },
 
   listContent: {
     paddingHorizontal: 16,
+  },
+
+  listContentRTL: {
+    flexDirection: "row-reverse",
   },
 
   brandItem: {
     alignItems: "center",
     marginRight: 0,
     width: BRAND_SIZE + 30,
+  },
+
+  brandItemRTL: {
+    // Add any RTL specific styles if needed
   },
 
   /* ===== CIRCLE IMAGE ===== */
@@ -204,12 +257,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  brandNameContainerRTL: {
+    alignItems: "center",
+  },
+
   brandNameLine: {
     fontSize: 14,
     fontWeight: "600",
     color: "#222",
     textAlign: "center",
     lineHeight: 18,
+  },
+  brandNameLineRTL: {
+    textAlign: "center",
   },
 
   /* ===== COUNT ===== */
@@ -219,6 +279,9 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     textAlign: "center",
     height: 16, // keeps layout stable
+  },
+  brandCountRTL: {
+    textAlign: "center",
   },
 
   loading: {

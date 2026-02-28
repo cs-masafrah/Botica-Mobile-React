@@ -8,11 +8,10 @@ import { Truck, Package, CreditCard, Headphones } from 'lucide-react-native';
 
 interface ServicesContentThemeProps {
   theme: Theme;
-  locale?: string;
 }
 
-const ServicesContentTheme: React.FC<ServicesContentThemeProps> = ({ theme, locale = 'en' }) => {
-  const { isRTL } = useLanguage();
+const ServicesContentTheme: React.FC<ServicesContentThemeProps> = ({ theme }) => {
+  const { isRTL, t, locale } = useLanguage();
 
   const translation = useMemo(() => {
     return theme.translations?.find(t => t.localeCode === locale) || 
@@ -44,22 +43,26 @@ const ServicesContentTheme: React.FC<ServicesContentThemeProps> = ({ theme, loca
   if (services.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       {title ? (
-        <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
-          {title}
+        <Text style={[styles.title, isRTL && styles.titleRTL]}>
+          {t(title) || title}
         </Text>
       ) : null}
       
-      <View style={styles.servicesGrid}>
+      <View style={[styles.servicesGrid, isRTL && styles.servicesGridRTL]}>
         {services.map((service: ThemeService, index: number) => (
-          <View key={index} style={styles.serviceItem}>
-            <View style={styles.iconContainer}>
+          <View key={index} style={[styles.serviceItem, isRTL && styles.serviceItemRTL]}>
+            <View style={[styles.iconContainer, isRTL && styles.iconContainerRTL]}>
               {getIcon(service.serviceIcon)}
             </View>
-            <View style={styles.serviceText}>
-              <Text style={styles.serviceTitle}>{service.title}</Text>
-              <Text style={styles.serviceDescription}>{service.description}</Text>
+            <View style={[styles.serviceText, isRTL && styles.serviceTextRTL]}>
+              <Text style={[styles.serviceTitle, isRTL && styles.serviceTitleRTL]}>
+                {t(service.title) || service.title}
+              </Text>
+              <Text style={[styles.serviceDescription, isRTL && styles.serviceDescriptionRTL]}>
+                {t(service.description) || service.description}
+              </Text>
             </View>
           </View>
         ))}
@@ -76,6 +79,9 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
   title: {
     fontSize: 22,
     fontWeight: '700',
@@ -83,10 +89,16 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
+  titleRTL: {
+    textAlign: 'center',
+  },
   servicesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+  },
+  servicesGridRTL: {
+    flexDirection: 'row-reverse',
   },
   serviceItem: {
     width: '48%',
@@ -97,12 +109,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     marginBottom: 12,
   },
+  serviceItemRTL: {
+    flexDirection: 'row-reverse',
+  },
   iconContainer: {
     marginRight: 12,
     marginTop: 2,
   },
+  iconContainerRTL: {
+    marginRight: 0,
+    marginLeft: 12,
+  },
   serviceText: {
     flex: 1,
+  },
+  serviceTextRTL: {
+    alignItems: 'flex-start',
   },
   serviceTitle: {
     fontSize: 14,
@@ -110,10 +132,16 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 4,
   },
+  serviceTitleRTL: {
+    textAlign: 'right',
+  },
   serviceDescription: {
     fontSize: 12,
     color: Colors.textSecondary,
     lineHeight: 16,
+  },
+  serviceDescriptionRTL: {
+    textAlign: 'right',
   },
 });
 

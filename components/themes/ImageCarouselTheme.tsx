@@ -5,21 +5,21 @@ import { Image } from "expo-image";
 import { Theme, ThemeImage } from "@/types/theme";
 import Colors from "@/constants/colors";
 import { router } from "expo-router";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CAROUSEL_HEIGHT = 220;
 
 interface ImageCarouselThemeProps {
   theme: Theme;
-  locale?: string;
 }
 
 const ImageCarouselTheme: React.FC<ImageCarouselThemeProps> = ({
   theme,
-  locale = "en",
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const { isRTL, locale } = useLanguage();
 
   const translation = useMemo(() => {
     return (
@@ -48,7 +48,7 @@ const ImageCarouselTheme: React.FC<ImageCarouselThemeProps> = ({
   if (!images.length) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -88,13 +88,14 @@ const ImageCarouselTheme: React.FC<ImageCarouselThemeProps> = ({
 
       {/* Pagination */}
       {images.length > 1 && (
-        <View style={styles.pagination}>
+        <View style={[styles.pagination, isRTL && styles.paginationRTL]}>
           {images.map((_, index) => (
             <View
               key={index}
               style={[
                 styles.indicator,
                 currentIndex === index && styles.indicatorActive,
+                isRTL && styles.indicatorRTL,
               ]}
             />
           ))}
@@ -108,6 +109,9 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.background,
     marginVertical: 0,
+  },
+  containerRTL: {
+    direction: "rtl",
   },
 
   slide: {
@@ -129,12 +133,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  paginationRTL: {
+    flexDirection: "row-reverse",
+  },
 
   indicator: {
     width: 18,
     height: 3,
     backgroundColor: Colors.textSecondary,
     opacity: 0.3,
+    marginHorizontal: 4,
+  },
+  indicatorRTL: {
     marginHorizontal: 4,
   },
 

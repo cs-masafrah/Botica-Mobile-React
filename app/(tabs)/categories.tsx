@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 // app/(tabs)/categories.tsx - UPDATED WITH ProductByBrandTheme
 import { router } from "expo-router";
@@ -125,7 +125,7 @@ const CategoryCard = ({
             { fontSize: responsive.categoryNameSize },
           ]}
         >
-          {isRTL && t(category.name) ? t(category.name) : category.name}
+          {t(category.name) || category.name}
         </Text>
       </View>
     </Pressable>
@@ -171,7 +171,7 @@ export default function CategoriesScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
@@ -194,12 +194,14 @@ export default function CategoriesScreen() {
             { paddingHorizontal: responsive.horizontalPadding },
           ]}
         >
-          <View style={styles.sectionHeader}>
+          <View
+            style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}
+          >
             <Text
               style={[
                 styles.title,
                 { fontSize: responsive.titleSize },
-                isRTL && { textAlign: "right" },
+                isRTL && styles.titleRTL,
               ]}
             >
               {t("shopByCategory") || "Shop by Category"}
@@ -208,7 +210,7 @@ export default function CategoriesScreen() {
               style={[
                 styles.subtitle,
                 { fontSize: responsive.subtitleSize },
-                isRTL && { textAlign: "right" },
+                isRTL && styles.subtitleRTL,
               ]}
             >
               {t("discoverFragrance") || "Discover your perfect fragrance"}
@@ -218,10 +220,20 @@ export default function CategoriesScreen() {
           {categoriesLoading && categoriesWithImages.length === 0 ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={styles.loadingText}>Loading categories...</Text>
+              <Text
+                style={[styles.loadingText, isRTL && styles.loadingTextRTL]}
+              >
+                {t("loading") || "Loading categories..."}
+              </Text>
             </View>
           ) : categoriesWithImages.length > 0 ? (
-            <View style={[styles.grid, { gap: responsive.gap }]}>
+            <View
+              style={[
+                styles.grid,
+                isRTL && styles.gridRTL,
+                { gap: responsive.gap },
+              ]}
+            >
               {categoriesWithImages.map((category) => (
                 <CategoryCard
                   key={category.id}
@@ -233,7 +245,9 @@ export default function CategoriesScreen() {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No categories available</Text>
+              <Text style={[styles.emptyText, isRTL && styles.emptyTextRTL]}>
+                {t("noCategoriesAvailable") || "No categories available"}
+              </Text>
             </View>
           )}
         </View>
@@ -247,6 +261,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
   content: {
     flex: 1,
   },
@@ -258,28 +275,40 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: 20,
   },
+  sectionHeaderRTL: {
+    alignItems: "flex-end",
+  },
   title: {
     fontSize: 24,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: 4,
     letterSpacing: -0.5,
+  },
+  titleRTL: {
+    textAlign: "right",
   },
   subtitle: {
     fontSize: 14,
     color: Colors.textSecondary,
     lineHeight: 20,
   },
+  subtitleRTL: {
+    textAlign: "right",
+  },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 19,
   },
+  gridRTL: {
+    flexDirection: "row-reverse",
+  },
   categoryCard: {
     aspectRatio: 1,
     borderRadius: 20,
     overflow: "hidden",
-    position: "relative" as const,
+    position: "relative",
     backgroundColor: Colors.textSecondary,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -314,9 +343,9 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 16,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.white,
-    textAlign: "center" as const,
+    textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -331,6 +360,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
   },
+  loadingTextRTL: {
+    textAlign: "right",
+  },
   emptyContainer: {
     paddingVertical: 60,
     alignItems: "center",
@@ -341,5 +373,8 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  emptyTextRTL: {
+    textAlign: "right",
   },
 });

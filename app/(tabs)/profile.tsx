@@ -1,6 +1,14 @@
-import { router } from 'expo-router';
-import { Heart, LogIn, LogOut, MapPin, Settings, User, Package } from 'lucide-react-native';
-import React from 'react';
+import { router } from "expo-router";
+import {
+  Heart,
+  LogIn,
+  LogOut,
+  MapPin,
+  Settings,
+  User,
+  Package,
+} from "lucide-react-native";
+import React from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,43 +17,73 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
-import Colors from '@/constants/colors';
-import { useAuth } from '@/contexts/AuthContext';
-import { useWishlist } from '@/contexts/WishlistContext';
+  I18nManager,
+} from "react-native";
+import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWishlist } from "@/contexts/WishlistContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function ProfileScreen() {
-  const { customer, isAuthenticated, isLoading, logout, logoutLoading } = useAuth();
+  const { customer, isAuthenticated, isLoading, logout, logoutLoading } =
+    useAuth();
   const { items } = useWishlist();
+  const { t, isRTL } = useLanguage();
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              console.log('Logged out successfully');
-            } catch (error) {
-              console.error('Logout error:', error);
-            }
-          },
+    Alert.alert(t("Log Out"), t("Are you sure you want to log out?"), [
+      { text: t("Cancel"), style: "cancel" },
+      {
+        text: t("Log Out"),
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await logout();
+            console.log("Logged out successfully");
+          } catch (error) {
+            console.error("Logout error:", error);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
-  
+
   const menuItems = [
-    { id: '1', icon: User, label: 'Edit Profile', onPress: () => router.push('/edit-profile'), badge: undefined },
-    { id: '2', icon: Package, label: 'Order History', onPress: () => router.push('/order-history'), badge: undefined },
-    { id: '3', icon: MapPin, label: 'Addresses', onPress: () => router.push('/addresses'), badge: undefined },
-    { id: '4', icon: Heart, label: 'Wishlist', onPress: () => router.push('/wishlist'), badge: items.length > 0 ? items.length : undefined },
-    { id: '5', icon: Settings, label: 'Settings', onPress: () => router.push('/settings'), badge: undefined },
+    {
+      id: "1",
+      icon: User,
+      label: t("Edit Profile"),
+      onPress: () => router.push("/edit-profile"),
+      badge: undefined,
+    },
+    {
+      id: "2",
+      icon: Package,
+      label: t("Order History"),
+      onPress: () => router.push("/order-history"),
+      badge: undefined,
+    },
+    {
+      id: "3",
+      icon: MapPin,
+      label: t("Addresses"),
+      onPress: () => router.push("/addresses"),
+      badge: undefined,
+    },
+    {
+      id: "4",
+      icon: Heart,
+      label: t("Wishlist"),
+      onPress: () => router.push("/wishlist"),
+      badge: items.length > 0 ? items.length : undefined,
+    },
+    {
+      id: "5",
+      icon: Settings,
+      label: t("Settings"),
+      onPress: () => router.push("/settings"),
+      badge: undefined,
+    },
   ];
 
   if (isLoading) {
@@ -59,46 +97,68 @@ export default function ProfileScreen() {
   if (!isAuthenticated) {
     return (
       <View style={styles.container}>
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.guestContainer}>
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.guestContainer}
+        >
           <View style={styles.guestSection}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
                 <User size={48} color={Colors.textSecondary} />
               </View>
             </View>
-            <Text style={styles.guestTitle}>Welcome to Beauty App</Text>
-            <Text style={styles.guestSubtitle}>Sign in to access your profile and orders</Text>
-            
-            <Pressable 
+            <Text style={styles.guestTitle}>{t("Welcome to Beauty App")}</Text>
+            <Text style={styles.guestSubtitle}>
+              {t("Sign in to access your profile and orders")}
+            </Text>
+
+            <Pressable
               style={styles.loginButtonLarge}
-              onPress={() => router.push('/login')}
+              onPress={() => router.push("/login")}
             >
               <LogIn size={20} color={Colors.white} />
-              <Text style={styles.loginButtonText}>Sign In</Text>
+              <Text style={styles.loginButtonText}>{t("Sign In")}</Text>
             </Pressable>
 
-            <Pressable 
+            <Pressable
               style={styles.signupButtonLarge}
-              onPress={() => router.push('/signup')}
+              onPress={() => router.push("/signup")}
             >
-              <Text style={styles.signupButtonLargeText}>Create Account</Text>
+              <Text style={styles.signupButtonLargeText}>
+                {t("Create Account")}
+              </Text>
             </Pressable>
           </View>
 
           <View style={styles.menuSection}>
-            <Pressable style={styles.menuItem} onPress={() => router.push('/wishlist')}>
-              <View style={styles.menuItemLeft}>
-                <View style={styles.menuIconContainer}>
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => router.push("/wishlist")}
+            >
+              <View
+                style={[styles.menuItemLeft, isRTL && styles.menuItemLeftRTL]}
+              >
+                <View
+                  style={[
+                    styles.menuIconContainer,
+                    isRTL && styles.menuIconContainerRTL,
+                  ]}
+                >
                   <Heart size={20} color={Colors.text} />
                 </View>
-                <Text style={styles.menuLabel}>Wishlist</Text>
+                <Text style={[styles.menuLabel, isRTL && styles.menuLabelRTL]}>
+                  {t("Wishlist")}
+                </Text>
                 {items.length > 0 && (
-                  <View style={styles.badge}>
+                  <View style={[styles.badge, isRTL && styles.badgeRTL]}>
                     <Text style={styles.badgeText}>{items.length}</Text>
                   </View>
                 )}
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={[styles.chevron, isRTL && styles.chevronRTL]}>
+                {isRTL ? "‹" : "›"}
+              </Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -115,7 +175,9 @@ export default function ProfileScreen() {
               <User size={48} color={Colors.primary} />
             </View>
           </View>
-          <Text style={styles.name}>{`${customer?.firstName} ${customer?.lastName}`}</Text>
+          <Text
+            style={styles.name}
+          >{`${customer?.firstName} ${customer?.lastName}`}</Text>
           <Text style={styles.email}>{customer?.email}</Text>
         </View>
 
@@ -123,26 +185,48 @@ export default function ProfileScreen() {
           {menuItems.map((item) => {
             const Icon = item.icon;
             return (
-              <Pressable key={item.id} style={styles.menuItem} onPress={item.onPress}>
-                <View style={styles.menuItemLeft}>
-                  <View style={styles.menuIconContainer}>
+              <Pressable
+                key={item.id}
+                style={styles.menuItem}
+                onPress={item.onPress}
+              >
+                {/* Arrow on left for RTL, on right for LTR */}
+                {isRTL && (
+                  <Text style={[styles.chevron, styles.chevronRTL]}>{"‹"}</Text>
+                )}
+
+                <View
+                  style={[styles.menuItemLeft, isRTL && styles.menuItemLeftRTL]}
+                >
+                  <View
+                    style={[
+                      styles.menuIconContainer,
+                      isRTL && styles.menuIconContainerRTL,
+                    ]}
+                  >
                     <Icon size={20} color={Colors.text} />
                   </View>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  <Text
+                    style={[styles.menuLabel, isRTL && styles.menuLabelRTL]}
+                  >
+                    {item.label}
+                  </Text>
                   {item.badge !== undefined && (
-                    <View style={styles.badge}>
+                    <View style={[styles.badge, isRTL && styles.badgeRTL]}>
                       <Text style={styles.badgeText}>{item.badge}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.chevron}>›</Text>
+
+                {/* Arrow on right for LTR */}
+                {!isRTL && <Text style={[styles.chevron]}>{"›"}</Text>}
               </Pressable>
             );
           })}
         </View>
 
-        <Pressable 
-          style={styles.logoutButton} 
+        <Pressable
+          style={styles.logoutButton}
           onPress={handleLogout}
           disabled={logoutLoading}
         >
@@ -151,7 +235,7 @@ export default function ProfileScreen() {
           ) : (
             <>
               <LogOut size={20} color={Colors.error} />
-              <Text style={styles.logoutText}>Log Out</Text>
+              <Text style={styles.logoutText}>{t("Log Out")}</Text>
             </>
           )}
         </Pressable>
@@ -167,8 +251,8 @@ const styles = StyleSheet.create({
     paddingTop: 70,
   },
   centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
     flex: 1,
@@ -177,32 +261,32 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   guestSection: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 48,
     paddingHorizontal: 32,
   },
   guestTitle: {
     fontSize: 28,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   guestSubtitle: {
     fontSize: 16,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 32,
   },
   loginButtonLarge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.primary,
     borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 32,
-    width: '100%',
+    width: "100%",
     gap: 8,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
@@ -212,27 +296,27 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     fontSize: 16,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.white,
   },
   signupButtonLarge: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 32,
-    width: '100%',
+    width: "100%",
     marginTop: 12,
     borderWidth: 2,
     borderColor: Colors.primary,
   },
   signupButtonLargeText: {
     fontSize: 16,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.primary,
   },
   profileSection: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 32,
     paddingHorizontal: 20,
   },
@@ -244,27 +328,29 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     backgroundColor: Colors.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   name: {
     fontSize: 24,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: 4,
+    textAlign: "center",
   },
   email: {
     fontSize: 15,
     color: Colors.textSecondary,
+    textAlign: "center",
   },
   menuSection: {
     paddingHorizontal: 20,
     marginBottom: 24,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: Colors.white,
     paddingVertical: 16,
     paddingHorizontal: 16,
@@ -277,32 +363,50 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  menuItemLeftRTL: {
+    flexDirection: "row-reverse",
   },
   menuIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 12,
     backgroundColor: Colors.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
+  },
+  menuIconContainerRTL: {
+    marginRight: 0,
+    marginLeft: 12,
   },
   menuLabel: {
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: "600",
     color: Colors.text,
+    flex: 1,
+  },
+  menuLabelRTL: {
+    textAlign: "right",
   },
   chevron: {
-    fontSize: 28,
+    fontSize: 24,
     color: Colors.textSecondary,
-    fontWeight: '300' as const,
+    fontWeight: "400",
+    width: 24,
+    textAlign: "center",
+  },
+  chevronRTL: {
+    marginLeft: 0,
+    marginRight: 8,
   },
   logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 16,
@@ -313,7 +417,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: "600",
     color: Colors.error,
   },
   badge: {
@@ -321,14 +425,18 @@ const styles = StyleSheet.create({
     minWidth: 24,
     height: 24,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 8,
     marginLeft: 8,
   },
+  badgeRTL: {
+    marginLeft: 0,
+    marginRight: 8,
+  },
   badgeText: {
     fontSize: 12,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.white,
   },
 });
