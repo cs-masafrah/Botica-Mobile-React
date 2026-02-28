@@ -17,14 +17,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface StaticContentThemeProps {
   theme: Theme;
-  locale?: string;
 }
 
 const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
   theme,
-  locale = "en",
 }) => {
-  const { isRTL } = useLanguage();
+  const { isRTL, t, locale } = useLanguage();
   const [webViewHeight, setWebViewHeight] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -116,10 +114,10 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
     return null;
   }
 
-  // Create HTML content
+  // Create HTML content with RTL support
   const htmlContent = `
     <!DOCTYPE html>
-    <html>
+    <html dir="${isRTL ? 'rtl' : 'ltr'}">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta charset="UTF-8">
@@ -142,6 +140,8 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
             color: #000000;
             background: transparent !important;
             width: 100%;
+            direction: ${isRTL ? 'rtl' : 'ltr'};
+            text-align: ${isRTL ? 'right' : 'left'};
           }
           
           .content-wrapper {
@@ -169,6 +169,7 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
           ul, ol {
             margin: 0 0 8px 20px;
             padding: 0;
+            padding-${isRTL ? 'right' : 'left'}: 20px;
           }
           
           table {
@@ -238,12 +239,14 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
   `;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       {/* Loading state */}
       {isLoading && (
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, isRTL && styles.loadingContainerRTL]}>
           <ActivityIndicator size="small" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading content...</Text>
+          <Text style={[styles.loadingText, isRTL && styles.loadingTextRTL]}>
+            {t('loading')}...
+          </Text>
         </View>
       )}
 
@@ -255,12 +258,13 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
             height: webViewHeight > 0 ? webViewHeight : "auto",
             opacity: isLoading ? 0 : 1,
           },
+          isRTL && styles.webViewContainerRTL,
         ]}
       >
         <WebView
           ref={webViewRef}
           source={{ html: htmlContent }}
-          style={styles.webView}
+          style={[styles.webView, isRTL && styles.webViewRTL]}
           scalesPageToFit={false}
           scrollEnabled={false}
           onMessage={handleWebViewMessage}
@@ -286,8 +290,10 @@ const StaticContentTheme: React.FC<StaticContentThemeProps> = ({
 
       {/* Error state - only shown if WebView fails */}
       {hasError && !isLoading && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Failed to load content</Text>
+        <View style={[styles.errorContainer, isRTL && styles.errorContainerRTL]}>
+          <Text style={[styles.errorText, isRTL && styles.errorTextRTL]}>
+            {t('failedToLoadContent')}
+          </Text>
         </View>
       )}
     </View>
@@ -299,14 +305,23 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     marginVertical: 8,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
   webViewContainer: {
     backgroundColor: "transparent",
     overflow: "hidden",
     minHeight: 1,
   },
+  webViewContainerRTL: {
+    // Any RTL specific styles for container
+  },
   webView: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  webViewRTL: {
+    // Any RTL specific styles for webview
   },
   loadingContainer: {
     height: 60,
@@ -316,9 +331,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
+  loadingContainerRTL: {
+    flexDirection: "row-reverse",
+  },
   loadingText: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  loadingTextRTL: {
+    textAlign: "right",
   },
   errorContainer: {
     padding: 16,
@@ -326,10 +347,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
+  errorContainerRTL: {
+    alignItems: "center",
+  },
   errorText: {
     fontSize: 14,
     color: Colors.error,
     fontWeight: "600",
+  },
+  errorTextRTL: {
+    textAlign: "right",
   },
 });
 

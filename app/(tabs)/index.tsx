@@ -41,7 +41,7 @@ import {
   useAllProducts,
   Product as BagistoProduct,
 } from "../hooks/useAllProducts";
-import { configService } from "@/services/ConfigService"; // Import config service
+import { configService } from "@/services/ConfigService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -130,15 +130,24 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [refetchThemes]);
 
+  // Fixed filteredProducts with null checks
   const filteredProducts = useMemo(() => {
     if (!searchQuery) return [];
     return products.filter((product) => {
-      return (
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.additionalData?.some((data) =>
-          data.value.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
-      );
+      // Safe check for product name
+      const nameMatch = product.name
+        ? product.name.toLowerCase().includes(searchQuery.toLowerCase())
+        : false;
+
+      // Safe check for additionalData with null/undefined values
+      const additionalDataMatch =
+        product.additionalData?.some(
+          (data) =>
+            data.value &&
+            data.value.toLowerCase().includes(searchQuery.toLowerCase()),
+        ) || false;
+
+      return nameMatch || additionalDataMatch;
     });
   }, [searchQuery, products]);
 
@@ -200,9 +209,10 @@ export default function HomeScreen() {
 
       return (
         <Pressable
-          style={
-            isHorizontal ? styles.horizontalProductCard : styles.productCard
-          }
+          style={[
+            isHorizontal ? styles.horizontalProductCard : styles.productCard,
+            isRTL && { direction: "rtl" },
+          ]}
           onPress={() =>
             router.push({ pathname: "/product/[id]", params: { id: item.id } })
           }
@@ -240,7 +250,10 @@ export default function HomeScreen() {
             )}
 
             <Pressable
-              style={styles.favoriteButton}
+              style={[
+                styles.favoriteButton,
+                isRTL && { right: undefined, left: 8 },
+              ]}
               onPress={(e) => {
                 e.stopPropagation();
                 toggleWishlist(item);
@@ -257,6 +270,7 @@ export default function HomeScreen() {
             <Pressable
               style={[
                 styles.addToCartButton,
+                isRTL && { right: undefined, left: 8 },
                 isAdded && styles.addToCartButtonSuccess,
               ]}
               onPress={(e) => {
@@ -273,17 +287,27 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.productInfo}>
+          <View
+            style={[styles.productInfo, isRTL && { alignItems: "flex-end" }]}
+          >
             {brand && (
               <Text style={styles.brandText} numberOfLines={1}>
                 {brand}
               </Text>
             )}
-            <Text style={styles.productName} numberOfLines={1}>
+            <Text
+              style={[styles.productName, isRTL && { textAlign: "right" }]}
+              numberOfLines={1}
+            >
               {item.name}
             </Text>
 
-            <View style={styles.ratingContainer}>
+            <View
+              style={[
+                styles.ratingContainer,
+                isRTL && { flexDirection: "row-reverse" },
+              ]}
+            >
               <Text style={styles.ratingText}>
                 ★ {item.averageRating || "0.0"}
               </Text>
@@ -292,7 +316,12 @@ export default function HomeScreen() {
               )}
             </View>
 
-            <View style={styles.priceRow}>
+            <View
+              style={[
+                styles.priceRow,
+                isRTL && { flexDirection: "row-reverse" },
+              ]}
+            >
               {hasDiscount && (
                 <Text style={styles.compareAtPriceText}>
                   {item.priceHtml?.formattedRegularPrice || ""}
@@ -306,12 +335,12 @@ export default function HomeScreen() {
         </Pressable>
       );
     },
-    [isInWishlist, toggleWishlist, handleAddToCart, addedProductId],
+    [isInWishlist, toggleWishlist, handleAddToCart, addedProductId, isRTL],
   );
 
   const renderHeader = () => (
     <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-      <View style={styles.headerTop}>
+      <View style={[styles.headerTop, isRTL && styles.headerTopRTL]}>
         <View style={styles.logoContainer}>
           {loadingLogo ? (
             <ActivityIndicator size="small" color={Colors.primary} />
@@ -341,7 +370,8 @@ export default function HomeScreen() {
             />
           )}
         </View>
-        <View style={styles.headerActions}>
+
+        <View style={[styles.headerActions, isRTL && styles.headerActionsRTL]}>
           <Pressable
             style={styles.iconButton}
             onPress={() => setIsSearchExpanded(!isSearchExpanded)}
@@ -354,7 +384,7 @@ export default function HomeScreen() {
           >
             <ShoppingBag size={22} color={Colors.text} />
             {itemCount > 0 && (
-              <View style={styles.badge}>
+              <View style={[styles.badge, isRTL && styles.badgeRTL]}>
                 <Text style={styles.badgeText}>{itemCount}</Text>
               </View>
             )}
@@ -363,14 +393,16 @@ export default function HomeScreen() {
       </View>
 
       {isSearchExpanded && (
-        <View style={styles.searchContainer}>
+        <View
+          style={[styles.searchContainer, isRTL && styles.searchContainerRTL]}
+        >
           <Search
             size={20}
             color={Colors.textSecondary}
-            style={styles.searchIcon}
+            style={[styles.searchIcon, isRTL && styles.searchIconRTL]}
           />
           <TextInput
-            style={[styles.searchInput, isRTL && { textAlign: "right" }]}
+            style={[styles.searchInput, isRTL && styles.searchInputRTL]}
             placeholder={t("searchPlaceholder")}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -378,6 +410,7 @@ export default function HomeScreen() {
             autoFocus
           />
           <Pressable
+            style={[styles.clearButton, isRTL && styles.clearButtonRTL]}
             onPress={() => {
               setIsSearchExpanded(false);
               setSearchQuery("");
@@ -415,7 +448,7 @@ export default function HomeScreen() {
         <View style={styles.noThemesContainer}>
           <Text style={styles.noThemesText}>{t("noThemesConfigured")}</Text>
           <Text style={[styles.noThemesText, { fontSize: 14, marginTop: 10 }]}>
-            Check your Bagisto admin panel to configure themes
+            {t("checkAdminPanel")}
           </Text>
         </View>
       );
@@ -440,7 +473,7 @@ export default function HomeScreen() {
             { top: insets.top + 16, opacity: feedbackOpacity },
           ]}
         >
-          <Text style={styles.feedbackText}>{successMessage}</Text>
+          <Text style={styles.feedbackText}>{t("addedToCart")}</Text>
         </Animated.View>
       )}
 
@@ -470,10 +503,14 @@ export default function HomeScreen() {
                     onPress={() => setSearchQuery("")}
                     style={styles.clearButton}
                   >
-                    <Text style={styles.clearButtonText}>{t("clear")}</Text>
+                    <Text style={styles.clearButtonText}>
+                      {t("clearFilter")}
+                    </Text>
                   </Pressable>
                 </View>
-                <View style={styles.productsGrid}>
+                <View
+                  style={[styles.productsGrid, isRTL && { direction: "rtl" }]}
+                >
                   {filteredProducts.map((product) => (
                     <View key={product.id} style={styles.gridItem}>
                       {renderProduct(product, false)}
@@ -601,14 +638,15 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   clearButton: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     paddingVertical: 6,
-    backgroundColor: Colors.primary,
+    // backgroundColor: Colors.lightGray,
+    fontWeight: "600",
     borderRadius: 12,
   },
   clearButtonText: {
-    color: Colors.white,
-    fontSize: 12,
+    color: Colors.primary,
+    fontSize: 16,
     fontWeight: "600",
   },
   productsGrid: {
@@ -795,5 +833,30 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.white,
     textAlign: "center",
+  },
+
+  // RTL specific styles - added at the end
+  headerTopRTL: {
+    flexDirection: "row-reverse",
+  },
+  headerActionsRTL: {
+    flexDirection: "row-reverse",
+  },
+  badgeRTL: {
+    right: undefined,
+    left: -4,
+  },
+  searchContainerRTL: {
+    flexDirection: "row-reverse",
+  },
+  searchIconRTL: {
+    marginRight: 0,
+    marginLeft: 8,
+  },
+  searchInputRTL: {
+    textAlign: "right",
+  },
+  clearButtonRTL: {
+    // Add any RTL specific styles if needed
   },
 });

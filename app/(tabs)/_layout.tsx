@@ -19,7 +19,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textSecondary,
-        headerShown: false, // 👈 No default headers - each screen controls its own
+        headerShown: false,
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopColor: Colors.border,
@@ -29,6 +29,15 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600" as const,
+          textAlign: isRTL ? "right" : "left",
+        },
+        tabBarIconStyle: {
+          marginBottom: -4,
+        },
+        // Ensure proper RTL layout for tab items
+        tabBarItemStyle: {
+          flex: 1,
+          paddingVertical: 8,
         },
       }}
     >

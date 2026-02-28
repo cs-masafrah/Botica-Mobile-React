@@ -11,11 +11,10 @@ import Colors from '@/constants/colors';
 
 interface ProductCarouselThemeProps {
   theme: Theme;
-  locale?: string;
 }
 
-const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, locale = 'en' }) => {
-  const { t, isRTL } = useLanguage();
+const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme }) => {
+  const { t, isRTL, locale } = useLanguage();
   
   // Get filters from theme
   const translation = useMemo(() => {
@@ -38,14 +37,17 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
   if (isLoading) {
     console.log(`   ⏳ Loading products for "${title}"...`);
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
+      <View style={[styles.container, isRTL && styles.containerRTL]}>
+        <View style={[styles.header, isRTL && styles.headerRTL]}>
+          <Text style={[styles.title, isRTL && styles.titleRTL]}>
             {title}
           </Text>
+          {/* No "See All" in loading state */}
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>{t('loading')}...</Text>
+          <Text style={[styles.loadingText, isRTL && styles.loadingTextRTL]}>
+            {t('loading')}...
+          </Text>
         </View>
       </View>
     );
@@ -54,18 +56,21 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
   if (!filteredProducts.length) {
     console.log(`❌ [ProductCarouselTheme] No products found for "${title}". Filters:`, filters);
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
+      <View style={[styles.container, isRTL && styles.containerRTL]}>
+        <View style={[styles.header, isRTL && styles.headerRTL]}>
+          <Text style={[styles.title, isRTL && styles.titleRTL]}>
             {title}
           </Text>
+          {/* No "See All" in empty state */}
         </View>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>{t('noProductsFound')}</Text>
-          <Text style={styles.emptySubText}>
+        <View style={[styles.emptyContainer, isRTL && styles.emptyContainerRTL]}>
+          <Text style={[styles.emptyText, isRTL && styles.emptyTextRTL]}>
+            {t('noProductsFound')}
+          </Text>
+          <Text style={[styles.emptySubText, isRTL && styles.emptySubTextRTL]}>
             {filters.length > 0 
-              ? `No products match the current filters`
-              : `No products available in this category`
+              ? t('noProductsMatchFilters')
+              : t('noProductsAvailable')
             }
           </Text>
         </View>
@@ -76,27 +81,29 @@ const ProductCarouselTheme: React.FC<ProductCarouselThemeProps> = ({ theme, loca
   console.log(`✅ [ProductCarouselTheme] Rendering "${title}" with ${filteredProducts.length} products`);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
+      <View style={[styles.header, isRTL && styles.headerRTL]}>
+        <Text style={[styles.title, isRTL && styles.titleRTL]}>
           {title}
         </Text>
         <Pressable onPress={() => router.push('/products')}>
-          <Text style={styles.seeAllText}>{t('seeAll')}</Text>
+          <Text style={[styles.seeAllText, isRTL && styles.seeAllTextRTL]}>
+            {t('seeAll')}
+          </Text>
         </Pressable>
       </View>
       <FlatList
         data={filteredProducts}
         renderItem={({ item }) => (
-          <View style={styles.productContainer}>
+          <View style={[styles.productContainer, isRTL && styles.productContainerRTL]}>
             <ProductCard product={item as any} />
           </View>
         )}
         keyExtractor={item => item.id}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        snapToInterval={150} // Optional: for better scrolling
+        contentContainerStyle={[styles.listContent, isRTL && styles.listContentRTL]}
+        snapToInterval={150}
         decelerationRate="fast"
       />
     </View>
@@ -109,6 +116,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     minHeight: 250,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
+  
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -116,24 +127,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
   },
+  headerRTL: {
+    flexDirection: 'row', // Keep as row, not row-reverse
+  },
+  
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: Colors.text,
+    flex: 1, // Allow title to take available space
   },
+  titleRTL: {
+    textAlign: 'left', // Title stays on left in RTL (since header is reversed by container)
+  },
+  
   seeAllText: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
+    marginLeft: 16, // Add spacing from title
   },
+  seeAllTextRTL: {
+    marginLeft: 0,
+    marginRight: 16, // Add spacing from title in RTL
+  },
+  
   listContent: {
     paddingHorizontal: 16,
-    paddingRight: 8, // Extra padding for last item
+    paddingRight: 8,
   },
+  listContentRTL: {
+    paddingHorizontal: 16,
+    paddingLeft: 8,
+    paddingRight: 16,
+    flexDirection: 'row', // Keep as row, not row-reverse (container handles RTL)
+  },
+  
   productContainer: {
     marginRight: 12,
-    width: 150, // Fixed width for consistent layout
+    width: 150,
   },
+  productContainerRTL: {
+    marginRight: 12, // Keep consistent margin
+    marginLeft: 0,
+  },
+  
   loadingContainer: {
     padding: 40,
     alignItems: 'center',
@@ -143,6 +181,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textSecondary,
   },
+  loadingTextRTL: {
+    textAlign: 'center',
+  },
+  
   emptyContainer: {
     padding: 40,
     alignItems: 'center',
@@ -151,15 +193,24 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 12,
   },
+  emptyContainerRTL: {
+    alignItems: 'center',
+  },
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.text,
     marginBottom: 8,
   },
+  emptyTextRTL: {
+    textAlign: 'center',
+  },
   emptySubText: {
     fontSize: 14,
     color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  emptySubTextRTL: {
     textAlign: 'center',
   },
 });

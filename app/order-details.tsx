@@ -24,6 +24,7 @@ import {
   Truck,
 } from "lucide-react-native";
 import { useCart } from "@/contexts/CartContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import Colors from "@/constants/colors";
 import { formatPrice } from "@/utils/currency";
 
@@ -31,6 +32,7 @@ const OrderDetailsScreen = () => {
   const { orderData } = useLocalSearchParams<{ orderData: string }>();
   const [reordering, setReordering] = useState(false);
   const { addToCart } = useCart();
+  const { t, isRTL } = useLanguage();
 
   const order = orderData ? JSON.parse(orderData) : null;
 
@@ -71,7 +73,7 @@ const OrderDetailsScreen = () => {
     if (!dateString) return "";
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
+      return date.toLocaleDateString(isRTL ? "ar" : "en-US", {
         weekday: "short",
         year: "numeric",
         month: "long",
@@ -82,105 +84,131 @@ const OrderDetailsScreen = () => {
     }
   };
 
-  const handleReorder = useCallback(
-    async () => {
-      if (!order?.items || order.items.length === 0) {
-        Alert.alert("Unable to Reorder", "No items found for this order.");
-        return;
-      }
+  const handleReorder = useCallback(async () => {
+    if (!order?.items || order.items.length === 0) {
+      Alert.alert(t("unableToReorder"), t("noItemsFound"));
+      return;
+    }
 
-      setReordering(true);
+    setReordering(true);
 
-      try {
-        let successCount = 0;
-        let failCount = 0;
-        const failedItems: string[] = [];
+    try {
+      let successCount = 0;
+      let failCount = 0;
+      const failedItems: string[] = [];
 
-        for (const item of order.items) {
-          try {
-            const productId = item.product?.id?.toString() || item.id.toString();
-            const productType = item.product?.type || "simple";
+      for (const item of order.items) {
+        try {
+          const productId = item.product?.id?.toString() || item.id.toString();
+          const productType = item.product?.type || "simple";
 
-            const product: Record<string, any> = {
-              id: productId,
-              productId: productId,
-              name: item.name,
-              price: item.price,
-              sku: item.sku,
-              type: productType,
-              inStock: true,
-              image: "",
-              brand: item.sku || "",
-              currencyCode: "USD",
-            };
+          const product: Record<string, any> = {
+            id: productId,
+            productId: productId,
+            name: item.name,
+            price: item.price,
+            sku: item.sku,
+            type: productType,
+            inStock: true,
+            image: "",
+            brand: item.sku || "",
+            currencyCode: "USD",
+          };
 
-            if (productType === "configurable" && item.product?.id) {
-              product.selectedConfigurableOption = parseInt(item.product.id, 10);
-            }
+          if (productType === "configurable" && item.product?.id) {
+            product.selectedConfigurableOption = parseInt(item.product.id, 10);
+          }
 
-            const result = await addToCart(product, item.qtyOrdered || 1);
+          const result = await addToCart(product, item.qtyOrdered || 1);
 
-            if (result?.success) {
-              successCount++;
-            } else {
-              failCount++;
-              failedItems.push(item.name);
-            }
-          } catch {
+          if (result?.success) {
+            successCount++;
+          } else {
             failCount++;
             failedItems.push(item.name);
           }
+        } catch {
+          failCount++;
+          failedItems.push(item.name);
         }
-
-        if (failCount === 0) {
-          Alert.alert(
-            "Reorder Successful",
-            `All ${successCount} item${successCount > 1 ? "s" : ""} have been added to your cart.`,
-            [
-              { text: "Continue Shopping", style: "cancel" },
-              { text: "Go to Cart", onPress: () => router.push("/(tabs)/cart") },
-            ],
-          );
-        } else if (successCount > 0) {
-          Alert.alert(
-            "Partially Added",
-            `${successCount} added, ${failCount} failed:\n${failedItems.join(", ")}`,
-            [
-              { text: "OK", style: "cancel" },
-              { text: "Go to Cart", onPress: () => router.push("/(tabs)/cart") },
-            ],
-          );
-        } else {
-          Alert.alert("Reorder Failed", "Items may no longer be available.");
-        }
-      } catch {
-        Alert.alert("Reorder Failed", "Something went wrong. Please try again.");
-      } finally {
-        setReordering(false);
       }
-    },
-    [addToCart, order],
-  );
+
+      if (failCount === 0) {
+        Alert.alert(
+          t("reorderSuccessful"),
+          t("allItemsAddedDetails", { count: successCount }),
+          [
+            { text: t("continueShopping"), style: "cancel" },
+            { text: t("goToCart"), onPress: () => router.push("/(tabs)/cart") },
+          ],
+        );
+      } else if (successCount > 0) {
+        Alert.alert(
+          t("partiallyAdded"),
+          t("partiallyAddedDetails", {
+            successCount,
+            failCount,
+            failedItems: failedItems.join(", "),
+          }),
+          [
+            { text: t("ok"), style: "cancel" },
+            { text: t("goToCart"), onPress: () => router.push("/(tabs)/cart") },
+          ],
+        );
+      } else {
+        Alert.alert(t("reorderFailed"), t("reorderFailedDetails"));
+      }
+    } catch {
+      Alert.alert(t("reorderFailed"), t("reorderErrorMessage"));
+    } finally {
+      setReordering(false);
+    }
+  }, [addToCart, order, t]);
 
   if (!order) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, isRTL && styles.containerRTL]}>
         <StatusBar barStyle="dark-content" />
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <ArrowLeft size={22} color={Colors.text} />
+        <View style={[styles.header, isRTL && styles.headerRTL]}>
+          <Pressable
+            style={[styles.backButton, isRTL && styles.backButtonRTL]}
+            onPress={() => router.back()}
+          >
+            <ArrowLeft
+              size={22}
+              color={Colors.text}
+              style={isRTL && { transform: [{ scaleX: -1 }] }}
+            />
           </Pressable>
-          <Text style={styles.headerTitle}>Order Details</Text>
+          <Text style={[styles.headerTitle, isRTL && styles.headerTitleRTL]}>
+            {t("orderDetails")}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.errorContainer}>
+        <View
+          style={[styles.errorContainer, isRTL && styles.errorContainerRTL]}
+        >
           <Package size={56} color={Colors.textSecondary} />
-          <Text style={styles.errorTitle}>Order Not Found</Text>
-          <Text style={styles.errorSubtitle}>
-            We could not load this order. Please try again.
+          <Text style={[styles.errorTitle, isRTL && styles.errorTitleRTL]}>
+            {t("orderNotFound")}
           </Text>
-          <Pressable style={styles.backToOrdersBtn} onPress={() => router.back()}>
-            <Text style={styles.backToOrdersBtnText}>Back to Orders</Text>
+          <Text
+            style={[styles.errorSubtitle, isRTL && styles.errorSubtitleRTL]}
+          >
+            {t("orderNotFoundMessage")}
+          </Text>
+          <Pressable
+            style={[styles.backToOrdersBtn, isRTL && styles.backToOrdersBtnRTL]}
+            onPress={() => router.back()}
+          >
+            <Text
+              style={[
+                styles.backToOrdersBtnText,
+                isRTL && styles.backToOrdersBtnTextRTL,
+              ]}
+            >
+              {t("backToOrders")}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -189,18 +217,28 @@ const OrderDetailsScreen = () => {
 
   const StatusIcon = getStatusIcon(order.status);
   const statusColor = getStatusColor(order.status);
-  const itemCount = order.totalItemCount || order.totalQtyOrdered || order.items?.length || 0;
+  const itemCount =
+    order.totalItemCount || order.totalQtyOrdered || order.items?.length || 0;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={22} color={Colors.text} />
+      <View style={[styles.header, isRTL && styles.headerRTL]}>
+        <Pressable
+          style={[styles.backButton, isRTL && styles.backButtonRTL]}
+          onPress={() => router.back()}
+        >
+          <ArrowLeft
+            size={22}
+            color={Colors.text}
+            style={isRTL && { transform: [{ scaleX: -1 }] }}
+          />
         </Pressable>
-        <Text style={styles.headerTitle}>Order #{order.incrementId}</Text>
+        <Text style={[styles.headerTitle, isRTL && styles.headerTitleRTL]}>
+          {t("orderNumber")} #{order.incrementId}
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -210,60 +248,123 @@ const OrderDetailsScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Status Banner */}
-        <View style={[styles.statusBanner, { backgroundColor: statusColor + "0A" }]}>
-          <View style={[styles.statusIconCircle, { backgroundColor: statusColor + "18" }]}>
+        <View
+          style={[
+            styles.statusBanner,
+            { backgroundColor: statusColor + "0A" },
+            isRTL && styles.statusBannerRTL,
+          ]}
+        >
+          <View
+            style={[
+              styles.statusIconCircle,
+              { backgroundColor: statusColor + "18" },
+            ]}
+          >
             <StatusIcon size={24} color={statusColor} />
           </View>
-          <View style={styles.statusInfo}>
-            <Text style={[styles.statusLabel, { color: statusColor }]}>
+          <View style={[styles.statusInfo, isRTL && styles.statusInfoRTL]}>
+            <Text
+              style={[
+                styles.statusLabel,
+                { color: statusColor },
+                isRTL && styles.statusLabelRTL,
+              ]}
+            >
               {order.statusLabel || order.status}
             </Text>
-            <Text style={styles.statusDate}>
-              Placed on {formatDate(order.createdAt)}
+            <Text style={[styles.statusDate, isRTL && styles.statusDateRTL]}>
+              {t("placedOn")} {formatDate(order.createdAt)}
             </Text>
           </View>
         </View>
 
         {/* Order Items */}
         {order.items && order.items.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
+          <View style={[styles.section, isRTL && styles.sectionRTL]}>
+            <View
+              style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}
+            >
               <ShoppingBag size={18} color={Colors.text} />
-              <Text style={styles.sectionTitle}>
-                Items ({order.items.length})
+              <Text
+                style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
+              >
+                {t("items")} ({order.items.length})
               </Text>
             </View>
-            <View style={styles.itemsCard}>
+            <View style={[styles.itemsCard, isRTL && styles.itemsCardRTL]}>
               {order.items.map((item: any, index: number) => (
                 <View
                   key={item.id || index}
                   style={[
                     styles.itemRow,
                     index < order.items.length - 1 && styles.itemDivider,
+                    isRTL && styles.itemRowRTL,
                   ]}
                 >
-                  <View style={styles.itemIconBox}>
+                  <View
+                    style={[styles.itemIconBox, isRTL && styles.itemIconBoxRTL]}
+                  >
                     <Layers size={18} color={Colors.textSecondary} />
                   </View>
-                  <View style={styles.itemDetails}>
-                    <Text style={styles.itemName} numberOfLines={2}>
+                  <View
+                    style={[styles.itemDetails, isRTL && styles.itemDetailsRTL]}
+                  >
+                    <Text
+                      style={[styles.itemName, isRTL && styles.itemNameRTL]}
+                      numberOfLines={2}
+                    >
                       {item.name}
                     </Text>
-                    <View style={styles.itemMetaRow}>
-                      <Text style={styles.itemSku}>SKU: {item.sku}</Text>
-                      <View style={styles.itemQtyBadge}>
-                        <Text style={styles.itemQtyText}>
-                          Qty: {item.qtyOrdered || 1}
+                    <View
+                      style={[
+                        styles.itemMetaRow,
+                        isRTL && styles.itemMetaRowRTL,
+                      ]}
+                    >
+                      <Text
+                        style={[styles.itemSku, isRTL && styles.itemSkuRTL]}
+                      >
+                        {t("sku")}: {item.sku}
+                      </Text>
+                      <View
+                        style={[
+                          styles.itemQtyBadge,
+                          isRTL && styles.itemQtyBadgeRTL,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.itemQtyText,
+                            isRTL && styles.itemQtyTextRTL,
+                          ]}
+                        >
+                          {t("qty")}: {item.qtyOrdered || 1}
                         </Text>
                       </View>
                     </View>
                   </View>
-                  <View style={styles.itemPriceCol}>
-                    <Text style={styles.itemUnitPrice}>
+                  <View
+                    style={[
+                      styles.itemPriceCol,
+                      isRTL && styles.itemPriceColRTL,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.itemUnitPrice,
+                        isRTL && styles.itemUnitPriceRTL,
+                      ]}
+                    >
                       {formatPrice(item.price || 0)}
                     </Text>
                     {(item.qtyOrdered || 1) > 1 && (
-                      <Text style={styles.itemTotalPrice}>
+                      <Text
+                        style={[
+                          styles.itemTotalPrice,
+                          isRTL && styles.itemTotalPriceRTL,
+                        ]}
+                      >
                         {formatPrice(item.total || item.price || 0)}
                       </Text>
                     )}
@@ -275,54 +376,102 @@ const OrderDetailsScreen = () => {
         )}
 
         {/* Price Breakdown */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+        <View style={[styles.section, isRTL && styles.sectionRTL]}>
+          <View
+            style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}
+          >
             <Receipt size={18} color={Colors.text} />
-            <Text style={styles.sectionTitle}>Price Summary</Text>
+            <Text
+              style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
+            >
+              {t("priceSummary")}
+            </Text>
           </View>
-          <View style={styles.priceCard}>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>
-                Subtotal ({itemCount} item{itemCount !== 1 ? "s" : ""})
+          <View style={[styles.priceCard, isRTL && styles.priceCardRTL]}>
+            <View style={[styles.priceRow, isRTL && styles.priceRowRTL]}>
+              <Text style={[styles.priceLabel, isRTL && styles.priceLabelRTL]}>
+                {t("subtotal")} ({itemCount}{" "}
+                {itemCount !== 1 ? t("items") : t("item")})
               </Text>
-              <Text style={styles.priceValue}>
-                {formatPrice(order.subTotal || order.formattedPrice?.subTotal || 0)}
+              <Text style={[styles.priceValue, isRTL && styles.priceValueRTL]}>
+                {formatPrice(
+                  order.subTotal || order.formattedPrice?.subTotal || 0,
+                )}
               </Text>
             </View>
 
-            {(order.shippingAmount || order.formattedPrice?.shippingAmount) ? (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Shipping</Text>
-                <Text style={styles.priceValue}>
-                  {formatPrice(order.shippingAmount || order.formattedPrice?.shippingAmount || 0)}
+            {order.shippingAmount || order.formattedPrice?.shippingAmount ? (
+              <View style={[styles.priceRow, isRTL && styles.priceRowRTL]}>
+                <Text
+                  style={[styles.priceLabel, isRTL && styles.priceLabelRTL]}
+                >
+                  {t("shipping")}
+                </Text>
+                <Text
+                  style={[styles.priceValue, isRTL && styles.priceValueRTL]}
+                >
+                  {formatPrice(
+                    order.shippingAmount ||
+                      order.formattedPrice?.shippingAmount ||
+                      0,
+                  )}
                 </Text>
               </View>
             ) : null}
 
-            {(order.taxAmount || order.formattedPrice?.taxAmount) ? (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Tax</Text>
-                <Text style={styles.priceValue}>
-                  {formatPrice(order.taxAmount || order.formattedPrice?.taxAmount || 0)}
+            {order.taxAmount || order.formattedPrice?.taxAmount ? (
+              <View style={[styles.priceRow, isRTL && styles.priceRowRTL]}>
+                <Text
+                  style={[styles.priceLabel, isRTL && styles.priceLabelRTL]}
+                >
+                  {t("tax")}
+                </Text>
+                <Text
+                  style={[styles.priceValue, isRTL && styles.priceValueRTL]}
+                >
+                  {formatPrice(
+                    order.taxAmount || order.formattedPrice?.taxAmount || 0,
+                  )}
                 </Text>
               </View>
             ) : null}
 
-            {(order.discountAmount || order.formattedPrice?.discountAmount) ? (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Discount</Text>
-                <Text style={[styles.priceValue, { color: Colors.success }]}>
-                  -{formatPrice(Math.abs(order.discountAmount || order.formattedPrice?.discountAmount || 0))}
+            {order.discountAmount || order.formattedPrice?.discountAmount ? (
+              <View style={[styles.priceRow, isRTL && styles.priceRowRTL]}>
+                <Text
+                  style={[styles.priceLabel, isRTL && styles.priceLabelRTL]}
+                >
+                  {t("discount")}
+                </Text>
+                <Text
+                  style={[
+                    styles.priceValue,
+                    { color: Colors.success },
+                    isRTL && styles.priceValueRTL,
+                  ]}
+                >
+                  -
+                  {formatPrice(
+                    Math.abs(
+                      order.discountAmount ||
+                        order.formattedPrice?.discountAmount ||
+                        0,
+                    ),
+                  )}
                 </Text>
               </View>
             ) : null}
 
             <View style={styles.totalDivider} />
 
-            <View style={styles.priceRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>
-                {formatPrice(order.grandTotal || order.formattedPrice?.grandTotal || 0)}
+            <View style={[styles.priceRow, isRTL && styles.priceRowRTL]}>
+              <Text style={[styles.totalLabel, isRTL && styles.totalLabelRTL]}>
+                {t("total")}
+              </Text>
+              <Text style={[styles.totalValue, isRTL && styles.totalValueRTL]}>
+                {formatPrice(
+                  order.grandTotal || order.formattedPrice?.grandTotal || 0,
+                )}
               </Text>
             </View>
           </View>
@@ -330,45 +479,93 @@ const OrderDetailsScreen = () => {
 
         {/* Payment & Shipping */}
         {(order.payment || order.shippingAddress) && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
+          <View style={[styles.section, isRTL && styles.sectionRTL]}>
+            <View
+              style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}
+            >
               <Truck size={18} color={Colors.text} />
-              <Text style={styles.sectionTitle}>Payment & Delivery</Text>
+              <Text
+                style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
+              >
+                {t("paymentAndDelivery")}
+              </Text>
             </View>
-            <View style={styles.infoCard}>
+            <View style={[styles.infoCard, isRTL && styles.infoCardRTL]}>
               {order.payment && (
-                <View style={styles.infoItem}>
-                  <View style={[styles.infoIconCircle, { backgroundColor: "#F0F0FF" }]}>
+                <View style={[styles.infoItem, isRTL && styles.infoItemRTL]}>
+                  <View
+                    style={[
+                      styles.infoIconCircle,
+                      { backgroundColor: "#F0F0FF" },
+                    ]}
+                  >
                     <CreditCard size={16} color={Colors.text} />
                   </View>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoItemLabel}>Payment Method</Text>
-                    <Text style={styles.infoItemValue}>
-                      {order.payment.methodTitle || order.payment.method || "N/A"}
+                  <View
+                    style={[styles.infoContent, isRTL && styles.infoContentRTL]}
+                  >
+                    <Text
+                      style={[
+                        styles.infoItemLabel,
+                        isRTL && styles.infoItemLabelRTL,
+                      ]}
+                    >
+                      {t("paymentMethod")}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.infoItemValue,
+                        isRTL && styles.infoItemValueRTL,
+                      ]}
+                    >
+                      {order.payment.methodTitle ||
+                        order.payment.method ||
+                        t("na")}
                     </Text>
                   </View>
                 </View>
               )}
 
               {order.payment && order.shippingAddress && (
-                <View style={styles.infoDivider} />
+                <View
+                  style={[styles.infoDivider, isRTL && styles.infoDividerRTL]}
+                />
               )}
 
               {order.shippingAddress && (
-                <View style={styles.infoItem}>
-                  <View style={[styles.infoIconCircle, { backgroundColor: "#F0FFF4" }]}>
+                <View style={[styles.infoItem, isRTL && styles.infoItemRTL]}>
+                  <View
+                    style={[
+                      styles.infoIconCircle,
+                      { backgroundColor: "#F0FFF4" },
+                    ]}
+                  >
                     <MapPin size={16} color={Colors.text} />
                   </View>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoItemLabel}>Shipping Address</Text>
-                    <Text style={styles.infoItemValue}>
+                  <View
+                    style={[styles.infoContent, isRTL && styles.infoContentRTL]}
+                  >
+                    <Text
+                      style={[
+                        styles.infoItemLabel,
+                        isRTL && styles.infoItemLabelRTL,
+                      ]}
+                    >
+                      {t("shippingAddress")}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.infoItemValue,
+                        isRTL && styles.infoItemValueRTL,
+                      ]}
+                    >
                       {[
                         order.shippingAddress.city,
                         order.shippingAddress.postcode,
                         order.shippingAddress.country,
                       ]
                         .filter(Boolean)
-                        .join(", ")}
+                        .join(isRTL ? "، " : ", ")}
                     </Text>
                   </View>
                 </View>
@@ -381,11 +578,27 @@ const OrderDetailsScreen = () => {
       </ScrollView>
 
       {/* Bottom Reorder Bar */}
-      <View style={styles.bottomBar}>
-        <View style={styles.bottomBarTotal}>
-          <Text style={styles.bottomBarTotalLabel}>Order Total</Text>
-          <Text style={styles.bottomBarTotalValue}>
-            {formatPrice(order.grandTotal || order.formattedPrice?.grandTotal || 0)}
+      <View style={[styles.bottomBar, isRTL && styles.bottomBarRTL]}>
+        <View
+          style={[styles.bottomBarTotal, isRTL && styles.bottomBarTotalRTL]}
+        >
+          <Text
+            style={[
+              styles.bottomBarTotalLabel,
+              isRTL && styles.bottomBarTotalLabelRTL,
+            ]}
+          >
+            {t("orderTotal")}
+          </Text>
+          <Text
+            style={[
+              styles.bottomBarTotalValue,
+              isRTL && styles.bottomBarTotalValueRTL,
+            ]}
+          >
+            {formatPrice(
+              order.grandTotal || order.formattedPrice?.grandTotal || 0,
+            )}
           </Text>
         </View>
         <Pressable
@@ -393,6 +606,7 @@ const OrderDetailsScreen = () => {
             styles.reorderBtn,
             pressed && styles.reorderBtnPressed,
             reordering && styles.reorderBtnDisabled,
+            isRTL && styles.reorderBtnRTL,
           ]}
           onPress={handleReorder}
           disabled={reordering || !order.items || order.items.length === 0}
@@ -402,8 +616,10 @@ const OrderDetailsScreen = () => {
           ) : (
             <RefreshCw size={18} color={Colors.white} />
           )}
-          <Text style={styles.reorderBtnText}>
-            {reordering ? "Adding..." : "Reorder All"}
+          <Text
+            style={[styles.reorderBtnText, isRTL && styles.reorderBtnTextRTL]}
+          >
+            {reordering ? t("adding") : t("reorderAll")}
           </Text>
         </Pressable>
       </View>
@@ -415,6 +631,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.cardBackground,
+  },
+  containerRTL: {
+    direction: "rtl",
   },
 
   // Header
@@ -429,6 +648,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  headerRTL: {
+    // flexDirection: "row-reverse",
+  },
   backButton: {
     width: 36,
     height: 36,
@@ -437,10 +659,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  backButtonRTL: {},
   headerTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: Colors.text,
+  },
+  headerTitleRTL: {
+    textAlign: "right",
   },
   headerSpacer: {
     width: 36,
@@ -454,17 +680,24 @@ const styles = StyleSheet.create({
     padding: 40,
     gap: 12,
   },
+  errorContainerRTL: {},
   errorTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: Colors.text,
     marginTop: 8,
   },
+  errorTitleRTL: {
+    textAlign: "right",
+  },
   errorSubtitle: {
     fontSize: 15,
     color: Colors.textSecondary,
     textAlign: "center",
     lineHeight: 22,
+  },
+  errorSubtitleRTL: {
+    textAlign: "right",
   },
   backToOrdersBtn: {
     marginTop: 12,
@@ -473,10 +706,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
   },
+  backToOrdersBtnRTL: {},
   backToOrdersBtnText: {
     color: Colors.white,
     fontSize: 15,
     fontWeight: "600",
+  },
+  backToOrdersBtnTextRTL: {
+    textAlign: "right",
   },
 
   // Scroll
@@ -500,6 +737,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+  statusBannerRTL: {
+    // flexDirection: "row-reverse",
+  },
   statusIconCircle: {
     width: 48,
     height: 48,
@@ -510,21 +750,31 @@ const styles = StyleSheet.create({
   statusInfo: {
     flex: 1,
   },
+  statusInfoRTL: {
+    alignItems: "flex-end",
+  },
   statusLabel: {
     fontSize: 17,
     fontWeight: "700",
     textTransform: "capitalize",
     marginBottom: 2,
   },
+  statusLabelRTL: {
+    textAlign: "right",
+  },
   statusDate: {
     fontSize: 13,
     color: Colors.textSecondary,
+  },
+  statusDateRTL: {
+    textAlign: "right",
   },
 
   // Section
   section: {
     marginBottom: 20,
   },
+  sectionRTL: {},
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -532,10 +782,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 2,
   },
+  sectionHeaderRTL: {
+    // flexDirection: "row-reverse",
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: Colors.text,
+  },
+  sectionTitleRTL: {
+    textAlign: "right",
   },
 
   // Items
@@ -546,11 +802,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  itemsCardRTL: {},
   itemRow: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
     gap: 12,
+  },
+  itemRowRTL: {
+    // flexDirection: "row-reverse",
   },
   itemDivider: {
     borderBottomWidth: 1,
@@ -564,8 +824,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  itemIconBoxRTL: {},
   itemDetails: {
     flex: 1,
+  },
+  itemDetailsRTL: {
+    alignItems: "flex-end",
   },
   itemName: {
     fontSize: 14,
@@ -574,14 +838,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 20,
   },
+  itemNameRTL: {
+    textAlign: "left",
+  },
   itemMetaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
+  itemMetaRowRTL: {
+    flexDirection: "row-reverse",
+  },
   itemSku: {
     fontSize: 12,
     color: Colors.textSecondary,
+  },
+  itemSkuRTL: {
+    textAlign: "left",
   },
   itemQtyBadge: {
     backgroundColor: Colors.cardBackground,
@@ -589,23 +862,36 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
+  itemQtyBadgeRTL: {},
   itemQtyText: {
     fontSize: 11,
     fontWeight: "600",
     color: Colors.textSecondary,
   },
+  itemQtyTextRTL: {
+    textAlign: "left",
+  },
   itemPriceCol: {
     alignItems: "flex-end",
+  },
+  itemPriceColRTL: {
+    alignItems: "flex-start",
   },
   itemUnitPrice: {
     fontSize: 14,
     fontWeight: "700",
     color: Colors.text,
   },
+  itemUnitPriceRTL: {
+    textAlign: "left",
+  },
   itemTotalPrice: {
     fontSize: 12,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  itemTotalPriceRTL: {
+    textAlign: "left",
   },
 
   // Price Summary
@@ -617,19 +903,29 @@ const styles = StyleSheet.create({
     borderColor: Colors.borderLight,
     gap: 10,
   },
+  priceCardRTL: {},
   priceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+  priceRowRTL: {
+    // flexDirection: "row-reverse",
+  },
   priceLabel: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  priceLabelRTL: {
+    textAlign: "right",
   },
   priceValue: {
     fontSize: 14,
     fontWeight: "500",
     color: Colors.text,
+  },
+  priceValueRTL: {
+    textAlign: "right",
   },
   totalDivider: {
     height: 1,
@@ -641,10 +937,16 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.text,
   },
+  totalLabelRTL: {
+    textAlign: "right",
+  },
   totalValue: {
     fontSize: 18,
     fontWeight: "700",
     color: Colors.text,
+  },
+  totalValueRTL: {
+    textAlign: "right",
   },
 
   // Info Card
@@ -655,10 +957,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+  infoCardRTL: {},
   infoItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+  },
+  infoItemRTL: {
+    // flexDirection: "row-reverse",
   },
   infoIconCircle: {
     width: 36,
@@ -670,6 +976,9 @@ const styles = StyleSheet.create({
   infoContent: {
     flex: 1,
   },
+  infoContentRTL: {
+    alignItems: "flex-end",
+  },
   infoItemLabel: {
     fontSize: 12,
     color: Colors.textSecondary,
@@ -678,16 +987,26 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.3,
   },
+  infoItemLabelRTL: {
+    textAlign: "right",
+  },
   infoItemValue: {
     fontSize: 14,
     fontWeight: "600",
     color: Colors.text,
+  },
+  infoItemValueRTL: {
+    textAlign: "right",
   },
   infoDivider: {
     height: 1,
     backgroundColor: Colors.borderLight,
     marginVertical: 14,
     marginLeft: 48,
+  },
+  infoDividerRTL: {
+    marginLeft: 0,
+    marginRight: 48,
   },
 
   bottomSpacing: {
@@ -715,8 +1034,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  bottomBarRTL: {
+    // flexDirection: "row-reverse",
+  },
   bottomBarTotal: {
     gap: 2,
+  },
+  bottomBarTotalRTL: {
+    alignItems: "flex-end",
   },
   bottomBarTotalLabel: {
     fontSize: 12,
@@ -725,10 +1050,16 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.3,
   },
+  bottomBarTotalLabelRTL: {
+    textAlign: "right",
+  },
   bottomBarTotalValue: {
     fontSize: 22,
     fontWeight: "700",
     color: Colors.text,
+  },
+  bottomBarTotalValueRTL: {
+    textAlign: "right",
   },
   reorderBtn: {
     flexDirection: "row",
@@ -744,6 +1075,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
+  reorderBtnRTL: {
+    // flexDirection: "row-reverse",
+  },
   reorderBtnPressed: {
     opacity: 0.85,
   },
@@ -754,6 +1088,9 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 15,
     fontWeight: "600",
+  },
+  reorderBtnTextRTL: {
+    textAlign: "right",
   },
 });
 

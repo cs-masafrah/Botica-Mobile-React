@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { I18nManager, Platform, Alert } from 'react-native';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
-import { translations } from '@/constants/translations';
+import { translations } from '@/constants/translations/index';
 
 const LANGUAGE_KEY = 'app_language';
 

@@ -75,13 +75,13 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.title, isRTL && { textAlign: "right" }]}>
-          {title}
+      <View style={[styles.header, isRTL && styles.headerRTL]}>
+        <Text style={[styles.title, isRTL && styles.titleRTL]}>{title}</Text>
+        <Text style={[styles.subtitle, isRTL && styles.subtitleRTL]}>
+          {t("discoverFragrance") || "Discover your perfect fragrance"}
         </Text>
-        <Text style={styles.subtitle}>Discover your perfect fragrance</Text>
       </View>
 
       {/* Categories Carousel */}
@@ -90,10 +90,13 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          isRTL && styles.listContentRTL,
+        ]}
         renderItem={({ item }) => (
           <Pressable
-            style={styles.card}
+            style={[styles.card, isRTL && styles.cardRTL]}
             onPress={() =>
               router.push({
                 pathname: "/category/[id]",
@@ -122,7 +125,9 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
             <View style={styles.overlay} />
 
             {/* Centered Category Name */}
-            <Text style={styles.cardText}>{item.name}</Text>
+            <Text style={[styles.cardText, isRTL && styles.cardTextRTL]}>
+              {t(item.name) || item.name}
+            </Text>
           </Pressable>
         )}
       />
@@ -135,10 +140,16 @@ const styles = StyleSheet.create({
     marginVertical: 24,
     backgroundColor: Colors.background,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
 
   header: {
     paddingHorizontal: 16,
     marginBottom: 20,
+  },
+  headerRTL: {
+    alignItems: "flex-start",
   },
 
   title: {
@@ -146,15 +157,24 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.text,
   },
+  titleRTL: {
+    textAlign: "right",
+  },
 
   subtitle: {
     marginTop: 4,
     fontSize: 14,
     color: Colors.textSecondary,
   },
+  subtitleRTL: {
+    textAlign: "right",
+  },
 
   listContent: {
     paddingHorizontal: 16,
+  },
+  listContentRTL: {
+    flexDirection: "row-reverse",
   },
 
   card: {
@@ -165,6 +185,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
+  },
+  cardRTL: {
+    marginRight: 0,
+    marginLeft: 16,
   },
 
   overlay: {
@@ -178,6 +202,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.white,
     zIndex: 2,
+  },
+  cardTextRTL: {
+    textAlign: "center",
   },
 });
 

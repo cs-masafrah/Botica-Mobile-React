@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { Theme, ThemeType } from '@/types/theme';
 import { useLanguage } from '@/contexts/LanguageContext';
+import Colors from '@/constants/colors';
 
 // Import all theme components
 import ProductCarouselTheme from './ProductCarouselTheme';
@@ -11,14 +12,14 @@ import StaticContentTheme from './StaticContentTheme';
 import ImageCarouselTheme from './ImageCarouselTheme';
 import FooterLinksTheme from './FooterLinksTheme';
 import ServicesContentTheme from './ServicesContentTheme';
-import ProductByBrandTheme from './ProductByBrandTheme'; 
+import ProductByBrandTheme from './ProductByBrandTheme';
 
 interface ThemeFactoryProps {
   theme: Theme;
 }
 
 const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
-  const { locale } = useLanguage();
+  const { locale, isRTL, t } = useLanguage();
   
   console.log(`🔍 [ThemeFactory] Processing theme: ${theme.id} - ${theme.type} - "${theme.name}"`);
   
@@ -36,7 +37,7 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
     image_carousel: ImageCarouselTheme,
     footer_links: FooterLinksTheme,
     services_content: ServicesContentTheme,
-    product_by_brand: ProductByBrandTheme, 
+    product_by_brand: ProductByBrandTheme,
   };
 
   const ThemeComponent = componentMap[theme.type];
@@ -44,8 +45,10 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
   if (!ThemeComponent) {
     console.warn(`❌ No component found for theme type: ${theme.type}`);
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Theme type &quot;{theme.type}&quot; not supported</Text>
+      <View style={[styles.container, isRTL && styles.containerRTL]}>
+        <Text style={[styles.errorText, isRTL && styles.errorTextRTL]}>
+          {t('themeTypeNotSupported') || `Theme type "${theme.type}" not supported`}
+        </Text>
       </View>
     );
   }
@@ -53,8 +56,8 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
   console.log(`   ✅ Will render ${theme.type} component`);
 
   return (
-    <View style={styles.container}>
-      <ThemeComponent theme={theme} locale={locale} />
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
+      <ThemeComponent theme={theme} />
     </View>
   );
 };
@@ -63,10 +66,17 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 8,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
   errorText: {
-    color: 'red',
+    color: Colors.error,
     fontSize: 12,
     textAlign: 'center',
+    padding: 16,
+  },
+  errorTextRTL: {
+    textAlign: 'right',
   },
 });
 

@@ -1,4 +1,4 @@
-export const translations = {
+export const translationssss = {
   en: {
     greeting: "Hello!",
     subtitle: "Discover your signature scent",
@@ -52,12 +52,12 @@ export const translations = {
     noProductsFoundForSearch: "No products found for your search",
     noProductsAvailable: "No products available",
     error: "Error",
-    
+
     // Additional sorting options you might need
     "name-asc": "Name: A-Z",
     "name-desc": "Name: Z-A",
     "rating-high": "Top Rated",
-    
+
     // Product details translations
     description: "Description",
     quantity: "Quantity",
@@ -124,12 +124,12 @@ export const translations = {
     noProductsFoundForSearch: "لم يتم العثور على منتجات تتطابق مع بحثك",
     noProductsAvailable: "لا توجد منتجات متاحة",
     error: "خطأ",
-    
+
     // Additional Arabic sorting options
     "name-asc": "الاسم: أ-ي",
     "name-desc": "الاسم: ي-أ",
     "rating-high": "الأعلى تقييماً",
-    
+
     // Product details Arabic translations
     description: "الوصف",
     quantity: "الكمية",
