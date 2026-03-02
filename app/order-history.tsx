@@ -27,8 +27,8 @@ import { orderService } from "@/services/OrderService";
 import { authService } from "@/services/auth";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useCurrency } from "@/contexts/CurrencyContext"; // ADD THIS
 import Colors from "@/constants/colors";
-import { formatPrice } from "@/utils/currency";
 
 const OrderHistoryScreen = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -44,6 +44,8 @@ const OrderHistoryScreen = () => {
   const insets = useSafeAreaInsets();
   const { addToCart } = useCart();
   const { t, isRTL } = useLanguage();
+  const { formatPrice, convertPrice, selectedCurrency, baseCurrency } =
+    useCurrency(); // ADD THIS
 
   useEffect(() => {
     checkAuth();
@@ -123,6 +125,27 @@ const OrderHistoryScreen = () => {
     }
   };
 
+  // Helper function to format order total with currency conversion
+  const getOrderTotal = (order: any): string => {
+    const total = order.grandTotal || order.formattedPrice?.grandTotal || 0;
+    const orderCurrency =
+      order.baseCurrencyCode || order.orderCurrencyCode || baseCurrency?.code;
+
+    // Convert to selected currency if different
+    const convertedTotal = convertPrice(total, orderCurrency);
+    return formatPrice(convertedTotal);
+  };
+
+  // Helper function to format item price with currency conversion
+  const getItemPrice = (item: any): string => {
+    const price = item.price || 0;
+    const orderCurrency = item.currencyCode || baseCurrency?.code;
+
+    // Convert to selected currency
+    const convertedPrice = convertPrice(price, orderCurrency);
+    return formatPrice(convertedPrice);
+  };
+
   const handleReorder = useCallback(
     async (order: any) => {
       setReorderingOrderId(order.id);
@@ -166,7 +189,7 @@ const OrderHistoryScreen = () => {
               inStock: true,
               image: "",
               brand: item.sku || "",
-              currencyCode: "USD",
+              currencyCode: item.currencyCode || baseCurrency?.code || "ILS",
             };
 
             if (productType === "configurable" && item.product?.id) {
@@ -230,7 +253,7 @@ const OrderHistoryScreen = () => {
         setReorderingOrderId(null);
       }
     },
-    [addToCart, t],
+    [addToCart, t, baseCurrency],
   );
 
   const getStatusColor = (status: string) => {
@@ -330,6 +353,15 @@ const OrderHistoryScreen = () => {
 
   return (
     <View style={[styles.container, isRTL && styles.containerRTL]}>
+      {/* Currency Indicator */}
+      {selectedCurrency && (
+        <View style={styles.currencyIndicator}>
+          <Text style={styles.currencyIndicatorText}>
+            {t("pricesIn")} {selectedCurrency.code} ({selectedCurrency.symbol})
+          </Text>
+        </View>
+      )}
+
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
@@ -538,12 +570,21 @@ const OrderHistoryScreen = () => {
                             isRTL && styles.totalAmountRTL,
                           ]}
                         >
-                          {formatPrice(
-                            order.grandTotal ||
-                              order.formattedPrice?.grandTotal ||
-                              0,
-                          )}
+                          {getOrderTotal(order)}
                         </Text>
+                        {/* Show original currency if converted */}
+                        {selectedCurrency &&
+                          baseCurrency &&
+                          order.baseCurrencyCode &&
+                          order.baseCurrencyCode !== selectedCurrency.code && (
+                            <Text style={styles.originalPrice}>
+                              ≈{" "}
+                              {formatPrice(
+                                order.grandTotal || 0,
+                                order.baseCurrencyCode,
+                              )}
+                            </Text>
+                          )}
                       </View>
                       <ChevronRight
                         size={20}
@@ -659,6 +700,21 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  currencyIndicator: {
+    backgroundColor: Colors.borderLight,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  currencyIndicatorText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: "500",
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -746,10 +802,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 14,
   },
-  orderHeaderRTL: {
-    // flexDirection: "row-reverse",
-    // flexDirection: "row",
-  },
+  orderHeaderRTL: {},
   orderHeaderLeft: {
     flex: 1,
     marginRight: 12,
@@ -772,9 +825,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  dateRowRTL: {
-    // flexDirection: "row-reverse",
-  },
+  dateRowRTL: {},
   orderDate: {
     fontSize: 13,
     color: Colors.textSecondary,
@@ -790,9 +841,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 6,
   },
-  statusBadgeRTL: {
-    // flexDirection: "row-reverse",
-  },
+  statusBadgeRTL: {},
   statusDot: {
     width: 6,
     height: 6,
@@ -816,9 +865,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  infoRowRTL: {
-    // flexDirection: "row-reverse",
-  },
+  infoRowRTL: {},
   infoText: {
     fontSize: 14,
     color: Colors.textSecondary,
@@ -834,11 +881,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  orderFooterRTL: {
-    // flexDirection: "row-reverse",
-  },
+  orderFooterRTL: {},
   totalSection: {
     gap: 2,
+    flex: 1,
   },
   totalSectionRTL: {
     alignItems: "flex-start",
@@ -861,6 +907,11 @@ const styles = StyleSheet.create({
   totalAmountRTL: {
     textAlign: "center",
   },
+  originalPrice: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
   actionButtonRow: {
     flexDirection: "row",
     marginTop: 14,
@@ -881,9 +932,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  detailsButtonRTL: {
-    // flexDirection: "row-reverse",
-  },
+  detailsButtonRTL: {},
   detailsButtonText: {
     color: Colors.primary,
     fontSize: 14,

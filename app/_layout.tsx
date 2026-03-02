@@ -15,6 +15,8 @@ import { CheckoutProvider } from "@/contexts/CheckoutContext";
 import { FloatingCart } from "@/components/FloatingCart";
 import { preloadImages, extractImageUrls } from "@/utils/imagePreloader";
 import { Alert } from "react-native";
+import { CurrencyProvider } from "@/contexts/CurrencyContext"; // ADD THIS
+
 
 SplashScreen.preventAutoHideAsync();
 
@@ -193,14 +195,16 @@ export default function RootLayout() {
           <AuthContext>
             <AddressContext>
               <HomepageConfigContext>
-                {/* ADD CHECKOUT PROVIDER HERE */}
-                <CheckoutProvider>
-                  <CartContext>
-                    <WishlistContext>
-                      <RootLayoutNav />
-                    </WishlistContext>
-                  </CartContext>
-                </CheckoutProvider>
+               {/* ADD CURRENCY PROVIDER HERE */}
+                <CurrencyProvider>
+                  <CheckoutProvider>
+                    <CartContext>
+                      <WishlistContext>
+                        <RootLayoutNav />
+                      </WishlistContext>
+                    </CartContext>
+                  </CheckoutProvider>
+                </CurrencyProvider>
               </HomepageConfigContext>
             </AddressContext>
           </AuthContext>

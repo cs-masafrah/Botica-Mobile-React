@@ -1,4 +1,5 @@
-import { router, Stack } from 'expo-router';
+// app/settings.tsx
+import { router, Stack } from "expo-router";
 import {
   Bell,
   ChevronRight,
@@ -10,8 +11,10 @@ import {
   FileText,
   Star,
   Layout,
-} from 'lucide-react-native';
-import React, { useState } from 'react';
+  DollarSign,
+  RefreshCw,
+} from "lucide-react-native";
+import React, { useState } from "react";
 import {
   Alert,
   Linking,
@@ -21,214 +24,380 @@ import {
   Switch,
   Text,
   View,
-} from 'react-native';
-import Colors from '@/constants/colors';
-import { useLanguage } from '@/contexts/LanguageContext';
-
-
-type SettingSection = {
-  title: string;
-  items: SettingItem[];
-};
-
-type SettingItem = {
-  id: string;
-  icon: React.ComponentType<{ size: number; color: string }>;
-  label: string;
-  type: 'toggle' | 'navigation' | 'action';
-  value?: boolean;
-  onToggle?: (value: boolean) => void;
-  onPress?: () => void;
-  badge?: string;
-};
+  Modal,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
+import Colors from "@/constants/colors";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export default function SettingsScreen() {
   const { locale, changeLanguage } = useLanguage();
+  const {
+    selectedCurrency,
+    availableCurrencies,
+    baseCurrency,
+    setSelectedCurrency,
+    formatPrice,
+    convertPrice,
+    exchangeRates,
+    isLoading,
+    refreshRates,
+  } = useCurrency();
+
   const [pushNotifications, setPushNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [orderUpdates, setOrderUpdates] = useState(true);
+  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [refreshingRates, setRefreshingRates] = useState(false);
 
   const handleLanguageChange = () => {
+    Alert.alert("Change Language", "Select your preferred language", [
+      { text: "English", onPress: () => changeLanguage("en") },
+      { text: "العربية", onPress: () => changeLanguage("ar") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleCurrencyChange = (currency: any) => {
+    setSelectedCurrency(currency);
+    setCurrencyModalVisible(false);
     Alert.alert(
-      'Change Language',
-      'Select your preferred language',
-      [
-        {
-          text: 'English',
-          onPress: () => changeLanguage('en'),
-        },
-        {
-          text: 'العربية',
-          onPress: () => changeLanguage('ar'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
+      "Currency Updated",
+      `All prices will now be displayed in ${currency.name} (${currency.symbol})`,
+      [{ text: "OK" }],
     );
   };
 
-  const handlePrivacyPolicy = () => {
-    Alert.alert(
-      'Privacy Policy',
-      'We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we handle your personal data when you visit our app and tell you about your privacy rights.\n\nData Collection:\n• Personal identification information\n• Order and purchase history\n• Delivery addresses\n• Payment information\n\nData Usage:\n• Process orders\n• Improve our services\n• Send promotional offers (with consent)\n• Customer support\n\nData Protection:\nWe implement security measures to maintain the safety of your personal information.\n\nFor more details, please contact our support team.',
-      [{ text: 'OK' }]
-    );
+  const handleRefreshRates = async () => {
+    setRefreshingRates(true);
+    await refreshRates();
+    setRefreshingRates(false);
+    Alert.alert("Success", "Exchange rates have been updated");
   };
 
-  const handleTermsConditions = () => {
-    Alert.alert(
-      'Terms & Conditions',
-      'Welcome to our Beauty Shop App. By accessing and using this application, you accept and agree to be bound by the terms and conditions.\n\nAccount Terms:\n• You must be 18 years or older\n• Provide accurate account information\n• Keep your password secure\n\nOrders & Payment:\n• Prices are subject to change\n• Payment must be made at time of order\n• We reserve the right to refuse any order\n\nShipping & Returns:\n• Delivery times are estimates\n• Return policy: 14 days from delivery\n• Products must be unused and in original packaging\n\nIntellectual Property:\nAll content is owned by us and protected by copyright laws.\n\nContact: support@beautyapp.com',
-      [{ text: 'OK' }]
-    );
-  };
+  const CurrencyModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={currencyModalVisible}
+      onRequestClose={() => setCurrencyModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Currency</Text>
+            <TouchableOpacity
+              onPress={() => setCurrencyModalVisible(false)}
+              style={styles.modalCloseButton}
+            >
+              <Text style={styles.modalCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-  const handleHelpSupport = () => {
-    Linking.openURL('mailto:support@beautyapp.com');
-  };
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={styles.loadingText}>Loading currencies...</Text>
+            </View>
+          ) : (
+            <>
+              <FlatList
+                data={availableCurrencies}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => {
+                  const isSelected = selectedCurrency?.id === item.id;
+                  // Calculate converted price for preview
+                  const baseAmount = 99.99;
+                  const convertedAmount = convertPrice(
+                    baseAmount,
+                    baseCurrency?.code,
+                  );
 
-  const handleAbout = () => {
-    Alert.alert(
-      'About Beauty App',
-      'Version 1.0.0\n\nYour premium destination for authentic beauty and cosmetic products. We curate the finest selection of makeup, skincare, and beauty tools from renowned brands worldwide.\n\nOur Mission:\nTo make premium beauty products accessible to everyone while ensuring authenticity and quality.\n\nFeatures:\n• Authentic products guaranteed\n• Fast & secure delivery\n• Easy returns policy\n• 24/7 customer support\n• Exclusive deals & offers\n\nThank you for choosing us!\n\n© 2025 Beauty App. All rights reserved.',
-      [{ text: 'OK' }]
-    );
-  };
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.currencyItem,
+                        isSelected && styles.currencyItemSelected,
+                      ]}
+                      onPress={() => handleCurrencyChange(item)}
+                    >
+                      <View style={styles.currencyInfo}>
+                        <Text style={styles.currencySymbol}>{item.symbol}</Text>
+                        <View>
+                          <Text style={styles.currencyCode}>{item.code}</Text>
+                          <Text style={styles.currencyName}>{item.name}</Text>
+                          {/* Show what 99.99 in base currency equals in this currency */}
+                          <Text style={styles.currencyPreview}>
+                            {baseAmount} {baseCurrency?.code} ={" "}
+                            {formatPrice(convertedAmount, item.code)}
+                          </Text>
+                          {/* Show inverse rate for clarity */}
+                          <Text style={styles.currencyPreviewInverse}>
+                            1 {item.code} ={" "}
+                            {exchangeRates[item.code]?.toFixed(2)}{" "}
+                            {baseCurrency?.code}
+                          </Text>
+                        </View>
+                      </View>
 
-  const handleRateApp = () => {
-    Alert.alert(
-      'Rate Our App',
-      'Love our app? Please take a moment to rate us on the App Store. Your feedback helps us improve!',
-      [
-        {
-          text: 'Rate Now',
-          onPress: () => {
-            Alert.alert('Thank You!', 'This would redirect to the App Store in a production app.');
-          },
-        },
-        {
-          text: 'Maybe Later',
-          style: 'cancel',
-        },
-      ]
-    );
-  };
+                      {isSelected && (
+                        <View style={styles.selectedIndicator}>
+                          <Text style={styles.selectedIndicatorText}>✓</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
+                contentContainerStyle={styles.currencyList}
+              />
 
-  const sections: SettingSection[] = [
+              {/* Exchange Rates Section */}
+              {baseCurrency && (
+                <View style={styles.exchangeRateContainer}>
+                  <View style={styles.exchangeRateHeader}>
+                    <Text style={styles.exchangeRateTitle}>Exchange Rates</Text>
+                    <TouchableOpacity
+                      onPress={handleRefreshRates}
+                      disabled={refreshingRates}
+                      style={styles.refreshButton}
+                    >
+                      {refreshingRates ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={Colors.primary}
+                        />
+                      ) : (
+                        <RefreshCw size={16} color={Colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.exchangeRateSubtitle}>
+                    1 {baseCurrency.code} = 1 {baseCurrency.code} (Base)
+                  </Text>
+
+                  {availableCurrencies.map((currency) => {
+                    if (currency.code === baseCurrency.code) return null;
+                    // How many units of this currency equal 1 base currency
+                    const rate = 1 / exchangeRates[currency.code];
+                    return (
+                      <View key={currency.id} style={styles.exchangeRateRow}>
+                        <Text style={styles.exchangeRateCurrency}>
+                          1 {baseCurrency.code} =
+                        </Text>
+                        <Text style={styles.exchangeRateValue}>
+                          {rate.toFixed(4)} {currency.code}
+                        </Text>
+                      </View>
+                    );
+                  })}
+
+                  <View style={styles.exchangeRateDivider} />
+
+                  <Text style={styles.exchangeRateSubtitle}>
+                    1 {baseCurrency.code} in other currencies:
+                  </Text>
+
+                  {availableCurrencies.map((currency) => {
+                    if (currency.code === baseCurrency.code) return null;
+                    return (
+                      <View key={currency.id} style={styles.exchangeRateRow}>
+                        <Text style={styles.exchangeRateCurrency}>
+                          1 {currency.code} =
+                        </Text>
+                        <Text style={styles.exchangeRateValue}>
+                          {exchangeRates[currency.code].toFixed(2)}{" "}
+                          {baseCurrency.code}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Price Preview Section */}
+              <View style={styles.previewContainer}>
+                <Text style={styles.previewTitle}>Price Preview:</Text>
+
+                {/* Base Currency Price */}
+                <View style={styles.previewRow}>
+                  <Text style={styles.previewLabel}>
+                    In {baseCurrency?.code}:
+                  </Text>
+                  <Text style={styles.basePriceText}>
+                    {formatPrice(99.99, baseCurrency?.code)}
+                  </Text>
+                </View>
+
+                {/* Converted Price (if different from base) */}
+                {selectedCurrency &&
+                  baseCurrency &&
+                  selectedCurrency.code !== baseCurrency.code && (
+                    <View style={styles.previewRow}>
+                      <Text style={styles.previewLabel}>
+                        In {selectedCurrency.code}:
+                      </Text>
+                      <Text style={styles.convertedPriceText}>
+                        {formatPrice(convertPrice(99.99, baseCurrency.code))}
+                      </Text>
+                    </View>
+                  )}
+
+                {/* Exchange Rate Info */}
+                {selectedCurrency &&
+                  baseCurrency &&
+                  selectedCurrency.code !== baseCurrency.code && (
+                    <View style={styles.rateInfoContainer}>
+                      <Text style={styles.rateInfoText}>
+                        1 {baseCurrency.code} ={" "}
+                        {(1 / exchangeRates[selectedCurrency.code]).toFixed(4)}{" "}
+                        {selectedCurrency.code}
+                      </Text>
+                      <Text style={styles.rateInfoText}>
+                        1 {selectedCurrency.code} ={" "}
+                        {exchangeRates[selectedCurrency.code].toFixed(2)}{" "}
+                        {baseCurrency.code}
+                      </Text>
+                    </View>
+                  )}
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const sections = [
     {
-      title: 'General',
+      title: "General",
       items: [
         {
-          id: 'language',
+          id: "language",
           icon: Globe,
-          label: 'Language',
-          type: 'action',
-          badge: locale === 'en' ? 'English' : 'العربية',
+          label: "Language",
+          type: "action",
+          badge: locale === "en" ? "English" : "العربية",
           onPress: handleLanguageChange,
         },
         {
-          id: 'customizeHomepage',
+          id: "currency",
+          icon: DollarSign,
+          label: "Currency",
+          type: "action",
+          badge: selectedCurrency
+            ? `${selectedCurrency.symbol} ${selectedCurrency.code}`
+            : "Loading...",
+          onPress: () => setCurrencyModalVisible(true),
+        },
+        {
+          id: "customizeHomepage",
           icon: Layout,
-          label: 'Customize Homepage',
-          type: 'navigation',
-          onPress: () => router.push('/customize-homepage' as any),
+          label: "Customize Homepage",
+          type: "navigation",
+          onPress: () => router.push("/customize-homepage" as any),
         },
       ],
     },
-
     {
-      title: 'Notifications',
+      title: "Notifications",
       items: [
         {
-          id: 'pushNotifications',
+          id: "pushNotifications",
           icon: Bell,
-          label: 'Push Notifications',
-          type: 'toggle',
+          label: "Push Notifications",
+          type: "toggle",
           value: pushNotifications,
           onToggle: setPushNotifications,
         },
         {
-          id: 'orderUpdates',
-          icon: Bell,
-          label: 'Order Updates',
-          type: 'toggle',
-          value: orderUpdates,
-          onToggle: setOrderUpdates,
-        },
-        {
-          id: 'emailNotifications',
+          id: "emailNotifications",
           icon: Mail,
-          label: 'Email Notifications',
-          type: 'toggle',
+          label: "Email Notifications",
+          type: "toggle",
           value: emailNotifications,
           onToggle: setEmailNotifications,
         },
+        {
+          id: "orderUpdates",
+          icon: Bell,
+          label: "Order Updates",
+          type: "toggle",
+          value: orderUpdates,
+          onToggle: setOrderUpdates,
+        },
       ],
     },
     {
-      title: 'Support',
+      title: "Support",
       items: [
         {
-          id: 'help',
+          id: "help",
           icon: HelpCircle,
-          label: 'Help & Support',
-          type: 'navigation',
-          onPress: handleHelpSupport,
+          label: "Help & Support",
+          type: "navigation",
+          onPress: () => Linking.openURL("mailto:support@beautyapp.com"),
         },
         {
-          id: 'contact',
+          id: "contact",
           icon: Mail,
-          label: 'Contact Us',
-          type: 'navigation',
-          badge: 'support@beautyapp.com',
-          onPress: () => Linking.openURL('mailto:support@beautyapp.com'),
+          label: "Contact Us",
+          type: "navigation",
+          badge: "support@beautyapp.com",
+          onPress: () => Linking.openURL("mailto:support@beautyapp.com"),
         },
       ],
     },
     {
-      title: 'Legal',
+      title: "Legal",
       items: [
         {
-          id: 'privacy',
+          id: "privacy",
           icon: Shield,
-          label: 'Privacy Policy',
-          type: 'navigation',
-          onPress: handlePrivacyPolicy,
+          label: "Privacy Policy",
+          type: "navigation",
+          onPress: () =>
+            Alert.alert(
+              "Privacy Policy",
+              "Your privacy policy content here...",
+            ),
         },
         {
-          id: 'terms',
+          id: "terms",
           icon: FileText,
-          label: 'Terms & Conditions',
-          type: 'navigation',
-          onPress: handleTermsConditions,
+          label: "Terms & Conditions",
+          type: "navigation",
+          onPress: () =>
+            Alert.alert("Terms & Conditions", "Your terms content here..."),
         },
       ],
     },
     {
-      title: 'About',
+      title: "About",
       items: [
         {
-          id: 'about',
+          id: "about",
           icon: Info,
-          label: 'About App',
-          type: 'navigation',
-          badge: 'v1.0.0',
-          onPress: handleAbout,
+          label: "About App",
+          type: "navigation",
+          badge: "v1.0.0",
+          onPress: () => Alert.alert("About", "Your about content here..."),
         },
         {
-          id: 'rate',
+          id: "rate",
           icon: Star,
-          label: 'Rate Our App',
-          type: 'navigation',
-          onPress: handleRateApp,
+          label: "Rate Our App",
+          type: "navigation",
+          onPress: () => Alert.alert("Rate", "Rate our app..."),
         },
       ],
     },
   ];
 
-  const renderSettingItem = (item: SettingItem) => {
+  const renderSettingItem = (item: any) => {
     const Icon = item.icon;
 
     return (
@@ -238,7 +407,8 @@ export default function SettingsScreen() {
           styles.settingItem,
           pressed && styles.settingItemPressed,
         ]}
-        onPress={item.type === 'toggle' ? undefined : item.onPress}
+        onPress={item.type === "toggle" ? undefined : item.onPress}
+        disabled={item.id === "currency" && isLoading}
       >
         <View style={styles.settingItemLeft}>
           <View style={styles.iconContainer}>
@@ -248,25 +418,18 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.settingItemRight}>
-          {item.badge && (
-            <Text style={styles.badge}>{item.badge}</Text>
-          )}
-          
-          {item.type === 'toggle' && item.onToggle && (
+          {item.badge && <Text style={styles.badge}>{item.badge}</Text>}
+
+          {item.type === "toggle" && (
             <Switch
               value={item.value}
               onValueChange={item.onToggle}
               trackColor={{ false: Colors.border, true: Colors.primary }}
               thumbColor={Colors.white}
-              ios_backgroundColor={Colors.border}
             />
           )}
-          
-          {item.type === 'navigation' && (
-            <ChevronRight size={20} color={Colors.textSecondary} />
-          )}
-          
-          {item.type === 'action' && (
+
+          {(item.type === "navigation" || item.type === "action") && (
             <ChevronRight size={20} color={Colors.textSecondary} />
           )}
         </View>
@@ -276,19 +439,14 @@ export default function SettingsScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: 'Settings',
-          headerBackTitle: 'Back',
-        }}
-      />
+      <Stack.Screen options={{ title: "Settings", headerBackTitle: "Back" }} />
       <View style={styles.container}>
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
         >
-          {sections.map((section, index) => (
+          {sections.map((section) => (
             <View key={section.title} style={styles.section}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
               <View style={styles.settingsCard}>
@@ -304,10 +462,10 @@ export default function SettingsScreen() {
             </View>
           ))}
 
-          <Text style={styles.footerText}>
-            Made with ❤️ for Beauty Lovers
-          </Text>
+          <Text style={styles.footerText}>Made with ❤️ for Beauty Lovers</Text>
         </ScrollView>
+
+        <CurrencyModal />
       </View>
     </>
   );
@@ -330,9 +488,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '600' as const,
+    fontWeight: "600",
     color: Colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 12,
     marginLeft: 4,
@@ -340,7 +498,7 @@ const styles = StyleSheet.create({
   settingsCard: {
     backgroundColor: Colors.white,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -348,9 +506,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 16,
     paddingHorizontal: 16,
     minHeight: 56,
@@ -359,8 +517,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBackground,
   },
   settingItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   iconContainer: {
@@ -368,25 +526,25 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 12,
     backgroundColor: Colors.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   settingLabel: {
     fontSize: 16,
-    fontWeight: '500' as const,
+    fontWeight: "500",
     color: Colors.text,
     flex: 1,
   },
   settingItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   badge: {
     fontSize: 14,
     color: Colors.textSecondary,
-    fontWeight: '500' as const,
+    fontWeight: "500",
   },
   divider: {
     height: 1,
@@ -394,10 +552,228 @@ const styles = StyleSheet.create({
     marginLeft: 68,
   },
   footerText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 40,
     paddingHorizontal: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    minHeight: "60%",
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.cardBackground,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalCloseText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    fontWeight: "500",
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  currencyList: {
+    padding: 16,
+  },
+  currencyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  currencyItemSelected: {
+    backgroundColor: `${Colors.primary}10`,
+  },
+  currencyInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  currencySymbol: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: Colors.primary,
+    width: 40,
+    textAlign: "center",
+  },
+  currencyCode: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  currencyName: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  currencyPreview: {
+    fontSize: 12,
+    color: Colors.primary,
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  currencyPreviewInverse: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  selectedIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  selectedIndicatorText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  exchangeRateContainer: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.cardBackground,
+  },
+  exchangeRateHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  exchangeRateTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+  },
+  refreshButton: {
+    padding: 4,
+  },
+  exchangeRateSubtitle: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: Colors.textSecondary,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  exchangeRateDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 12,
+  },
+  exchangeRateRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  exchangeRateCurrency: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  exchangeRateValue: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.primary,
+  },
+  previewContainer: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  previewTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+    marginBottom: 12,
+  },
+  previewRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  basePriceText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+  },
+  convertedPriceText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
+  rateInfoContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  rateInfoText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: "500",
+  },
+  previewPrice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  previewPriceText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
+  previewLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  convertedPreview: {
+    marginTop: 8,
+  },
+  convertedPreviewText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    fontStyle: "italic",
   },
 });
