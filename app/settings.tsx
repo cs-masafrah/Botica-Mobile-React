@@ -1,4 +1,4 @@
-// app/settings.tsx (updated with currency option)
+// app/settings.tsx - Fixed with proper function ordering
 import { router, Stack } from 'expo-router';
 import {
   Bell,
@@ -11,7 +11,10 @@ import {
   FileText,
   Star,
   Layout,
-  DollarSign, // Add this import
+  DollarSign,
+  X,
+  Check,
+  TrendingUp,
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -23,10 +26,13 @@ import {
   Switch,
   Text,
   View,
+  Modal,
+  TouchableOpacity,
+  FlatList,
 } from 'react-native';
 import Colors from '@/constants/colors';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useCurrency } from '@/contexts/CurrencyContext'; // Add this import
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 type SettingItem = {
   id: string;
@@ -46,11 +52,14 @@ type SettingSection = {
 
 export default function SettingsScreen() {
   const { locale, changeLanguage } = useLanguage();
-  const { currencies, currentCurrency, setCurrency } = useCurrency(); // Add currency hook
+  const { currencies, currentCurrency, baseCurrency, setCurrency, formatPrice } = useCurrency();
   const [pushNotifications, setPushNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [orderUpdates, setOrderUpdates] = useState(true);
+  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
 
+  // ========== HANDLER FUNCTIONS (Declared before they're used) ==========
+  
   const handleLanguageChange = () => {
     Alert.alert(
       'Change Language',
@@ -72,24 +81,13 @@ export default function SettingsScreen() {
     );
   };
 
-  // Add currency change handler
-  const handleCurrencyChange = () => {
-    const currencyOptions = currencies.map(currency => ({
-      text: `${currency.name} (${currency.symbol})`,
-      onPress: () => setCurrency(currency),
-    }));
+  const handleCurrencyPress = () => {
+    setCurrencyModalVisible(true);
+  };
 
-    Alert.alert(
-      'Change Currency',
-      'Select your preferred currency',
-      [
-        ...currencyOptions,
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+  const handleCurrencySelect = (currency: any) => {
+    setCurrency(currency);
+    setCurrencyModalVisible(false);
   };
 
   const handlePrivacyPolicy = () => {
@@ -139,6 +137,8 @@ export default function SettingsScreen() {
     );
   };
 
+  // ========== SECTIONS ARRAY (Now after all handlers are declared) ==========
+  
   const sections: SettingSection[] = [
     {
       title: 'General',
@@ -152,12 +152,12 @@ export default function SettingsScreen() {
           onPress: handleLanguageChange,
         },
         {
-          id: 'currency', // Add currency item
+          id: 'currency',
           icon: DollarSign,
           label: 'Currency',
           type: 'action',
           badge: currentCurrency ? `${currentCurrency.code} (${currentCurrency.symbol})` : 'USD ($)',
-          onPress: handleCurrencyChange,
+          onPress: handleCurrencyPress,
         },
         {
           id: 'customizeHomepage',
@@ -259,6 +259,41 @@ export default function SettingsScreen() {
     },
   ];
 
+  // ========== HELPER FUNCTIONS for Currency Modal ==========
+  
+  const getEquivalentAmount = (currency: any) => {
+    if (!baseCurrency) return '';
+    
+    if (currency.code === baseCurrency.code) {
+      return `1 ${baseCurrency.code} = 1 ${currency.code}`;
+    }
+    
+    if (currency.exchangeRate) {
+      return `1 ${baseCurrency.code} = ${currency.exchangeRate.rate} ${currency.code}`;
+    }
+    
+    return '';
+  };
+
+  const getExampleConversion = (currency: any) => {
+    if (!baseCurrency) return '';
+    
+    const exampleAmount = 100;
+    
+    if (currency.code === baseCurrency.code) {
+      return formatPrice(exampleAmount);
+    }
+    
+    if (currency.exchangeRate) {
+      const converted = exampleAmount * currency.exchangeRate.rate;
+      return `${formatPrice(exampleAmount)} = ${currency.symbol}${converted.toFixed(2)}`;
+    }
+    
+    return '';
+  };
+
+  // ========== RENDER FUNCTIONS ==========
+  
   const renderSettingItem = (item: SettingItem) => {
     const Icon = item.icon;
 
@@ -305,6 +340,125 @@ export default function SettingsScreen() {
     );
   };
 
+  // Currency Modal Component
+  const CurrencyModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={currencyModalVisible}
+      onRequestClose={() => setCurrencyModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHeaderLeft}>
+              <DollarSign size={24} color={Colors.primary} />
+              <Text style={styles.modalTitle}>Select Currency</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setCurrencyModalVisible(false)}
+            >
+              <X size={24} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Base Currency Info */}
+          {baseCurrency && (
+            <View style={styles.baseCurrencyInfo}>
+              <View style={styles.baseCurrencyBadge}>
+                <TrendingUp size={16} color={Colors.white} />
+                <Text style={styles.baseCurrencyBadgeText}>Base Currency</Text>
+              </View>
+              <Text style={styles.baseCurrencyText}>
+                {baseCurrency.name} ({baseCurrency.code})
+              </Text>
+              <Text style={styles.baseCurrencyRate}>
+                1 {baseCurrency.code} = 1 {baseCurrency.code}
+              </Text>
+            </View>
+          )}
+
+          {/* Currency List */}
+          <FlatList
+            data={currencies}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.currencyList}
+            renderItem={({ item }) => {
+              const isSelected = currentCurrency?.id === item.id;
+              const isBaseCurrency = baseCurrency?.id === item.id;
+              
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.currencyItem,
+                    isSelected && styles.currencyItemSelected,
+                  ]}
+                  onPress={() => handleCurrencySelect(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.currencyItemLeft}>
+                    <View style={styles.currencySymbolContainer}>
+                      <Text style={styles.currencySymbol}>{item.symbol}</Text>
+                    </View>
+                    <View style={styles.currencyInfo}>
+                      <View style={styles.currencyNameRow}>
+                        <Text style={styles.currencyCode}>{item.code}</Text>
+                        {isBaseCurrency && (
+                          <View style={styles.baseBadge}>
+                            <Text style={styles.baseBadgeText}>BASE</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.currencyName}>{item.name}</Text>
+                      
+                      {/* Exchange Rate Info */}
+                      {item.exchangeRate && !isBaseCurrency && (
+                        <View style={styles.rateContainer}>
+                          <Text style={styles.rateText}>
+                            1 {baseCurrency?.code} = {item.exchangeRate.rate} {item.code}
+                          </Text>
+                          <Text style={styles.exampleText}>
+                            $100 USD ≈ {item.symbol}{(100 * item.exchangeRate.rate).toFixed(2)}
+                          </Text>
+                        </View>
+                      )}
+                      
+                      {isBaseCurrency && (
+                        <View style={styles.rateContainer}>
+                          <Text style={styles.rateText}>
+                            Base Currency
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  
+                  {isSelected && (
+                    <View style={styles.checkmarkContainer}>
+                      <Check size={20} color={Colors.primary} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+          />
+
+          {/* Footer Note */}
+          <View style={styles.modalFooter}>
+            <Text style={styles.modalFooterText}>
+              All prices will be converted using the selected currency
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // ========== MAIN RETURN ==========
+  
   return (
     <>
       <Stack.Screen
@@ -340,11 +494,14 @@ export default function SettingsScreen() {
           </Text>
         </ScrollView>
       </View>
+
+      {/* Currency Selection Modal */}
+      <CurrencyModal />
     </>
   );
 }
 
-// Styles remain the same
+// All styles remain the same
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -431,5 +588,184 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 40,
     paddingHorizontal: 20,
+  },
+  
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    minHeight: '80%',
+    paddingTop: 20,
+    paddingBottom: 30,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.cardBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  baseCurrencyInfo: {
+    backgroundColor: Colors.borderLight,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 12,
+  },
+  baseCurrencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 8,
+    gap: 4,
+  },
+  baseCurrencyBadgeText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  baseCurrencyText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  baseCurrencyRate: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  currencyList: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  currencyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  currencyItemSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.white,
+  },
+  currencyItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  currencySymbolContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  currencySymbol: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.primary,
+  },
+  currencyInfo: {
+    flex: 1,
+  },
+  currencyNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  currencyCode: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  baseBadge: {
+    backgroundColor: Colors.primary + '20',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  baseBadgeText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.primary,
+  },
+  currencyName: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  rateContainer: {
+    marginTop: 2,
+  },
+  rateText: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: Colors.primary,
+  },
+  exampleText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  checkmarkContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    marginTop: 8,
+  },
+  modalFooterText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
