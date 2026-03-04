@@ -362,6 +362,12 @@ const en = {
   currencyModalNote: "All prices will be converted using the selected currency",
   base: "BASE",
   madeWithLove: "Made with ❤️ for Beauty Lovers",
+
+  // Navigation
+  wishlist: "Wishlist",
+  signUp: "Sign Up",
+  addresses: "Addresses",
+  orderHistory: "Order History",
 };
 
 export type TranslationKeys = keyof typeof en;

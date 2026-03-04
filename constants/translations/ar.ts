@@ -362,6 +362,12 @@ const ar = {
   currencyModalNote: "سيتم تحويل جميع الأسعار باستخدام العملة المحددة",
   base: "الأساسية",
   madeWithLove: "صنع بـ ❤️ لعشاق التجميل",
+
+  // Navigation
+  wishlist: "المفضلة",
+  signUp: "إنشاء حساب",
+  addresses: "العناوين",
+  orderHistory: "طلباتي السابقة",
 };
 
 export type TranslationKeys = keyof typeof ar;

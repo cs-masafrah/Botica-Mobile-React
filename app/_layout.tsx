@@ -4,17 +4,18 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { I18nManager } from "react-native";
 import { AddressContext } from "@/contexts/AddressContext";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CartContext } from "@/contexts/CartContext";
 import { HomepageConfigContext } from "@/contexts/HomepageConfigContext";
 import { LanguageContext } from "@/contexts/LanguageContext";
-import { CurrencyProvider } from '@/contexts/CurrencyContext';
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { WishlistContext } from "@/contexts/WishlistContext";
-// ADD THIS IMPORT
 import { CheckoutProvider } from "@/contexts/CheckoutContext";
 import { FloatingCart } from "@/components/FloatingCart";
 import { preloadImages, extractImageUrls } from "@/utils/imagePreloader";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Alert } from "react-native";
 
 SplashScreen.preventAutoHideAsync();
@@ -23,6 +24,15 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   const [, setImagesPreloaded] = useState(false);
+  const { t, isRTL } = useLanguage();
+
+  // Force RTL/LTR layout based on language
+  useEffect(() => {
+    if (I18nManager.isRTL !== isRTL) {
+      I18nManager.allowRTL(isRTL);
+      I18nManager.forceRTL(isRTL);
+    }
+  }, [isRTL]);
 
   useEffect(() => {
     const preloadAppImages = async () => {
@@ -53,7 +63,7 @@ function RootLayoutNav() {
 
   return (
     <>
-      <Stack screenOptions={{ headerBackTitle: "Back" }}>
+      <Stack screenOptions={{ headerBackTitle: t("back") }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="product/[id]"
@@ -61,25 +71,23 @@ function RootLayoutNav() {
             headerShown: false,
             headerTitle: "",
             headerTransparent: true,
-            headerBackTitle: "Back",
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="category/[id]"
           options={{
             headerShown: true,
-            headerBackTitle: "Back",
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="brand/[id]"
           options={{
             headerShown: true,
-            // title: "Brand",
-            headerBackTitle: "Back",
+            headerBackTitle: t("back"),
           }}
         />
-        {/* UPDATE THIS CHECKOUT SCREEN */}
         <Stack.Screen
           name="checkout"
           options={{
@@ -91,16 +99,16 @@ function RootLayoutNav() {
           name="wishlist"
           options={{
             headerShown: true,
-            headerTitle: "Wishlist",
-            headerBackTitle: "Back",
+            headerTitle: t("wishlist"),
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="login"
           options={{
             headerShown: true,
-            headerTitle: "Sign In",
-            headerBackTitle: "Back",
+            headerTitle: t("signIn"),
+            headerBackTitle: t("back"),
             presentation: "modal",
           }}
         />
@@ -108,8 +116,8 @@ function RootLayoutNav() {
           name="signup"
           options={{
             headerShown: true,
-            headerTitle: "Sign Up",
-            headerBackTitle: "Back",
+            headerTitle: t("signUp"),
+            headerBackTitle: t("back"),
             presentation: "modal",
           }}
         />
@@ -117,63 +125,63 @@ function RootLayoutNav() {
           name="addresses"
           options={{
             headerShown: true,
-            headerTitle: "Addresses",
-            headerBackTitle: "Back",
+            headerTitle: t("addresses"),
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="edit-profile"
           options={{
             headerShown: true,
-            headerTitle: "Edit Profile",
-            headerBackTitle: "Back",
+            headerTitle: t("editProfile"),
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="settings"
           options={{
             headerShown: true,
-            headerTitle: "Settings",
-            headerBackTitle: "Back",
+            headerTitle: t("settings"),
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="order-history"
           options={{
             headerShown: true,
-            headerTitle: "Order History",
-            headerBackTitle: "Back",
+            headerTitle: t("orderHistory"),
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="order-details"
           options={{
             headerShown: true,
-            headerTitle: "Order Details",
-            headerBackTitle: "Back",
+            headerTitle: t("orderDetails"),
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="vendor/[name]"
           options={{
             headerShown: true,
-            headerBackTitle: "Back",
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="customize-homepage"
           options={{
             headerShown: true,
-            headerTitle: "Customize Homepage",
-            headerBackTitle: "Back",
+            headerTitle: t("customizeHomepage"),
+            headerBackTitle: t("back"),
           }}
         />
         <Stack.Screen
           name="products/index"
           options={{
             headerShown: true,
-            headerTitle: "All Products",
-            headerBackTitle: "Back",
+            headerTitle: t("allProducts"),
+            headerBackTitle: t("back"),
           }}
         />
       </Stack>
@@ -192,21 +200,20 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <CurrencyProvider>
           <LanguageContext>
-          <AuthContext>
-            <AddressContext>
-              <HomepageConfigContext>
-                {/* ADD CHECKOUT PROVIDER HERE */}
-                <CheckoutProvider>
-                  <CartContext>
-                    <WishlistContext>
-                      <RootLayoutNav />
-                    </WishlistContext>
-                  </CartContext>
-                </CheckoutProvider>
-              </HomepageConfigContext>
-            </AddressContext>
-          </AuthContext>
-        </LanguageContext>
+            <AuthContext>
+              <AddressContext>
+                <HomepageConfigContext>
+                  <CheckoutProvider>
+                    <CartContext>
+                      <WishlistContext>
+                        <RootLayoutNav />
+                      </WishlistContext>
+                    </CartContext>
+                  </CheckoutProvider>
+                </HomepageConfigContext>
+              </AddressContext>
+            </AuthContext>
+          </LanguageContext>
         </CurrencyProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
