@@ -317,6 +317,51 @@ const en = {
   stateCodeError: "State must be a 2-letter code (e.g., WB for West Bank)",
   addressUpdatedSuccess: "Address updated successfully",
   addressAddedSuccess: "Address added successfully",
+
+  // Settings Screen
+  settings: "Settings",
+  back: "Back",
+  general: "General",
+  language: "Language",
+  english: "English",
+  arabic: "العربية",
+  currency: "Currency",
+  customizeHomepage: "Customize Homepage",
+  notifications: "Notifications",
+  pushNotifications: "Push Notifications",
+  orderUpdates: "Order Updates",
+  emailNotifications: "Email Notifications",
+  support: "Support",
+  helpSupport: "Help & Support",
+  contactUs: "Contact Us",
+  legal: "Legal",
+  privacyPolicy: "Privacy Policy",
+  termsConditions: "Terms & Conditions",
+  about: "About",
+  aboutApp: "About App",
+  rateOurApp: "Rate Our App",
+  changeLanguage: "Change Language",
+  selectLanguage: "Select your preferred language",
+  rateNow: "Rate Now",
+  maybeLater: "Maybe Later",
+  thankYou: "Thank You!",
+  appStoreRedirect: "This would redirect to the App Store in a production app.",
+  privacyPolicyText:
+    "We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we handle your personal data when you visit our app and tell you about your privacy rights.\n\nData Collection:\n• Personal identification information\n• Order and purchase history\n• Delivery addresses\n• Payment information\n\nData Usage:\n• Process orders\n• Improve our services\n• Send promotional offers (with consent)\n• Customer support\n\nData Protection:\nWe implement security measures to maintain the safety of your personal information.\n\nFor more details, please contact our support team.",
+  termsConditionsText:
+    "Welcome to our Beauty Shop App. By accessing and using this application, you accept and agree to be bound by the terms and conditions.\n\nAccount Terms:\n• You must be 18 years or older\n• Provide accurate account information\n• Keep your password secure\n\nOrders & Payment:\n• Prices are subject to change\n• Payment must be made at time of order\n• We reserve the right to refuse any order\n\nShipping & Returns:\n• Delivery times are estimates\n• Return policy: 14 days from delivery\n• Products must be unused and in original packaging\n\nIntellectual Property:\nAll content is owned by us and protected by copyright laws.\n\nContact: support@beautyapp.com",
+  aboutAppText:
+    "Version 1.0.0\n\nYour premium destination for authentic beauty and cosmetic products. We curate the finest selection of makeup, skincare, and beauty tools from renowned brands worldwide.\n\nOur Mission:\nTo make premium beauty products accessible to everyone while ensuring authenticity and quality.\n\nFeatures:\n• Authentic products guaranteed\n• Fast & secure delivery\n• Easy returns policy\n• 24/7 customer support\n• Exclusive deals & offers\n\nThank you for choosing us!\n\n© 2025 Beauty App. All rights reserved.",
+  rateAppMessage:
+    "Love our app? Please take a moment to rate us on the App Store. Your feedback helps us improve!",
+  selectCurrency: "Select Currency",
+  baseCurrency: "Base Currency",
+  baseCurrencyRate: "1 {code} = 1 {code}",
+  exchangeRate: "1 {baseCode} = {rate} {code}",
+  exampleConversion: "$100 {baseCode} ≈ {symbol}{converted}",
+  currencyModalNote: "All prices will be converted using the selected currency",
+  base: "BASE",
+  madeWithLove: "Made with ❤️ for Beauty Lovers",
 };
 
 export type TranslationKeys = keyof typeof en;
