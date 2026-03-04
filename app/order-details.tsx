@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   itemMetaRowRTL: {
-    flexDirection: "row-reverse",
+    alignSelf: "flex-start",
   },
   itemSku: {
     fontSize: 12,
@@ -869,7 +869,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   itemQtyTextRTL: {
-    textAlign: "left",
+    textAlign: "right",
   },
   itemPriceCol: {
     alignItems: "flex-end",
@@ -977,7 +977,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoContentRTL: {
-    alignItems: "flex-end",
+    alignItems: "flex-start",
   },
   infoItemLabel: {
     fontSize: 12,
