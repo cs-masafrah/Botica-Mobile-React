@@ -9,6 +9,7 @@ import { AuthContext } from "@/contexts/AuthContext";
 import { CartContext } from "@/contexts/CartContext";
 import { HomepageConfigContext } from "@/contexts/HomepageConfigContext";
 import { LanguageContext } from "@/contexts/LanguageContext";
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { WishlistContext } from "@/contexts/WishlistContext";
 // ADD THIS IMPORT
 import { CheckoutProvider } from "@/contexts/CheckoutContext";
@@ -189,7 +190,8 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <LanguageContext>
+        <CurrencyProvider>
+          <LanguageContext>
           <AuthContext>
             <AddressContext>
               <HomepageConfigContext>
@@ -205,6 +207,7 @@ export default function RootLayout() {
             </AddressContext>
           </AuthContext>
         </LanguageContext>
+        </CurrencyProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

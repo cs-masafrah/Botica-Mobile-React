@@ -1,3 +1,4 @@
+// app/wishlist.tsx - FIXED with proper currency conversion
 import { router } from 'expo-router';
 import { Heart, Plus, Check, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -13,7 +14,7 @@ import { Image } from 'expo-image';
 import Colors from '@/constants/colors';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
-import { formatPrice } from '@/utils/currency';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
@@ -22,10 +23,26 @@ const CARD_WIDTH = (SCREEN_WIDTH - 32 - CARD_GAP) / 2;
 export default function WishlistScreen() {
   const { items, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const { formatPrice, convertAmount, currentCurrency, baseCurrency } = useCurrency();
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
 
   const handleAddToCart = (product: any) => {
-    addToCart(product, 1);
+    // Get the base price (original currency)
+    const basePrice = product.priceHtml?.finalPrice ?? product.price ?? 0;
+    
+    // Convert to current currency if needed
+    const convertedPrice = convertAmount(basePrice);
+    
+    // Create product with current currency for cart
+    const productForCart = {
+      ...product,
+      price: convertedPrice,
+      currencyCode: currentCurrency?.code || 'USD',
+      originalPrice: basePrice, // Keep original for reference
+      originalCurrency: product.currencyCode || baseCurrency?.code || 'USD',
+    };
+    
+    addToCart(productForCart, 1);
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 600);
   };
@@ -64,6 +81,11 @@ export default function WishlistScreen() {
             // Handle both priceHtml structure (Bagisto) and flat price structure
             const finalPrice = product.priceHtml?.finalPrice ?? product.price ?? 0;
             const regularPrice = product.priceHtml?.regularPrice ?? product.compareAtPrice ?? finalPrice;
+            
+            // Convert prices to current currency
+            const convertedFinalPrice = convertAmount(finalPrice);
+            const convertedRegularPrice = convertAmount(regularPrice);
+            
             const hasDiscount = regularPrice > finalPrice;
             const discountPercentage = hasDiscount 
               ? Math.round(((regularPrice - finalPrice) / regularPrice) * 100)
@@ -75,6 +97,15 @@ export default function WishlistScreen() {
             
             // Extract brand from additionalData (Bagisto) or direct brand property
             const brand = product.additionalData?.find((data: any) => data.label === 'Brand')?.value || product.brand || '';
+
+            // Get formatted prices
+            const formattedFinalPrice = product.priceHtml?.formattedFinalPrice 
+              ? formatPrice(convertedFinalPrice) 
+              : formatPrice(convertedFinalPrice);
+            
+            const formattedRegularPrice = product.priceHtml?.formattedRegularPrice 
+              ? formatPrice(convertedRegularPrice) 
+              : formatPrice(convertedRegularPrice);
 
             return (
               <Pressable
@@ -140,14 +171,21 @@ export default function WishlistScreen() {
                   
                   <View style={styles.priceRow}>
                     <Text style={styles.priceText}>
-                      {product.priceHtml?.formattedFinalPrice || formatPrice(finalPrice, product.currencyCode)}
+                      {formattedFinalPrice}
                     </Text>
                     {hasDiscount && (
                       <Text style={styles.compareAtPriceText}>
-                        {product.priceHtml?.formattedRegularPrice || formatPrice(regularPrice, product.currencyCode)}
+                        {formattedRegularPrice}
                       </Text>
                     )}
                   </View>
+                  
+                  {/* Optional: Show original currency indicator */}
+                  {product.currencyCode && product.currencyCode !== currentCurrency?.code && (
+                    <Text style={styles.conversionNote}>
+                      ~ {product.currencyCode}
+                    </Text>
+                  )}
                 </View>
               </Pressable>
             );
@@ -354,5 +392,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.textSecondary,
     textDecorationLine: 'line-through',
+  },
+  
+  conversionNote: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });

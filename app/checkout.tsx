@@ -1,6 +1,6 @@
+// app/checkout.tsx
 "use client";
 
-// app/checkout.tsx
 import React, { useEffect, useRef, useState } from "react";
 import {
   View,
@@ -36,9 +36,9 @@ import {
 } from "lucide-react-native";
 import { useCheckout } from "@/contexts/CheckoutContext";
 import { useCart } from "@/contexts/CartContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { authService, Address } from "@/services/auth";
 import { couponService } from "@/services/CouponService";
-import { formatPrice } from "@/utils/currency";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -65,6 +65,7 @@ const CheckoutScreen = () => {
   } = useCheckout();
 
   const { items, cartDetails, loadCart, clearCart } = useCart();
+  const { formatPrice, currentCurrency } = useCurrency(); // Add currency hook
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -101,8 +102,6 @@ const CheckoutScreen = () => {
     shipping: false,
     payment: false,
   });
-
-  const defaultCurrency = "ILS";
 
   // Animation on mount
   useEffect(() => {
@@ -261,7 +260,6 @@ const CheckoutScreen = () => {
   const handleSelectShipping = async (methodCode: string) => {
     try {
       await selectShippingMethod(methodCode);
-
       loadCart(true); // Refresh cart to get updated totals based on shipping method
     } catch (error) {
       console.error("Failed to select shipping method:", error);
@@ -389,22 +387,19 @@ const CheckoutScreen = () => {
 
   // Helper functions
   const getItemPrice = (item: any): string => {
-    const currency = item.product?.currencyCode || defaultCurrency;
     const price = item.product?.price || 0;
-    return formatPrice(price * item.quantity, currency);
+    return formatPrice(price * item.quantity);
   };
 
   const getCartTotal = (): string => {
     const total = cartDetails?.grandTotal || 0;
-    const currency = cartDetails?.currencyCode || defaultCurrency;
-    return formatPrice(total, currency);
+    return formatPrice(total);
   };
 
   const getDiscountAmount = (): string => {
     const discount = cartDetails?.discountAmount || 0;
     if (discount <= 0) return "";
-    const currency = cartDetails?.currencyCode || defaultCurrency;
-    return formatPrice(discount, currency);
+    return formatPrice(discount);
   };
 
   const selectedShipping = shippingMethods.find(
@@ -651,9 +646,9 @@ const CheckoutScreen = () => {
                   onPress={() => {
                     if (router.canDismiss()) {
                       router.dismiss();
-                      setTimeout(() => router.push("/checkout-addresses"), 100);
+                      setTimeout(() => router.push("/addresses"), 100);
                     } else {
-                      router.push("/checkout-addresses");
+                      router.push("/addresses");
                     }
                   }}
                 >
@@ -1518,10 +1513,7 @@ const CheckoutScreen = () => {
                     <Text
                       style={[styles.totalValue, isRTL && styles.totalValueRTL]}
                     >
-                      {formatPrice(
-                        cartDetails?.subTotal || 0,
-                        cartDetails?.currencyCode || defaultCurrency,
-                      )}
+                      {formatPrice(cartDetails?.subTotal || 0)}
                     </Text>
                   </View>
                   {cartDetails?.discountAmount > 0 && (
@@ -1556,10 +1548,7 @@ const CheckoutScreen = () => {
                     <Text
                       style={[styles.totalValue, isRTL && styles.totalValueRTL]}
                     >
-                      {formatPrice(
-                        cartDetails?.shippingAmount || 0,
-                        cartDetails?.currencyCode || defaultCurrency,
-                      )}
+                      {formatPrice(cartDetails?.shippingAmount || 0)}
                     </Text>
                   </View>
                   {cartDetails?.taxTotal > 0 && (
@@ -1580,10 +1569,7 @@ const CheckoutScreen = () => {
                           isRTL && styles.totalValueRTL,
                         ]}
                       >
-                        {formatPrice(
-                          cartDetails?.taxTotal || 0,
-                          cartDetails?.currencyCode || defaultCurrency,
-                        )}
+                        {formatPrice(cartDetails?.taxTotal || 0)}
                       </Text>
                     </View>
                   )}
@@ -2109,8 +2095,9 @@ const CheckoutScreen = () => {
       )}
     </SafeAreaView>
   );
-};
+}
 
+// All styles remain exactly the same
 const styles = StyleSheet.create({
   container: {
     flex: 1,
