@@ -368,6 +368,39 @@ const en = {
   signUp: "Sign Up",
   addresses: "Addresses",
   orderHistory: "Order History",
+
+  // Not Found Screen
+  oops: "Oops!",
+  pageNotFound: "This page doesn't exist.",
+  goToHome: "Go to home screen",
+
+  // Image Viewer
+  noImagesToDisplay: "No images to display.",
+  goBack: "Go Back",
+  close: "Close",
+
+  // Login Screen
+  welcomeBack: "Welcome Back",
+  signInToAccount: "Sign in to your account",
+  password: "Password",
+  forgotPassword: "Forgot Password?",
+  resetPasswordMessage: "Password reset functionality will be available soon.",
+  or: "OR",
+  noAccount: "Don't have an account?",
+  enterEmailPassword: "Please enter both email and password",
+  loginFailed: "Login Failed",
+  invalidCredentials: "Invalid email or password",
+  info: "Info",
+
+  // Signup Screen
+  createAccount: "Create Account",
+  signUpToGetStarted: "Sign up to get started",
+  confirmPassword: "Confirm Password",
+  fillAllFields: "Please fill in all fields",
+  passwordMinLength: "Password must be at least 5 characters",
+  signupFailed: "Signup Failed",
+  couldNotCreateAccount: "Could not create account",
+  alreadyHaveAccount: "Already have an account?",
 };
 
 export type TranslationKeys = keyof typeof en;

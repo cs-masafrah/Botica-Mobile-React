@@ -368,6 +368,39 @@ const ar = {
   signUp: "إنشاء حساب",
   addresses: "العناوين",
   orderHistory: "طلباتي السابقة",
+
+  // Not Found Screen
+  oops: "عذراً!",
+  pageNotFound: "هذه الصفحة غير موجودة.",
+  goToHome: "الذهاب إلى الشاشة الرئيسية",
+
+  // Image Viewer
+  noImagesToDisplay: "لا توجد صور للعرض.",
+  goBack: "رجوع",
+  close: "إغلاق",
+
+  // Login Screen
+  welcomeBack: "مرحباً بعودتك",
+  signInToAccount: "تسجيل الدخول إلى حسابك",
+  password: "كلمة المرور",
+  forgotPassword: "نسيت كلمة المرور؟",
+  resetPasswordMessage: "ستتوفر وظيفة إعادة تعيين كلمة المرور قريباً.",
+  or: "أو",
+  noAccount: "ليس لديك حساب؟",
+  enterEmailPassword: "الرجاء إدخال البريد الإلكتروني وكلمة المرور",
+  loginFailed: "فشل تسجيل الدخول",
+  invalidCredentials: "بريد إلكتروني أو كلمة مرور غير صحيحة",
+  info: "معلومات",
+
+  // Signup Screen
+  createAccount: "إنشاء حساب",
+  signUpToGetStarted: "سجل للبدء",
+  confirmPassword: "تأكيد كلمة المرور",
+  fillAllFields: "الرجاء ملء جميع الحقول",
+  passwordMinLength: "يجب أن تكون كلمة المرور 5 أحرف على الأقل",
+  signupFailed: "فشل إنشاء الحساب",
+  couldNotCreateAccount: "تعذر إنشاء الحساب",
+  alreadyHaveAccount: "لديك حساب بالفعل؟",
 };
 
 export type TranslationKeys = keyof typeof ar;

@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { router } from "expo-router";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,20 +12,22 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Colors from '@/constants/colors';
-import { useAuth } from '@/contexts/AuthContext';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function LoginScreen() {
   const { login, loginLoading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { t, isRTL } = useLanguage();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password');
+      Alert.alert(t("error"), t("enterEmailPassword"));
       return;
     }
 
@@ -33,36 +35,50 @@ export default function LoginScreen() {
       await login({ email: email.trim(), password });
       router.back();
     } catch (error: any) {
-      console.error('Login error:', error);
-      Alert.alert('Login Failed', error.message || 'Invalid email or password');
+      console.error("Login error:", error);
+      Alert.alert(t("loginFailed"), error.message || t("invalidCredentials"));
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <SafeAreaView
+      style={[styles.container, isRTL && styles.containerRTL]}
+      edges={["bottom"]}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to your account</Text>
+          <View style={[styles.header, isRTL && styles.headerRTL]}>
+            <Text style={[styles.title, isRTL && styles.titleRTL]}>
+              {t("welcomeBack")}
+            </Text>
+            <Text style={[styles.subtitle, isRTL && styles.subtitleRTL]}>
+              {t("signInToAccount")}
+            </Text>
           </View>
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputIconContainer}>
+          <View style={[styles.form, isRTL && styles.formRTL]}>
+            <View
+              style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+            >
+              <View
+                style={[
+                  styles.inputIconContainer,
+                  isRTL && styles.inputIconContainerRTL,
+                ]}
+              >
                 <Mail size={20} color={Colors.textSecondary} />
               </View>
               <TextInput
-                style={styles.input}
-                placeholder="Email"
+                style={[styles.input, isRTL && styles.inputRTL]}
+                placeholder={t("email")}
                 placeholderTextColor={Colors.textSecondary}
                 value={email}
                 onChangeText={setEmail}
@@ -74,13 +90,20 @@ export default function LoginScreen() {
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <View style={styles.inputIconContainer}>
+            <View
+              style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+            >
+              <View
+                style={[
+                  styles.inputIconContainer,
+                  isRTL && styles.inputIconContainerRTL,
+                ]}
+              >
                 <Lock size={20} color={Colors.textSecondary} />
               </View>
               <TextInput
-                style={styles.input}
-                placeholder="Password"
+                style={[styles.input, isRTL && styles.inputRTL]}
+                placeholder={t("password")}
                 placeholderTextColor={Colors.textSecondary}
                 value={password}
                 onChangeText={setPassword}
@@ -89,8 +112,8 @@ export default function LoginScreen() {
                 autoComplete="password"
                 editable={!loginLoading}
               />
-              <Pressable 
-                style={styles.eyeButton}
+              <Pressable
+                style={[styles.eyeButton, isRTL && styles.eyeButtonRTL]}
                 onPress={() => setShowPassword(!showPassword)}
                 disabled={loginLoading}
               >
@@ -102,35 +125,73 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
-            <Pressable style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <Pressable
+              style={[styles.forgotPassword, isRTL && styles.forgotPasswordRTL]}
+              onPress={() => Alert.alert(t("info"), t("resetPasswordMessage"))}
+            >
+              <Text
+                style={[
+                  styles.forgotPasswordText,
+                  isRTL && styles.forgotPasswordTextRTL,
+                ]}
+              >
+                {t("forgotPassword")}
+              </Text>
             </Pressable>
 
-            <Pressable 
-              style={[styles.loginButton, loginLoading && styles.loginButtonDisabled]}
+            <Pressable
+              style={[
+                styles.loginButton,
+                loginLoading && styles.loginButtonDisabled,
+                isRTL && styles.loginButtonRTL,
+              ]}
               onPress={handleLogin}
               disabled={loginLoading}
             >
               {loginLoading ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <Text
+                  style={[
+                    styles.loginButtonText,
+                    isRTL && styles.loginButtonTextRTL,
+                  ]}
+                >
+                  {t("signIn")}
+                </Text>
               )}
             </Pressable>
 
-            <View style={styles.divider}>
+            <View style={[styles.divider, isRTL && styles.dividerRTL]}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
+              <Text
+                style={[styles.dividerText, isRTL && styles.dividerTextRTL]}
+              >
+                {t("or")}
+              </Text>
               <View style={styles.dividerLine} />
             </View>
 
-            <Pressable 
-              style={styles.signupButton}
-              onPress={() => router.push('/signup')}
+            <Pressable
+              style={[styles.signupButton, isRTL && styles.signupButtonRTL]}
+              onPress={() => router.push("/signup")}
               disabled={loginLoading}
             >
-              <Text style={styles.signupButtonText}>
-                Don&apos;t have an account? <Text style={styles.signupButtonTextBold}>Sign Up</Text>
+              <Text
+                style={[
+                  styles.signupButtonText,
+                  isRTL && styles.signupButtonTextRTL,
+                ]}
+              >
+                {t("noAccount")}{" "}
+                <Text
+                  style={[
+                    styles.signupButtonTextBold,
+                    isRTL && styles.signupButtonTextBoldRTL,
+                  ]}
+                >
+                  {t("signUp")}
+                </Text>
               </Text>
             </Pressable>
           </View>
@@ -144,6 +205,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  containerRTL: {
+    direction: "rtl",
   },
   keyboardView: {
     flex: 1,
@@ -160,22 +224,32 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 48,
   },
+  headerRTL: {
+    alignItems: "flex-start",
+  },
   title: {
     fontSize: 32,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: 8,
+  },
+  titleRTL: {
+    textAlign: "left",
   },
   subtitle: {
     fontSize: 16,
     color: Colors.textSecondary,
   },
+  subtitleRTL: {
+    textAlign: "right",
+  },
   form: {
     flex: 1,
   },
+  formRTL: {},
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.white,
     borderRadius: 16,
     paddingHorizontal: 16,
@@ -186,8 +260,15 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  inputContainerRTL: {
+    flexDirection: "row-reverse",
+  },
   inputIconContainer: {
     marginRight: 12,
+  },
+  inputIconContainerRTL: {
+    marginRight: 0,
+    marginLeft: 12,
   },
   input: {
     flex: 1,
@@ -195,24 +276,34 @@ const styles = StyleSheet.create({
     color: Colors.text,
     paddingVertical: 18,
   },
+  inputRTL: {
+    textAlign: "right",
+  },
   eyeButton: {
     padding: 4,
   },
+  eyeButtonRTL: {},
   forgotPassword: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginBottom: 24,
+  },
+  forgotPasswordRTL: {
+    alignSelf: "flex-start",
   },
   forgotPasswordText: {
     fontSize: 14,
     color: Colors.primary,
-    fontWeight: '600' as const,
+    fontWeight: "600",
+  },
+  forgotPasswordTextRTL: {
+    textAlign: "right",
   },
   loginButton: {
     backgroundColor: Colors.primary,
     borderRadius: 16,
     paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -220,18 +311,25 @@ const styles = StyleSheet.create({
     elevation: 4,
     minHeight: 56,
   },
+  loginButtonRTL: {},
   loginButtonDisabled: {
     opacity: 0.6,
   },
   loginButtonText: {
     fontSize: 16,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.white,
   },
+  loginButtonTextRTL: {
+    textAlign: "right",
+  },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 32,
+  },
+  dividerRTL: {
+    flexDirection: "row-reverse",
   },
   dividerLine: {
     flex: 1,
@@ -242,18 +340,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     fontSize: 14,
     color: Colors.textSecondary,
-    fontWeight: '600' as const,
+    fontWeight: "600",
+  },
+  dividerTextRTL: {
+    textAlign: "right",
   },
   signupButton: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 12,
   },
+  signupButtonRTL: {},
   signupButtonText: {
     fontSize: 15,
     color: Colors.textSecondary,
   },
+  signupButtonTextRTL: {
+    textAlign: "right",
+  },
   signupButtonTextBold: {
     color: Colors.primary,
-    fontWeight: '700' as const,
+    fontWeight: "700",
+  },
+  signupButtonTextBoldRTL: {
+    textAlign: "right",
   },
 });
