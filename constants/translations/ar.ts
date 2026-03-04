@@ -356,7 +356,7 @@ const ar = {
     "تحب تطبيقنا؟ يرجى أخذ لحظة لتقييمنا في متجر التطبيقات. ملاحظاتك تساعدنا على التحسين!",
   selectCurrency: "اختر العملة",
   baseCurrency: "العملة الأساسية",
-  baseCurrencyRate: "1 {code} = 1 {code}",
+  // baseCurrencyRate: "1 {code1} = 1 {code2}",
   exchangeRate: "1 {baseCode} = {rate} {code}",
   exampleConversion: "$100 {baseCode} ≈ {symbol}{converted}",
   currencyModalNote: "سيتم تحويل جميع الأسعار باستخدام العملة المحددة",

@@ -1,4 +1,4 @@
-// app/settings.tsx - Fixed with proper function ordering
+// app/settings.tsx - Only fixing the currency translation issue
 import { router, Stack } from "expo-router";
 import {
   Bell,
@@ -417,14 +417,16 @@ export default function SettingsScreen() {
               >
                 {baseCurrency.name} ({baseCurrency.code})
               </Text>
-              <Text
+              {/* <Text
                 style={[
                   styles.baseCurrencyRate,
                   isRTL && styles.baseCurrencyRateRTL,
                 ]}
               >
-                {t("baseCurrencyRate", { code: baseCurrency.code })}
-              </Text>
+                {t("baseCurrencyRate")
+                  // replace("{code}", baseCurrency.code)}
+                  .replace("{code1}", baseCurrency?.code || "")}
+              </Text> */}
             </View>
           )}
 
@@ -519,7 +521,7 @@ export default function SettingsScreen() {
                         {item.name}
                       </Text>
 
-                      {/* Exchange Rate Info */}
+                      {/* Exchange Rate Info - FIXED with string replacement */}
                       {item.exchangeRate && !isBaseCurrency && (
                         <View
                           style={[
@@ -533,11 +535,13 @@ export default function SettingsScreen() {
                               isRTL && styles.rateTextRTL,
                             ]}
                           >
-                            {t("exchangeRate", {
-                              baseCode: baseCurrency?.code,
-                              rate: item.exchangeRate.rate,
-                              code: item.code,
-                            })}
+                            {t("exchangeRate")
+                              .replace("{baseCode}", baseCurrency?.code || "")
+                              .replace(
+                                "{rate}",
+                                item.exchangeRate.rate.toString(),
+                              )
+                              .replace("{code}", item.code)}
                           </Text>
                           <Text
                             style={[
@@ -545,14 +549,14 @@ export default function SettingsScreen() {
                               isRTL && styles.exampleTextRTL,
                             ]}
                           >
-                            {t("exampleConversion", {
-                              amount: "100",
-                              baseCode: baseCurrency?.code,
-                              symbol: item.symbol,
-                              converted: (100 * item.exchangeRate.rate).toFixed(
-                                2,
-                              ),
-                            })}
+                            {t("exampleConversion")
+                              .replace("{amount}", "100")
+                              .replace("{baseCode}", baseCurrency?.code || "")
+                              .replace("{symbol}", item.symbol)
+                              .replace(
+                                "{converted}",
+                                (100 * item.exchangeRate.rate).toFixed(2),
+                              )}
                           </Text>
                         </View>
                       )}
@@ -682,11 +686,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingHorizontal: 20,
   },
-  sectionRTL: {
-    // textAlign: "left",
-    // alignSelf: "flex-start",
-    // alignContent: "flex-start",
-  },
+  sectionRTL: {},
   sectionTitle: {
     fontSize: 13,
     fontWeight: "600",
@@ -731,7 +731,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
-  settingItemLeftRTL: {},
+  settingItemLeftRTL: {
+    // flexDirection: "row-reverse",
+  },
   iconContainer: {
     width: 40,
     height: 40,
@@ -867,7 +869,7 @@ const styles = StyleSheet.create({
   },
   baseCurrencyBadgeRTL: {
     // flexDirection: "row-reverse",
-    alignSelf: "flex-end",
+    alignSelf: "flex-start",
   },
   baseCurrencyBadgeText: {
     color: Colors.white,
@@ -884,14 +886,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   baseCurrencyTextRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   baseCurrencyRate: {
     fontSize: 14,
     color: Colors.textSecondary,
   },
   baseCurrencyRateRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   currencyList: {
     paddingHorizontal: 20,
@@ -947,7 +949,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   currencyInfoRTL: {
-    alignItems: "flex-end",
+    alignItems: "flex-start",
   },
   currencyNameRow: {
     flexDirection: "row",
@@ -964,7 +966,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   currencyCodeRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   baseBadge: {
     backgroundColor: Colors.primary + "20",
@@ -979,7 +981,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   baseBadgeTextRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   currencyName: {
     fontSize: 14,
@@ -987,7 +989,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   currencyNameRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   rateContainer: {
     marginTop: 2,
