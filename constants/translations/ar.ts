@@ -246,6 +246,35 @@ const ar = {
   partiallyAddedDetails:
     "تمت إضافة {successCount}، فشل {failCount}:\n{failedItems}",
   reorderFailedDetails: "بعض العناصر قد لا تكون متاحة.",
+
+  // Edit Profile
+  editProfile: "تعديل الملف الشخصي",
+  personalInformation: "المعلومات الشخصية",
+  firstName: "الاسم الأول",
+  enterFirstName: "أدخل اسمك الأول",
+  lastName: "اسم العائلة",
+  enterLastName: "أدخل اسم العائلة",
+  email: "البريد الإلكتروني",
+  enterEmail: "أدخل بريدك الإلكتروني",
+  phone: "رقم الهاتف",
+  enterPhone: "أدخل رقم هاتفك",
+  gender: "الجنس",
+  genderPlaceholder: "ذكر / أنثى / آخر",
+  dateOfBirth: "تاريخ الميلاد",
+  dobPlaceholder: "YYYY-MM-DD",
+  security: "الأمان",
+  currentPassword: "كلمة المرور الحالية",
+  enterCurrentPassword: "أدخل كلمة المرور الحالية",
+  newPassword: "كلمة المرور الجديدة",
+  enterNewPassword: "أدخل كلمة المرور الجديدة",
+  confirmNewPassword: "تأكيد كلمة المرور الجديدة",
+  enterConfirmPassword: "تأكيد كلمة المرور الجديدة",
+  newsletterSubscription: "الاشتراك في النشرة البريدية",
+  saveChanges: "حفظ التغييرات",
+  passwordsDoNotMatch: "كلمات المرور غير متطابقة",
+  profileUpdatedSuccess: "تم تحديث الملف الشخصي بنجاح",
+  updateFailed: "فشل التحديث",
+  somethingWentWrong: "حدث خطأ ما",
 };
 
 export type TranslationKeys = keyof typeof ar;

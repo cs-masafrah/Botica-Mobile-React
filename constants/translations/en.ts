@@ -247,6 +247,35 @@ const en = {
   partiallyAddedDetails:
     "{successCount} added, {failCount} failed:\n{failedItems}",
   reorderFailedDetails: "Items may no longer be available.",
+
+  // Edit Profile
+  editProfile: "Edit Profile",
+  personalInformation: "Personal Information",
+  firstName: "First Name",
+  enterFirstName: "Enter your first name",
+  lastName: "Last Name",
+  enterLastName: "Enter your last name",
+  email: "Email",
+  enterEmail: "Enter your email",
+  phone: "Phone",
+  enterPhone: "Enter your phone number",
+  gender: "Gender",
+  genderPlaceholder: "MALE / FEMALE / OTHER",
+  dateOfBirth: "Date of Birth",
+  dobPlaceholder: "YYYY-MM-DD",
+  security: "Security",
+  currentPassword: "Current Password",
+  enterCurrentPassword: "Enter current password",
+  newPassword: "New Password",
+  enterNewPassword: "Enter new password",
+  confirmNewPassword: "Confirm New Password",
+  enterConfirmPassword: "Confirm your new password",
+  newsletterSubscription: "Newsletter Subscription",
+  saveChanges: "Save Changes",
+  passwordsDoNotMatch: "Passwords do not match",
+  profileUpdatedSuccess: "Profile updated successfully",
+  updateFailed: "Update Failed",
+  somethingWentWrong: "Something went wrong",
 };
 
 export type TranslationKeys = keyof typeof en;
