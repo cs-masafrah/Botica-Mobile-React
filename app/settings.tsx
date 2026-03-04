@@ -1,3 +1,4 @@
+// app/settings.tsx (updated with currency option)
 import { router, Stack } from 'expo-router';
 import {
   Bell,
@@ -10,6 +11,7 @@ import {
   FileText,
   Star,
   Layout,
+  DollarSign, // Add this import
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -24,12 +26,7 @@ import {
 } from 'react-native';
 import Colors from '@/constants/colors';
 import { useLanguage } from '@/contexts/LanguageContext';
-
-
-type SettingSection = {
-  title: string;
-  items: SettingItem[];
-};
+import { useCurrency } from '@/contexts/CurrencyContext'; // Add this import
 
 type SettingItem = {
   id: string;
@@ -37,13 +34,19 @@ type SettingItem = {
   label: string;
   type: 'toggle' | 'navigation' | 'action';
   value?: boolean;
+  badge?: string;
   onToggle?: (value: boolean) => void;
   onPress?: () => void;
-  badge?: string;
+};
+
+type SettingSection = {
+  title: string;
+  items: SettingItem[];
 };
 
 export default function SettingsScreen() {
   const { locale, changeLanguage } = useLanguage();
+  const { currencies, currentCurrency, setCurrency } = useCurrency(); // Add currency hook
   const [pushNotifications, setPushNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [orderUpdates, setOrderUpdates] = useState(true);
@@ -61,6 +64,26 @@ export default function SettingsScreen() {
           text: 'العربية',
           onPress: () => changeLanguage('ar'),
         },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  // Add currency change handler
+  const handleCurrencyChange = () => {
+    const currencyOptions = currencies.map(currency => ({
+      text: `${currency.name} (${currency.symbol})`,
+      onPress: () => setCurrency(currency),
+    }));
+
+    Alert.alert(
+      'Change Currency',
+      'Select your preferred currency',
+      [
+        ...currencyOptions,
         {
           text: 'Cancel',
           style: 'cancel',
@@ -127,6 +150,14 @@ export default function SettingsScreen() {
           type: 'action',
           badge: locale === 'en' ? 'English' : 'العربية',
           onPress: handleLanguageChange,
+        },
+        {
+          id: 'currency', // Add currency item
+          icon: DollarSign,
+          label: 'Currency',
+          type: 'action',
+          badge: currentCurrency ? `${currentCurrency.code} (${currentCurrency.symbol})` : 'USD ($)',
+          onPress: handleCurrencyChange,
         },
         {
           id: 'customizeHomepage',
@@ -313,6 +344,7 @@ export default function SettingsScreen() {
   );
 }
 
+// Styles remain the same
 const styles = StyleSheet.create({
   container: {
     flex: 1,

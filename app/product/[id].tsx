@@ -11,17 +11,17 @@ import {
   Text,
   View,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
-import { formatPrice } from '@/utils/currency';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { ShippingStrip } from '@/components/ShippingStrip';
 import { useBagistoProductById } from '../hooks/useBagistoProductById';
 import { useBagistoProductsByCategory } from '../hooks/useBagistoProductsByCategory';
-import { Alert } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -60,6 +60,7 @@ export default function ProductDetailScreen() {
   const { data: product, isLoading, error } = useBagistoProductById(id);
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const { formatPrice, currentCurrency } = useCurrency(); // Add currency hook
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -137,90 +138,46 @@ export default function ProductDetailScreen() {
     });
   }, [product, selectedOptions, hasVariants]);
 
-  // const handleAddToCart = () => {
-  //   if (!product) return;
-
-  //   // Use selected variant if available, otherwise use main product
-  //   const selectedVariant = getSelectedVariant;
-  //   const productToAdd = selectedVariant || product;
-
-  //   const cartProduct: any = {
-  //     id: productToAdd.id,
-  //     name: product.name,
-  //     description: stripHtmlTags(product.shortDescription || product.description || ''),
-  //     price: parseFloat(productToAdd.price || product.priceHtml?.finalPrice || '0'),
-  //     compareAtPrice: parseFloat(productToAdd.compareAtPrice || product.priceHtml?.regularPrice || '0'),
-  //     currencyCode: 'USD',
-  //     image: selectedVariant?.image || images[0] || '',
-  //     images: images,
-  //     brand: brand,
-  //     rating: product.averageRating || 0,
-  //     reviewCount: product.reviewCount || 0,
-  //     inStock: productToAdd.availableForSale ?? product.isSaleable,
-  //     category: product.category || '',
-  //     tags: getTags(product),
-  //     options: product.configutableData?.attributes?.map((attr: any) => ({
-  //       id: attr.id,
-  //       name: attr.label,
-  //       values: attr.options.map((opt: any) => opt.label)
-  //     })) || [],
-  //     variants: product.variants || [],
-  //     selectedOptions: selectedOptions,
-  //     // Bagisto specific fields for GraphQL API
-  //     productId: product.id,
-  //     selectedConfigurableOption: selectedVariant?.id,
-  //     configurableParams: hasVariants ? Object.entries(selectedOptions).map(([code, optionId]) => {
-  //       const attr = product.configutableData.attributes.find((a: any) => a.code === code);
-  //       const option = attr?.options.find((opt: any) => opt.id === optionId);
-  //       return { [code]: option?.label };
-  //     }) : undefined,
-  //   };
-
-  //   addToCart(cartProduct, quantity);
-  //   setAddedToCart(true);
-  //   setTimeout(() => setAddedToCart(false), 2000);
-  // };
-
   const handleAddToCart = async () => {
-  if (!product) return;
+    if (!product) return;
 
-  // Use selected variant if available, otherwise use main product
-  const selectedVariant = getSelectedVariant;
-  const productToAdd = selectedVariant || product;
+    // Use selected variant if available, otherwise use main product
+    const selectedVariant = getSelectedVariant;
+    const productToAdd = selectedVariant || product;
 
-  // Prepare product for Bagisto GraphQL API
-  const bagistoProduct: any = {
-    // Basic required fields
-    id: product.id,
-    productId: product.id,
-    name: product.name,
-    price: parseFloat(productToAdd.price || product.priceHtml?.finalPrice || '0'),
-    
-    // Bagisto specific fields
-    selectedConfigurableOption: selectedVariant?.id,
-    variantId: selectedVariant?.id,
-  };
-
-  console.log('🛒 [PRODUCT PAGE] Adding to cart:', bagistoProduct);
-  
-  try {
-    const result = await addToCart(bagistoProduct, quantity, selectedOptions);
-    
-    if (result.success) {
-      setAddedToCart(true);
-      setTimeout(() => setAddedToCart(false), 2000);
+    // Prepare product for Bagisto GraphQL API
+    const bagistoProduct: any = {
+      // Basic required fields
+      id: product.id,
+      productId: product.id,
+      name: product.name,
+      price: parseFloat(productToAdd.price || product.priceHtml?.finalPrice || '0'),
       
-      // Show success message if needed
-      console.log('✅ Added to cart:', result.message);
-    } else {
-      // Show error message
-      Alert.alert('Error', result.message || 'Failed to add to cart');
+      // Bagisto specific fields
+      selectedConfigurableOption: selectedVariant?.id,
+      variantId: selectedVariant?.id,
+    };
+
+    console.log('🛒 [PRODUCT PAGE] Adding to cart:', bagistoProduct);
+    
+    try {
+      const result = await addToCart(bagistoProduct, quantity, selectedOptions);
+      
+      if (result.success) {
+        setAddedToCart(true);
+        setTimeout(() => setAddedToCart(false), 2000);
+        
+        // Show success message if needed
+        console.log('✅ Added to cart:', result.message);
+      } else {
+        // Show error message
+        Alert.alert('Error', result.message || 'Failed to add to cart');
+      }
+    } catch (error: any) {
+      console.error('❌ Error adding to cart:', error);
+      Alert.alert('Error', 'Failed to add to cart');
     }
-  } catch (error: any) {
-    console.error('❌ Error adding to cart:', error);
-    Alert.alert('Error', 'Failed to add to cart');
-  }
-};
+  };
 
   const handleScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
@@ -339,49 +296,49 @@ export default function ProductDetailScreen() {
           )}
         </View>
 
-{/* Product Details */}
-<View style={styles.detailsContainer}>
-  {/* Brand and Name */}
-  <View style={styles.header}>
-    <View style={styles.headerLeft}>
-      {brand && <Text style={styles.brand}>{brand}</Text>}
-      <Text style={styles.name}>{product.name}</Text>
-    </View>
-    <View style={styles.priceContainer}>
-      {hasDiscount && (
-        <Text style={styles.compareAtPrice}>
-          {formatPrice(comparePrice, 'USD')}
-        </Text>
-      )}
-      <Text style={styles.price}>
-        {formatPrice(price, 'USD')}
-      </Text>
-    </View>
-  </View>
+        {/* Product Details */}
+        <View style={styles.detailsContainer}>
+          {/* Brand and Name */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              {brand && <Text style={styles.brand}>{brand}</Text>}
+              <Text style={styles.name}>{product.name}</Text>
+            </View>
+            <View style={styles.priceContainer}>
+              {hasDiscount && (
+                <Text style={styles.compareAtPrice}>
+                  {formatPrice(comparePrice)}
+                </Text>
+              )}
+              <Text style={styles.price}>
+                {formatPrice(price)}
+              </Text>
+            </View>
+          </View>
 
-{/* Rating */}
-<View style={styles.ratingSection}>
-  <View style={styles.ratingContainer}>
-    <Star size={16} color={Colors.primary} fill={Colors.primary} />
-    <Text style={styles.ratingText}>
-      {(() => {
-        // Safely handle averageRating
-        const rating = product?.averageRating;
-        if (rating === null || rating === undefined) {
-          return '0.0';
-        }
-        // Convert to number if it's a string
-        const numericRating = typeof rating === 'string' ? parseFloat(rating) : rating;
-        // Ensure it's a number and has toFixed method
-        if (typeof numericRating === 'number' && !isNaN(numericRating)) {
-          return numericRating.toFixed(1);
-        }
-        return '0.0';
-      })()}
-    </Text>
-  </View>
-  <Text style={styles.reviewCount}>({product.reviewCount || 0} reviews)</Text>
-</View>
+          {/* Rating */}
+          <View style={styles.ratingSection}>
+            <View style={styles.ratingContainer}>
+              <Star size={16} color={Colors.primary} fill={Colors.primary} />
+              <Text style={styles.ratingText}>
+                {(() => {
+                  // Safely handle averageRating
+                  const rating = product?.averageRating;
+                  if (rating === null || rating === undefined) {
+                    return '0.0';
+                  }
+                  // Convert to number if it's a string
+                  const numericRating = typeof rating === 'string' ? parseFloat(rating) : rating;
+                  // Ensure it's a number and has toFixed method
+                  if (typeof numericRating === 'number' && !isNaN(numericRating)) {
+                    return numericRating.toFixed(1);
+                  }
+                  return '0.0';
+                })()}
+              </Text>
+            </View>
+            <Text style={styles.reviewCount}>({product.reviewCount || 0} reviews)</Text>
+          </View>
 
           {/* SKU */}
           {product.sku && (
@@ -562,11 +519,11 @@ export default function ProductDetailScreen() {
                         <View style={styles.relatedPriceContainer}>
                           {relatedHasDiscount && (
                             <Text style={styles.relatedCompareAtPrice}>
-                              {formatPrice(relatedComparePrice, 'USD')}
+                              {formatPrice(relatedComparePrice)}
                             </Text>
                           )}
                           <Text style={styles.relatedProductPrice}>
-                            {formatPrice(relatedPrice, 'USD')}
+                            {formatPrice(relatedPrice)}
                           </Text>
                         </View>
                         <View style={styles.relatedAvailability}>
@@ -608,6 +565,7 @@ export default function ProductDetailScreen() {
   );
 }
 
+// Styles remain exactly the same as before
 const styles = StyleSheet.create({
   container: {
     flex: 1,

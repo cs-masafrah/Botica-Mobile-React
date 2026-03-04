@@ -1,4 +1,4 @@
-// components/ProductCard.tsx
+// components/ProductCard.tsx (updated with currency)
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useCart } from '@/contexts/CartContext';
+import { useCurrency } from '@/contexts/CurrencyContext'; // Add this import
 import { Product, BagistoProduct } from '@/app/types/product';
 
 interface ProductCardProps {
@@ -22,6 +23,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const { formatPrice, currentCurrency } = useCurrency(); // Add currency hook
   const [addedProductId, setAddedProductId] = React.useState<string | null>(null);
 
   const inWishlist = isInWishlist(product.id);
@@ -40,6 +42,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   
   const reviewCount = product.reviews?.length || 0;
 
+  // Format prices using currency context
+  const finalPrice = formatPrice(product.priceHtml?.finalPrice || 0);
+  const regularPrice = product.priceHtml?.regularPrice 
+    ? formatPrice(product.priceHtml.regularPrice)
+    : '';
+
   const handleAddToCart = async () => {
     if (onAddToCart) {
       onAddToCart(product);
@@ -51,7 +59,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           name: product.name,
           description: product.shortDescription || product.description || '',
           compareAtPrice: product.priceHtml?.regularPrice || 0,
-          currencyCode: 'USD', 
+          currencyCode: currentCurrency?.code || 'USD',
           image: imageUrl,
           images: product.images?.map(img => img.url) || [],
           brand: brand,
@@ -128,13 +136,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </View>
           
           <View style={styles.horizontalPriceRow}>
-            <Text style={styles.horizontalPriceText}>
-              {product.priceHtml?.formattedFinalPrice || 'N/A'}
-            </Text>
+            <Text style={styles.horizontalPriceText}>{finalPrice}</Text>
             {hasDiscount && (
-              <Text style={styles.horizontalCompareAtPriceText}>
-                {product.priceHtml?.formattedRegularPrice || ''}
-              </Text>
+              <Text style={styles.horizontalCompareAtPriceText}>{regularPrice}</Text>
             )}
           </View>
           
@@ -251,13 +255,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </View>
         
         <View style={styles.priceRow}>
-          <Text style={styles.priceText}>
-            {product.priceHtml?.formattedFinalPrice || 'N/A'}
-          </Text>
+          <Text style={styles.priceText}>{finalPrice}</Text>
           {hasDiscount && (
-            <Text style={styles.compareAtPriceText}>
-              {product.priceHtml?.formattedRegularPrice || ''}
-            </Text>
+            <Text style={styles.compareAtPriceText}>{regularPrice}</Text>
           )}
         </View>
       </View>
@@ -265,6 +265,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   );
 };
 
+// Styles remain the same
 const styles = StyleSheet.create({
   // Vertical Layout Styles
   container: {
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#82828282", // Changed from semi-transparent to solid white
+    backgroundColor: "#82828282",
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -313,8 +314,8 @@ const styles = StyleSheet.create({
   },
 
   favoriteButtonActive: {
-    backgroundColor: Colors.white, // Keep white background
-    borderColor: Colors.error, // Red border when active
+    backgroundColor: Colors.white,
+    borderColor: Colors.error,
   },
   
   addToCartButton: {

@@ -1,4 +1,4 @@
-// app/(tabs)/brand/[id].tsx - UPDATED
+// app/(tabs)/brand/[id].tsx - UPDATED with currency
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Heart, Plus, Check } from "lucide-react-native";
 import React, { useState, useMemo } from "react";
@@ -16,7 +16,7 @@ import {
 import Colors from "@/constants/colors";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice } from "@/utils/currency";
+import { useCurrency } from "@/contexts/CurrencyContext"; // Add this import
 import { ShippingStrip } from "@/components/ShippingStrip";
 import { useProductsByBrand } from "@/app/hooks/useProductsByBrand";
 
@@ -63,6 +63,7 @@ export default function BrandProductsScreen() {
 
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const { formatPrice, currentCurrency } = useCurrency(); // Add currency hook
   const [selectedTag, setSelectedTag] = useState<string>("All");
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
 
@@ -98,7 +99,7 @@ export default function BrandProductsScreen() {
         description: product.shortDescription || product.description || "",
         price: parseFloat(product.priceHtml?.finalPrice || "0"),
         compareAtPrice: parseFloat(product.priceHtml?.regularPrice || "0"),
-        currencyCode: "USD",
+        currencyCode: currentCurrency?.code || "USD", // Use current currency
         image: product.images?.[0]?.url || "",
         images: product.images?.map((img: any) => img.url) || [],
         brand: getProductBrand(product),
@@ -135,7 +136,7 @@ export default function BrandProductsScreen() {
         description: product.shortDescription || product.description || "",
         price: parseFloat(product.priceHtml?.finalPrice || "0"),
         compareAtPrice: parseFloat(product.priceHtml?.regularPrice || "0"),
-        currencyCode: "USD",
+        currencyCode: currentCurrency?.code || "USD", // Use current currency
         image: product.images?.[0]?.url || "",
         images: product.images?.map((img: any) => img.url) || [],
         brand: getProductBrand(product),
@@ -255,11 +256,11 @@ export default function BrandProductsScreen() {
           <View style={styles.priceRow}>
             {hasDiscount && (
               <Text style={styles.compareAtPriceText}>
-                {formatPrice(comparePrice, "USD")}
+                {formatPrice(comparePrice)} {/* Remove currency code */}
               </Text>
             )}
             <Text style={styles.priceText}>
-              {formatPrice(productPrice, "USD")}
+              {formatPrice(productPrice)} {/* Remove currency code */}
             </Text>
           </View>
         </View>

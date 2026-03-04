@@ -1,3 +1,4 @@
+// app/cart.tsx
 import {
   Minus,
   Plus,
@@ -24,12 +25,7 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { useCart } from "@/contexts/CartContext";
-import {
-  APP_CURRENCY,
-  convertCurrency,
-  formatPrice,
-  parseFormattedPrice,
-} from "@/utils/currency";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { ShippingStrip } from "@/components/ShippingStrip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -42,20 +38,19 @@ export default function CartScreen() {
     subtotal,
     shippingDiscounts,
     applicableShippingDiscount,
-    currencyCode,
-    getDiscountThreshold,
     loadCart,
     isLoading,
     cartDetails,
     hasError,
   } = useCart();
 
+  const { formatPrice, currentCurrency } = useCurrency(); // Add currency hook
   const { isAuthenticated } = useAuth();
   const { t, isRTL } = useLanguage();
 
   const [refreshing, setRefreshing] = useState(false);
   const [manualLoading, setManualLoading] = useState(false);
-  const displayCurrency = currencyCode || APP_CURRENCY;
+  const displayCurrency = currentCurrency?.code || 'USD';
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -264,13 +259,7 @@ export default function CartScreen() {
           style={[styles.itemsContainer, isRTL && styles.itemsContainerRTL]}
         >
           {items.map((item) => {
-            const isUnavailable =
-              !item.product.variantId || !item.product.inStock;
-            const convertedUnitPrice = convertCurrency(
-              item.product.price,
-              item.product.currencyCode,
-              displayCurrency,
-            );
+            const isUnavailable = !item.product.variantId || !item.product.inStock;
 
             return (
               <View
@@ -365,7 +354,7 @@ export default function CartScreen() {
                     <Text
                       style={[styles.itemPrice, isRTL && styles.itemPriceRTL]}
                     >
-                      {formatPrice(convertedUnitPrice, displayCurrency)}
+                      {formatPrice(item.product.price)}
                     </Text>
                     <Text
                       style={[
@@ -380,10 +369,7 @@ export default function CartScreen() {
                           isRTL && styles.itemTotalValueRTL,
                         ]}
                       >
-                        {formatPrice(
-                          convertedUnitPrice * item.quantity,
-                          displayCurrency,
-                        )}
+                        {formatPrice(item.product.price * item.quantity)}
                       </Text>
                     </Text>
                   </View>
@@ -480,10 +466,12 @@ export default function CartScreen() {
           </View>
         ) : shippingDiscounts.length > 0 ? (
           (() => {
-            const nextDiscountEntry = shippingDiscounts
+            const nextDiscountEntry = (
+              shippingDiscounts as Array<{ minOrderAmount: number }>
+            )
               .map((discount) => ({
                 discount,
-                threshold: getDiscountThreshold(),
+                threshold: discount.minOrderAmount,
               }))
               .filter((entry) => subtotal < entry.threshold)
               .sort((a, b) => a.threshold - b.threshold)[0];
@@ -491,11 +479,11 @@ export default function CartScreen() {
             if (nextDiscountEntry) {
               const remaining = Math.max(
                 0,
-                nextDiscountEntry.threshold - subtotal,
+                nextDiscountEntry.threshold - subtotal
               );
               const progress = Math.min(
                 (subtotal / nextDiscountEntry.threshold) * 100,
-                100,
+                100
               );
 
               return (
@@ -520,7 +508,7 @@ export default function CartScreen() {
                     >
                       {t("add")}{" "}
                       <Text style={styles.progressAmount}>
-                        {formatPrice(remaining, displayCurrency)}
+                        {formatPrice(remaining)}
                       </Text>{" "}
                       {t("forFreeShipping")}
                     </Text>
@@ -551,7 +539,7 @@ export default function CartScreen() {
             <Text
               style={[styles.summaryValue, isRTL && styles.summaryValueRTL]}
             >
-              {formatPrice(subtotal, displayCurrency)}
+              {formatPrice(subtotal)}
             </Text>
           </View>
 
@@ -569,7 +557,7 @@ export default function CartScreen() {
                   isRTL && styles.summaryValueRTL,
                 ]}
               >
-                -{formatPrice(cartDetails.discountAmount, displayCurrency)}
+                -{formatPrice(cartDetails.discountAmount)}
               </Text>
             </View>
           )}
@@ -584,7 +572,7 @@ export default function CartScreen() {
               <Text
                 style={[styles.summaryValue, isRTL && styles.summaryValueRTL]}
               >
-                {formatPrice(cartDetails.taxTotal, displayCurrency)}
+                {formatPrice(cartDetails.taxTotal)}
               </Text>
             </View>
           )}
@@ -610,10 +598,7 @@ export default function CartScreen() {
                 isRTL && styles.grandTotalValueRTL,
               ]}
             >
-              {formatPrice(
-                cartDetails?.grandTotal || subtotal,
-                displayCurrency,
-              )}
+              {formatPrice(cartDetails?.grandTotal || subtotal)}
             </Text>
           </View>
         </View>
@@ -662,7 +647,7 @@ export default function CartScreen() {
   );
 }
 
-// Add RTL styles at the end
+// All styles remain exactly the same
 const styles = StyleSheet.create({
   container: {
     flex: 1,
