@@ -427,6 +427,11 @@ const ar = {
   // Products Screen
   tryDifferentKeywords: "جرب كلمات بحث مختلفة",
   added: "تمت الإضافة",
+
+  // Login Prompt
+  loginRequired: "تسجيل الدخول مطلوب",
+  loginPromptMessage: "الرجاء تسجيل الدخول للمتابعة",
+  login: "تسجيل الدخول",
 };
 
 export type TranslationKeys = keyof typeof ar;

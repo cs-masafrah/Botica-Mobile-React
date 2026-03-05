@@ -429,6 +429,11 @@ const en = {
 
   // Product Card
   added: "Added",
+
+  // Login Prompt
+  loginRequired: "Login Required",
+  loginPromptMessage: "Please login to continue",
+  login: "Login",
 };
 
 export type TranslationKeys = keyof typeof en;
