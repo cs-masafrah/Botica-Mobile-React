@@ -127,7 +127,7 @@ export default function LoginScreen() {
 
             <Pressable
               style={[styles.forgotPassword, isRTL && styles.forgotPasswordRTL]}
-              onPress={() => Alert.alert(t("info"), t("resetPasswordMessage"))}
+              onPress={() => router.push("/forgot-password")}
             >
               <Text
                 style={[
