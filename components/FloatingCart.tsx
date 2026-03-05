@@ -1,19 +1,28 @@
-import { useCart } from '@/contexts/CartContext';
-import { useRouter, usePathname } from 'expo-router';
-import { ShoppingBag } from 'lucide-react-native';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useRef } from 'react';
+import { useCart } from "@/contexts/CartContext";
+import { useRouter, usePathname } from "expo-router";
+import { ShoppingBag } from "lucide-react-native";
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useEffect, useRef } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function FloatingCart() {
   const { itemCount } = useCart();
   const router = useRouter();
   const pathname = usePathname();
+  const { isRTL } = useLanguage();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
 
-  const isCartPage = pathname === '/cart';
-  const isCheckoutPage = pathname === '/checkout';
-  const isReelsPage = pathname === '/reels';
+  const isCartPage = pathname === "/cart";
+  const isCheckoutPage = pathname === "/checkout";
+  const isReelsPage = pathname === "/reels";
 
   useEffect(() => {
     if (itemCount > 0) {
@@ -49,7 +58,7 @@ export function FloatingCart() {
     ]).start();
 
     if (!isCartPage) {
-      router.push('/cart');
+      router.push("/cart");
     }
   };
 
@@ -67,6 +76,7 @@ export function FloatingCart() {
       style={[
         styles.container,
         isReelsPage && styles.containerReels,
+        isRTL && styles.containerRTL,
         {
           transform: [{ scale: scaleAnim }, { translateY }],
         },
@@ -76,14 +86,16 @@ export function FloatingCart() {
         onPress={handlePress}
         style={({ pressed }) => [
           styles.button,
-          pressed && Platform.OS === 'ios' && styles.buttonPressed,
+          pressed && Platform.OS === "ios" && styles.buttonPressed,
         ]}
       >
         <View style={styles.iconContainer}>
           <ShoppingBag size={28} color="#fff" strokeWidth={2} />
           {itemCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{itemCount > 99 ? '99+' : itemCount}</Text>
+            <View style={[styles.badge, isRTL && styles.badgeRTL]}>
+              <Text style={[styles.badgeText, isRTL && styles.badgeTextRTL]}>
+                {itemCount > 99 ? "99+" : itemCount}
+              </Text>
             </View>
           )}
         </View>
@@ -94,15 +106,19 @@ export function FloatingCart() {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 140,
     right: 20,
     zIndex: 1000,
     ...Platform.select({
       web: {
-        cursor: 'pointer' as const,
+        cursor: "pointer" as const,
       },
     }),
+  },
+  containerRTL: {
+    right: undefined,
+    left: 20,
   },
   containerReels: {
     bottom: 240,
@@ -111,10 +127,10 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#10B981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#10B981',
+    backgroundColor: "#10B981",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#10B981",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -127,25 +143,32 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   iconContainer: {
-    position: 'relative',
+    position: "relative",
   },
   badge: {
-    position: 'absolute',
+    position: "absolute",
     top: -8,
     right: -12,
-    backgroundColor: '#FF3B30',
+    backgroundColor: "#FF3B30",
     borderRadius: 12,
     minWidth: 24,
     height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 6,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
+  },
+  badgeRTL: {
+    right: undefined,
+    left: -12,
   },
   badgeText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '700' as const,
+    fontWeight: "700" as const,
+  },
+  badgeTextRTL: {
+    textAlign: "right",
   },
 });
