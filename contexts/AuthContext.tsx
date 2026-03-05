@@ -1,3 +1,5 @@
+// Update your AuthContext.tsx
+
 import createContextHook from '@nkzw/create-context-hook';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -88,6 +90,16 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     },
   });
 
+  // Add forgot password mutation
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (email: string) => {
+      return await authService.forgotPassword(email);
+    },
+    onSuccess: (result) => {
+      console.log('Forgot password request successful:', result);
+    },
+  });
+
   const isAuthenticated = !!customer && !!accessToken;
   const isLoading = checkAuthQuery.isLoading;
 
@@ -100,11 +112,14 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     signup: signupMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     updateProfile: updateProfileMutation.mutateAsync,
+    forgotPassword: forgotPasswordMutation.mutateAsync, // Add this line
     loginLoading: loginMutation.isPending,
     signupLoading: signupMutation.isPending,
     logoutLoading: logoutMutation.isPending,
     updateProfileLoading: updateProfileMutation.isPending,
+    forgotPasswordLoading: forgotPasswordMutation.isPending, // Add this line
     loginError: loginMutation.error,
     signupError: signupMutation.error,
+    forgotPasswordError: forgotPasswordMutation.error, // Add this line
   };
 });
