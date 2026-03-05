@@ -432,6 +432,17 @@ const ar = {
   loginRequired: "تسجيل الدخول مطلوب",
   loginPromptMessage: "الرجاء تسجيل الدخول للمتابعة",
   login: "تسجيل الدخول",
+
+  // Forgot Password translations
+    enterValidEmail: "الرجاء إدخال بريد إلكتروني صحيح",
+    forgotPasswordFailed: "فشل إرسال رابط إعادة تعيين كلمة المرور. الرجاء المحاولة مرة أخرى.",
+    enterEmailForReset: "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
+    sendResetLink: "إرسال رابط إعادة التعيين",
+    backToLogin: "العودة إلى تسجيل الدخول",
+    resetPasswordEmailSent: "تم إرسال البريد الإلكتروني!",
+    checkYourEmail: "تحقق من بريدك الإلكتروني",
+    resetPasswordEmailSentMessage: "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
+
 };
 
 export type TranslationKeys = keyof typeof ar;
