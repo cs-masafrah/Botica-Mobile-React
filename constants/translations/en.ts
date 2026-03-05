@@ -401,6 +401,28 @@ const en = {
   signupFailed: "Signup Failed",
   couldNotCreateAccount: "Could not create account",
   alreadyHaveAccount: "Already have an account?",
+
+  // Brand Products Screen
+  loadingBrandProducts: "Loading {brand} products...",
+  all: "All",
+  noProductsForBrand: "No products found for {brand}",
+
+  // Category Screen
+  category: "Category",
+  loadingProducts: "Loading products...",
+  noProductsInCategory: "No products found in this category",
+
+  // Product Detail Screen
+  loadingProduct: "Loading product...",
+  errorLoadingProduct: "Error Loading Product",
+  failedToLoadProduct: "Failed to load product",
+  productNotFound: "Product Not Found",
+  productNotFoundMessage: "The product you're looking for doesn't exist.",
+  inStock: "In Stock",
+  noDescription: "No description available.",
+  additionalInfo: "Additional Information",
+  anonymous: "Anonymous",
+  failedToAddToCart: "Failed to add to cart",
 };
 
 export type TranslationKeys = keyof typeof en;

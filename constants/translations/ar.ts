@@ -401,6 +401,28 @@ const ar = {
   signupFailed: "فشل إنشاء الحساب",
   couldNotCreateAccount: "تعذر إنشاء الحساب",
   alreadyHaveAccount: "لديك حساب بالفعل؟",
+
+  // Brand Products Screen
+  loadingBrandProducts: "جاري تحميل منتجات {brand}...",
+  all: "الكل",
+  noProductsForBrand: "لم يتم العثور على منتجات لـ {brand}",
+
+  // Category Screen
+  category: "الفئة",
+  loadingProducts: "جاري تحميل المنتجات...",
+  noProductsInCategory: "لم يتم العثور على منتجات في هذه الفئة",
+
+  // Product Detail Screen
+  loadingProduct: "جاري تحميل المنتج...",
+  errorLoadingProduct: "خطأ في تحميل المنتج",
+  failedToLoadProduct: "فشل تحميل المنتج",
+  productNotFound: "المنتج غير موجود",
+  productNotFoundMessage: "المنتج الذي تبحث عنه غير موجود.",
+  inStock: "متوفر",
+  noDescription: "لا يوجد وصف متاح.",
+  additionalInfo: "معلومات إضافية",
+  anonymous: "مجهول",
+  failedToAddToCart: "فشلت الإضافة إلى السلة",
 };
 
 export type TranslationKeys = keyof typeof ar;

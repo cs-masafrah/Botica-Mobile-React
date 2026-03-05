@@ -1,4 +1,4 @@
-// app/(tabs)/brand/[id].tsx - UPDATED with currency
+// app/(tabs)/brand/[id].tsx - UPDATED with currency and RTL support
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Heart, Plus, Check } from "lucide-react-native";
 import React, { useState, useMemo } from "react";
@@ -16,7 +16,8 @@ import {
 import Colors from "@/constants/colors";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useCart } from "@/contexts/CartContext";
-import { useCurrency } from "@/contexts/CurrencyContext"; // Add this import
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { ShippingStrip } from "@/components/ShippingStrip";
 import { useProductsByBrand } from "@/app/hooks/useProductsByBrand";
 
@@ -63,7 +64,8 @@ export default function BrandProductsScreen() {
 
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
-  const { formatPrice, currentCurrency } = useCurrency(); // Add currency hook
+  const { formatPrice, currentCurrency } = useCurrency();
+  const { t, isRTL } = useLanguage();
   const [selectedTag, setSelectedTag] = useState<string>("All");
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
 
@@ -99,7 +101,7 @@ export default function BrandProductsScreen() {
         description: product.shortDescription || product.description || "",
         price: parseFloat(product.priceHtml?.finalPrice || "0"),
         compareAtPrice: parseFloat(product.priceHtml?.regularPrice || "0"),
-        currencyCode: currentCurrency?.code || "USD", // Use current currency
+        currencyCode: currentCurrency?.code || "USD",
         image: product.images?.[0]?.url || "",
         images: product.images?.map((img: any) => img.url) || [],
         brand: getProductBrand(product),
@@ -136,7 +138,7 @@ export default function BrandProductsScreen() {
         description: product.shortDescription || product.description || "",
         price: parseFloat(product.priceHtml?.finalPrice || "0"),
         compareAtPrice: parseFloat(product.priceHtml?.regularPrice || "0"),
-        currencyCode: currentCurrency?.code || "USD", // Use current currency
+        currencyCode: currentCurrency?.code || "USD",
         image: product.images?.[0]?.url || "",
         images: product.images?.map((img: any) => img.url) || [],
         brand: getProductBrand(product),
@@ -181,7 +183,7 @@ export default function BrandProductsScreen() {
 
     return (
       <Pressable
-        style={styles.productCard}
+        style={[styles.productCard, isRTL && styles.productCardRTL]}
         onPress={() =>
           router.push({ pathname: "/product/[id]", params: { id: item.id } })
         }
@@ -193,14 +195,21 @@ export default function BrandProductsScreen() {
             <View style={[styles.productImage, styles.placeholderImage]} />
           )}
           {hasDiscount && (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountBadgeText}>
+            <View
+              style={[styles.discountBadge, isRTL && styles.discountBadgeRTL]}
+            >
+              <Text
+                style={[
+                  styles.discountBadgeText,
+                  isRTL && styles.discountBadgeTextRTL,
+                ]}
+              >
                 -{discountPercentage}%
               </Text>
             </View>
           )}
           <Pressable
-            style={styles.favoriteButton}
+            style={[styles.favoriteButton, isRTL && styles.favoriteButtonRTL]}
             onPress={(e) => {
               e.stopPropagation();
               toggleProductWishlist(item);
@@ -217,6 +226,7 @@ export default function BrandProductsScreen() {
             style={[
               styles.addToCartButton,
               isAdded && styles.addToCartButtonSuccess,
+              isRTL && styles.addToCartButtonRTL,
             ]}
             onPress={(e) => {
               e.stopPropagation();
@@ -231,36 +241,51 @@ export default function BrandProductsScreen() {
             )}
           </Pressable>
         </View>
-        <View style={styles.productInfo}>
+        <View style={[styles.productInfo, isRTL && styles.productInfoRTL]}>
           {brand && (
-            <Text style={styles.brandText} numberOfLines={1}>
+            <Text
+              style={[styles.brandText, isRTL && styles.brandTextRTL]}
+              numberOfLines={1}
+            >
               {brand}
             </Text>
           )}
-          <Text style={styles.productName} numberOfLines={2}>
+          <Text
+            style={[styles.productName, isRTL && styles.productNameRTL]}
+            numberOfLines={2}
+          >
             {item.name}
           </Text>
-          <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>
+          <View
+            style={[styles.ratingContainer, isRTL && styles.ratingContainerRTL]}
+          >
+            <Text style={[styles.ratingText, isRTL && styles.ratingTextRTL]}>
               ★{" "}
               {typeof item.averageRating === "number"
                 ? item.averageRating.toFixed(1)
                 : "0.0"}
             </Text>
             {(item.reviews?.length || 0) > 0 && (
-              <Text style={styles.reviewCount}>
+              <Text
+                style={[styles.reviewCount, isRTL && styles.reviewCountRTL]}
+              >
                 ({item.reviews?.length || 0})
               </Text>
             )}
           </View>
-          <View style={styles.priceRow}>
+          <View style={[styles.priceRow, isRTL && styles.priceRowRTL]}>
             {hasDiscount && (
-              <Text style={styles.compareAtPriceText}>
-                {formatPrice(comparePrice)} {/* Remove currency code */}
+              <Text
+                style={[
+                  styles.compareAtPriceText,
+                  isRTL && styles.compareAtPriceTextRTL,
+                ]}
+              >
+                {formatPrice(comparePrice)}
               </Text>
             )}
-            <Text style={styles.priceText}>
-              {formatPrice(productPrice)} {/* Remove currency code */}
+            <Text style={[styles.priceText, isRTL && styles.priceTextRTL]}>
+              {formatPrice(productPrice)}
             </Text>
           </View>
         </View>
@@ -269,7 +294,7 @@ export default function BrandProductsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       <Stack.Screen
         options={{
           title: brandName,
@@ -282,20 +307,32 @@ export default function BrandProductsScreen() {
       />
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
+        <View
+          style={[styles.loadingContainer, isRTL && styles.loadingContainerRTL]}
+        >
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>
-            Loading {brandName} products...
+          <Text style={[styles.loadingText, isRTL && styles.loadingTextRTL]}>
+            {t("loadingBrandProducts", { brand: brandName })}
           </Text>
         </View>
       ) : (
-        <View style={styles.contentContainer}>
+        <View
+          style={[styles.contentContainer, isRTL && styles.contentContainerRTL]}
+        >
           {allTags.length > 1 && (
-            <View style={styles.filterContainer}>
+            <View
+              style={[
+                styles.filterContainer,
+                isRTL && styles.filterContainerRTL,
+              ]}
+            >
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.tagsScroll}
+                contentContainerStyle={[
+                  styles.tagsScroll,
+                  isRTL && styles.tagsScrollRTL,
+                ]}
               >
                 {allTags.map((tag) => (
                   <Pressable
@@ -303,6 +340,7 @@ export default function BrandProductsScreen() {
                     style={[
                       styles.tagButton,
                       selectedTag === tag && styles.tagButtonActive,
+                      isRTL && styles.tagButtonRTL,
                     ]}
                     onPress={() => setSelectedTag(tag)}
                   >
@@ -310,9 +348,10 @@ export default function BrandProductsScreen() {
                       style={[
                         styles.tagText,
                         selectedTag === tag && styles.tagTextActive,
+                        isRTL && styles.tagTextRTL,
                       ]}
                     >
-                      {tag}
+                      {tag === "All" ? t("all") : tag}
                     </Text>
                   </Pressable>
                 ))}
@@ -324,15 +363,23 @@ export default function BrandProductsScreen() {
             renderItem={({ item, index }) => renderProduct(item, index)}
             keyExtractor={(item) => item.id}
             numColumns={3}
-            columnWrapperStyle={styles.row}
-            contentContainerStyle={styles.listContent}
+            columnWrapperStyle={[styles.row, isRTL && styles.rowRTL]}
+            contentContainerStyle={[
+              styles.listContent,
+              isRTL && styles.listContentRTL,
+            ]}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={false}
             key={selectedTag}
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
-                  No products found for {brandName}
+              <View
+                style={[
+                  styles.emptyContainer,
+                  isRTL && styles.emptyContainerRTL,
+                ]}
+              >
+                <Text style={[styles.emptyText, isRTL && styles.emptyTextRTL]}>
+                  {t("noProductsForBrand", { brand: brandName })}
                 </Text>
               </View>
             }
@@ -353,24 +400,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingContainerRTL: {},
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: Colors.textSecondary,
   },
+  loadingTextRTL: {
+    textAlign: "left",
+  },
   listContent: {
     padding: 20,
   },
+  listContentRTL: {},
   row: {
     gap: GAP,
     marginBottom: GAP,
     justifyContent: "flex-start",
     flexWrap: "nowrap",
+  },
+  rowRTL: {
+    // flexDirection: 'row-reverse',
   },
   productCard: {
     width: CARD_WIDTH,
@@ -383,6 +441,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  productCardRTL: {},
   imageContainer: {
     position: "relative" as const,
     width: "100%",
@@ -414,6 +473,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  favoriteButtonRTL: {
+    right: undefined,
+    left: 8,
+  },
   addToCartButton: {
     position: "absolute" as const,
     bottom: 8,
@@ -430,26 +493,39 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  addToCartButtonRTL: {
+    right: undefined,
+    left: 8,
+  },
   addToCartButtonSuccess: {
     backgroundColor: "#10B981",
   },
   productInfo: {
     padding: 12,
   },
+  productInfoRTL: {
+    alignItems: "flex-start",
+  },
   brandText: {
     fontSize: 10,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.textSecondary,
-    textTransform: "uppercase" as const,
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 2,
   },
+  brandTextRTL: {
+    textAlign: "left",
+  },
   productName: {
     fontSize: 14,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 6,
     lineHeight: 18,
+  },
+  productNameRTL: {
+    textAlign: "left",
   },
   ratingContainer: {
     flexDirection: "row",
@@ -457,14 +533,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 4,
   },
+  ratingContainerRTL: {
+    // flexDirection: "row-reverse",
+  },
   ratingText: {
     fontSize: 12,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.text,
+  },
+  ratingTextRTL: {
+    textAlign: "left",
   },
   reviewCount: {
     fontSize: 11,
     color: Colors.textSecondary,
+  },
+  reviewCountRTL: {
+    textAlign: "left",
   },
   priceRow: {
     flexDirection: "row",
@@ -472,16 +557,25 @@ const styles = StyleSheet.create({
     gap: 6,
     flexWrap: "wrap",
   },
+  priceRowRTL: {
+    // flexDirection: "row-reverse",
+  },
   priceText: {
     fontSize: 16,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.primary,
+  },
+  priceTextRTL: {
+    textAlign: "left",
   },
   compareAtPriceText: {
     fontSize: 13,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.textSecondary,
-    textDecorationLine: "line-through" as const,
+    textDecorationLine: "line-through",
+  },
+  compareAtPriceTextRTL: {
+    textAlign: "left",
   },
   discountBadge: {
     position: "absolute" as const,
@@ -492,10 +586,17 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
+  discountBadgeRTL: {
+    left: undefined,
+    right: 8,
+  },
   discountBadgeText: {
     color: Colors.white,
     fontSize: 10,
-    fontWeight: "700" as const,
+    fontWeight: "700",
+  },
+  discountBadgeTextRTL: {
+    textAlign: "left",
   },
   emptyContainer: {
     flex: 1,
@@ -503,22 +604,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 60,
   },
+  emptyContainerRTL: {},
   emptyText: {
     fontSize: 16,
     color: Colors.textSecondary,
   },
+  emptyTextRTL: {
+    textAlign: "left",
+  },
   contentContainer: {
     flex: 1,
   },
+  contentContainerRTL: {},
   filterContainer: {
     backgroundColor: Colors.background,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border || "#E5E5E5",
   },
+  filterContainerRTL: {},
   tagsScroll: {
     paddingHorizontal: 20,
     gap: 8,
+  },
+  tagsScrollRTL: {
+    // flexDirection: "row-reverse",
   },
   tagButton: {
     paddingHorizontal: 16,
@@ -528,14 +638,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border || "#E5E5E5",
   },
+  tagButtonRTL: {},
   tagButtonActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
   tagText: {
     fontSize: 14,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.text,
+  },
+  tagTextRTL: {
+    textAlign: "left",
   },
   tagTextActive: {
     color: Colors.white,
