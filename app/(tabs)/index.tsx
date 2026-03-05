@@ -37,6 +37,7 @@ import { formatPrice } from "@/utils/currency";
 import { ShippingStrip } from "@/components/ShippingStrip";
 import { useThemes } from "../hooks/useThemes";
 import ThemeFactory from "@/components/themes/ThemeFactory";
+import ProductByBrandTheme from "@/components/themes/ProductByBrandTheme";
 import {
   useAllProducts,
   Product as BagistoProduct,
@@ -460,7 +461,7 @@ export default function HomeScreen() {
       console.log(
         `🎨 Rendering theme (sortOrder: ${theme.sortOrder}): ${theme.id} - ${theme.type} - ${theme.name}`,
       );
-      return <ThemeFactory key={theme.id} theme={theme} />;
+      return <ThemeFactory key={theme.id} theme={theme} locale={locale}/>;
     });
   };
 

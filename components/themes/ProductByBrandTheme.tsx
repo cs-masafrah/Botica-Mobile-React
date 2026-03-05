@@ -14,14 +14,13 @@ import { Theme } from "@/types/theme";
 import { useBrands } from "@/app/hooks/useBrands";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-
 interface ProductByBrandThemeProps {
   theme: Theme;
   locale: string;
 }
 
 const BRAND_SIZE = 100;
-const MAX_WORDS_PER_LINE = 2; // Max words per line
+const MAX_WORDS_PER_LINE = 2;
 
 const splitTwoLinesByWords = (text: string) => {
   if (!text) return { line1: "", line2: "" };
@@ -66,7 +65,8 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
     translation?.options?.title || t("shopByBrand") || "Shop By Brand";
   const subtitle = t("discoverLuxuryBrands") || "Discover luxury brands";
 
-  const { data: brands, isLoading } = useBrands();
+  // Pass locale to useBrands hook
+  const { data: brands, isLoading } = useBrands({ locale });
 
   if (isLoading) {
     return (
@@ -99,8 +99,8 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
           isRTL && styles.listContentRTL,
         ]}
         renderItem={({ item }) => {
-          // Split the name by words
           const { line1, line2 } = splitTwoLinesByWords(item.name || "");
+
           return (
             <Pressable
               style={[styles.brandItem, isRTL && styles.brandItemRTL]}
@@ -140,6 +140,8 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
                     styles.brandNameLine,
                     isRTL && styles.brandNameLineRTL,
                   ]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {line1}
                 </Text>
@@ -149,6 +151,8 @@ const ProductByBrandTheme: React.FC<ProductByBrandThemeProps> = ({
                       styles.brandNameLine,
                       isRTL && styles.brandNameLineRTL,
                     ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
                   >
                     {line2}
                   </Text>
@@ -220,20 +224,16 @@ const styles = StyleSheet.create({
     // Add any RTL specific styles if needed
   },
 
-  /* ===== CIRCLE IMAGE ===== */
   circle: {
     width: BRAND_SIZE,
     height: BRAND_SIZE,
     borderRadius: BRAND_SIZE / 2,
     backgroundColor: "#FFFFFF",
-
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.7)",
-
     padding: 14,
     justifyContent: "center",
     alignItems: "center",
-
     elevation: 0,
     shadowColor: "transparent",
   },
@@ -249,10 +249,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBackground,
   },
 
-  /* ===== BRAND NAME CONTAINER ===== */
   brandNameContainer: {
     marginTop: 12,
-    height: 36, // Fixed height for 2 lines
+    height: 36,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -272,13 +271,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  /* ===== COUNT ===== */
   brandCount: {
     marginTop: 4,
     fontSize: 12,
     color: "#9CA3AF",
     textAlign: "center",
-    height: 16, // keeps layout stable
+    height: 16,
   },
   brandCountRTL: {
     textAlign: "center",
