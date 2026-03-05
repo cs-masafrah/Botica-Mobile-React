@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
-import { ArrowLeft, Save } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { router } from "expo-router";
+import { ArrowLeft, Save } from "lucide-react-native";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,24 +13,26 @@ import {
   TextInput,
   View,
   StatusBar,
-} from 'react-native';
-import Colors from '@/constants/colors';
-import { useAuth } from '@/contexts/AuthContext';
+} from "react-native";
+import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function EditProfileScreen() {
   const { customer, updateProfile, updateProfileLoading } = useAuth();
+  const { t, isRTL } = useLanguage();
 
   const [formData, setFormData] = useState({
-    firstName: customer?.firstName || '',
-    lastName: customer?.lastName || '',
-    email: customer?.email || '',
-    phone: customer?.phone || '',
-    gender: customer?.gender || '',
-    dateOfBirth: customer?.dateOfBirth || '',
+    firstName: customer?.firstName || "",
+    lastName: customer?.lastName || "",
+    email: customer?.email || "",
+    phone: customer?.phone || "",
+    gender: customer?.gender || "",
+    dateOfBirth: customer?.dateOfBirth || "",
 
-    currentPassword: '',
-    newPassword: '',
-    newPasswordConfirmation: '',
+    currentPassword: "",
+    newPassword: "",
+    newPasswordConfirmation: "",
 
     newsletterSubscriber: false,
   });
@@ -45,7 +47,7 @@ export default function EditProfileScreen() {
         formData.newPassword &&
         formData.newPassword !== formData.newPasswordConfirmation
       ) {
-        Alert.alert('Error', 'Passwords do not match');
+        Alert.alert(t("error"), t("passwordsDoNotMatch"));
         return;
       }
 
@@ -59,160 +61,227 @@ export default function EditProfileScreen() {
 
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
-        newPasswordConfirmation:
-          formData.newPasswordConfirmation,
+        newPasswordConfirmation: formData.newPasswordConfirmation,
 
         newsletterSubscriber: formData.newsletterSubscriber,
         image: null,
       });
 
-      Alert.alert('Success', 'Profile updated successfully', [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert(t("success"), t("profileUpdatedSuccess"), [
+        { text: t("ok"), onPress: () => router.back() },
       ]);
     } catch (error) {
       Alert.alert(
-        'Update Failed',
-        error instanceof Error ? error.message : 'Something went wrong'
+        t("updateFailed"),
+        error instanceof Error ? error.message : t("somethingWentWrong"),
       );
     }
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, isRTL && styles.containerRTL]}
+      behavior="padding"
     >
-      {/* <StatusBar barStyle="dark-content" />
-      
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color={Colors.text} />
+      {/* Uncomment if you want header */}
+      {/* <View style={[styles.header, isRTL && styles.headerRTL]}>
+        <Pressable style={[styles.backButton, isRTL && styles.backButtonRTL]} onPress={() => router.back()}>
+          <ArrowLeft size={24} color={Colors.text} style={isRTL && { transform: [{ scaleX: -1 }] }} />
         </Pressable>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={[styles.headerTitle, isRTL && styles.headerTitleRTL]}>
+          {t('editProfile')}
+        </Text>
         <View style={styles.headerRight} />
       </View> */}
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
+        <View style={[styles.section, isRTL && styles.sectionRTL]}>
+          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+            {t("personalInformation")}
+          </Text>
 
           {/** First Name */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>First Name</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("firstName")}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && styles.inputRTL]}
               value={formData.firstName}
-              onChangeText={(v) => updateField('firstName', v)}
+              onChangeText={(v) => updateField("firstName", v)}
+              placeholder={t("enterFirstName")}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
           {/** Last Name */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Last Name</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("lastName")}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && styles.inputRTL]}
               value={formData.lastName}
-              onChangeText={(v) => updateField('lastName', v)}
+              onChangeText={(v) => updateField("lastName", v)}
+              placeholder={t("enterLastName")}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
           {/** Email */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("email")}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && styles.inputRTL]}
               value={formData.email}
               autoCapitalize="none"
               keyboardType="email-address"
-              onChangeText={(v) => updateField('email', v)}
+              onChangeText={(v) => updateField("email", v)}
+              placeholder={t("enterEmail")}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
           {/** Phone */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Phone</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("phone")}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && styles.inputRTL]}
               keyboardType="phone-pad"
               value={formData.phone}
-              onChangeText={(v) => updateField('phone', v)}
+              onChangeText={(v) => updateField("phone", v)}
+              placeholder={t("enterPhone")}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
           {/** Gender */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Gender</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("gender")}
+            </Text>
             <TextInput
-              style={styles.input}
-              placeholder="MALE / FEMALE / OTHER"
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={t("genderPlaceholder")}
               value={formData.gender}
-              onChangeText={(v) => updateField('gender', v)}
+              onChangeText={(v) => updateField("gender", v)}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
           {/** DOB */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Date of Birth</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("dateOfBirth")}
+            </Text>
             <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={t("dobPlaceholder")}
               value={formData.dateOfBirth}
-              onChangeText={(v) => updateField('dateOfBirth', v)}
+              onChangeText={(v) => updateField("dateOfBirth", v)}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
-          <Text style={[styles.sectionTitle, styles.securityTitle]}>Security</Text>
+          <Text
+            style={[
+              styles.sectionTitle,
+              styles.securityTitle,
+              isRTL && styles.sectionTitleRTL,
+            ]}
+          >
+            {t("security")}
+          </Text>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Current Password</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("currentPassword")}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && styles.inputRTL]}
               secureTextEntry
               value={formData.currentPassword}
-              onChangeText={(v) => updateField('currentPassword', v)}
+              onChangeText={(v) => updateField("currentPassword", v)}
+              placeholder={t("enterCurrentPassword")}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>New Password</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("newPassword")}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && styles.inputRTL]}
               secureTextEntry
               value={formData.newPassword}
-              onChangeText={(v) => updateField('newPassword', v)}
+              onChangeText={(v) => updateField("newPassword", v)}
+              placeholder={t("enterNewPassword")}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm New Password</Text>
+          <View
+            style={[styles.inputContainer, isRTL && styles.inputContainerRTL]}
+          >
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("confirmNewPassword")}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && styles.inputRTL]}
               secureTextEntry
               value={formData.newPasswordConfirmation}
-              onChangeText={(v) =>
-                updateField('newPasswordConfirmation', v)
-              }
+              onChangeText={(v) => updateField("newPasswordConfirmation", v)}
+              placeholder={t("enterConfirmPassword")}
+              placeholderTextColor={Colors.textSecondary}
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.label}>Newsletter Subscription</Text>
+          <View style={[styles.switchRow, isRTL && styles.switchRowRTL]}>
+            <Text style={[styles.label, isRTL && styles.labelRTL]}>
+              {t("newsletterSubscription")}
+            </Text>
             <Switch
               value={formData.newsletterSubscriber}
-              onValueChange={(v) =>
-                updateField('newsletterSubscriber', v)
-              }
+              onValueChange={(v) => updateField("newsletterSubscriber", v)}
+              trackColor={{ false: Colors.border, true: Colors.primary }}
+              thumbColor={Colors.white}
             />
           </View>
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isRTL && styles.footerRTL]}>
         <Pressable
-          style={[styles.saveButton, updateProfileLoading && styles.saveButtonDisabled]}
+          style={[
+            styles.saveButton,
+            updateProfileLoading && styles.saveButtonDisabled,
+            isRTL && styles.saveButtonRTL,
+          ]}
           onPress={handleSave}
           disabled={updateProfileLoading}
         >
@@ -221,7 +290,14 @@ export default function EditProfileScreen() {
           ) : (
             <>
               <Save size={20} color={Colors.white} />
-              <Text style={styles.saveButtonText}>Save Changes</Text>
+              <Text
+                style={[
+                  styles.saveButtonText,
+                  isRTL && styles.saveButtonTextRTL,
+                ]}
+              >
+                {t("saveChanges")}
+              </Text>
             </>
           )}
         </Pressable>
@@ -231,14 +307,17 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: Colors.background 
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  containerRTL: {
+    direction: "rtl",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
@@ -246,46 +325,65 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  headerRTL: {
+    // flexDirection: "row-reverse",
+  },
   backButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: -8,
   },
-  headerTitle: { 
-    fontSize: 18, 
-    fontWeight: '700', 
-    color: Colors.text 
+  backButtonRTL: {
+    marginLeft: 0,
+    marginRight: -8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  headerTitleRTL: {
+    textAlign: "right",
   },
   headerRight: {
     width: 40,
   },
-  content: { 
-    flex: 1 
+  content: {
+    flex: 1,
   },
-  section: { 
-    padding: 16, 
-    backgroundColor: Colors.white, 
-    marginTop: 1 
+  section: {
+    padding: 16,
+    backgroundColor: Colors.white,
+    marginTop: 1,
   },
-  sectionTitle: { 
-    fontSize: 16, 
-    fontWeight: '700', 
+  sectionRTL: {},
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
     marginBottom: 16,
     color: Colors.text,
+  },
+  sectionTitleRTL: {
+    textAlign: "right",
+    alignSelf: "flex-start",
   },
   securityTitle: {
     marginTop: 8,
   },
-  inputContainer: { 
-    marginBottom: 16 
+  inputContainer: {
+    marginBottom: 16,
   },
-  label: { 
-    fontSize: 14, 
-    fontWeight: '600', 
+  inputContainerRTL: {},
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
     marginBottom: 8,
     color: Colors.text,
+  },
+  labelRTL: {
+    textAlign: "left",
   },
   input: {
     height: 48,
@@ -297,26 +395,33 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     color: Colors.text,
   },
+  inputRTL: {
+    textAlign: "right",
+  },
   switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 8,
     paddingVertical: 8,
   },
-  footer: { 
-    padding: 16, 
+  switchRowRTL: {
+    // flexDirection: "row-reverse",
+  },
+  footer: {
+    padding: 16,
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
+  footerRTL: {},
   saveButton: {
     backgroundColor: Colors.primary,
     borderRadius: 14,
     height: 52,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: 8,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 3 },
@@ -324,12 +429,18 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
-  saveButtonDisabled: { 
-    opacity: 0.6 
+  saveButtonRTL: {
+    // flexDirection: "row-reverse",
   },
-  saveButtonText: { 
-    fontSize: 16, 
-    fontWeight: '700', 
-    color: Colors.white 
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.white,
+  },
+  saveButtonTextRTL: {
+    textAlign: "right",
   },
 });

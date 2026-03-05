@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionHeaderRTL: {
-    alignItems: "flex-end",
+    alignItems: "flex-start",
   },
   title: {
     fontSize: 24,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   titleRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   subtitle: {
     fontSize: 14,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   subtitleRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   grid: {
     flexDirection: "row",

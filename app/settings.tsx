@@ -1,5 +1,5 @@
-// app/settings.tsx - Fixed with proper function ordering
-import { router, Stack } from 'expo-router';
+// app/settings.tsx - Only fixing the currency translation issue
+import { router, Stack } from "expo-router";
 import {
   Bell,
   ChevronRight,
@@ -15,8 +15,8 @@ import {
   X,
   Check,
   TrendingUp,
-} from 'lucide-react-native';
-import React, { useState } from 'react';
+} from "lucide-react-native";
+import React, { useState } from "react";
 import {
   Alert,
   Linking,
@@ -29,16 +29,16 @@ import {
   Modal,
   TouchableOpacity,
   FlatList,
-} from 'react-native';
-import Colors from '@/constants/colors';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useCurrency } from '@/contexts/CurrencyContext';
+} from "react-native";
+import Colors from "@/constants/colors";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 type SettingItem = {
   id: string;
   icon: React.ComponentType<{ size: number; color: string }>;
   label: string;
-  type: 'toggle' | 'navigation' | 'action';
+  type: "toggle" | "navigation" | "action";
   value?: boolean;
   badge?: string;
   onToggle?: (value: boolean) => void;
@@ -51,34 +51,36 @@ type SettingSection = {
 };
 
 export default function SettingsScreen() {
-  const { locale, changeLanguage } = useLanguage();
-  const { currencies, currentCurrency, baseCurrency, setCurrency, formatPrice } = useCurrency();
+  const { t, locale, changeLanguage, isRTL } = useLanguage();
+  const {
+    currencies,
+    currentCurrency,
+    baseCurrency,
+    setCurrency,
+    formatPrice,
+  } = useCurrency();
   const [pushNotifications, setPushNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [orderUpdates, setOrderUpdates] = useState(true);
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
 
   // ========== HANDLER FUNCTIONS (Declared before they're used) ==========
-  
+
   const handleLanguageChange = () => {
-    Alert.alert(
-      'Change Language',
-      'Select your preferred language',
-      [
-        {
-          text: 'English',
-          onPress: () => changeLanguage('en'),
-        },
-        {
-          text: 'العربية',
-          onPress: () => changeLanguage('ar'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+    Alert.alert(t("changeLanguage"), t("selectLanguage"), [
+      {
+        text: "English",
+        onPress: () => changeLanguage("en"),
+      },
+      {
+        text: "العربية",
+        onPress: () => changeLanguage("ar"),
+      },
+      {
+        text: t("cancel"),
+        style: "cancel",
+      },
+    ]);
   };
 
   const handleCurrencyPress = () => {
@@ -91,168 +93,158 @@ export default function SettingsScreen() {
   };
 
   const handlePrivacyPolicy = () => {
-    Alert.alert(
-      'Privacy Policy',
-      'We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we handle your personal data when you visit our app and tell you about your privacy rights.\n\nData Collection:\n• Personal identification information\n• Order and purchase history\n• Delivery addresses\n• Payment information\n\nData Usage:\n• Process orders\n• Improve our services\n• Send promotional offers (with consent)\n• Customer support\n\nData Protection:\nWe implement security measures to maintain the safety of your personal information.\n\nFor more details, please contact our support team.',
-      [{ text: 'OK' }]
-    );
+    Alert.alert(t("privacyPolicy"), t("privacyPolicyText"), [
+      { text: t("ok") },
+    ]);
   };
 
   const handleTermsConditions = () => {
-    Alert.alert(
-      'Terms & Conditions',
-      'Welcome to our Beauty Shop App. By accessing and using this application, you accept and agree to be bound by the terms and conditions.\n\nAccount Terms:\n• You must be 18 years or older\n• Provide accurate account information\n• Keep your password secure\n\nOrders & Payment:\n• Prices are subject to change\n• Payment must be made at time of order\n• We reserve the right to refuse any order\n\nShipping & Returns:\n• Delivery times are estimates\n• Return policy: 14 days from delivery\n• Products must be unused and in original packaging\n\nIntellectual Property:\nAll content is owned by us and protected by copyright laws.\n\nContact: support@beautyapp.com',
-      [{ text: 'OK' }]
-    );
+    Alert.alert(t("termsConditions"), t("termsConditionsText"), [
+      { text: t("ok") },
+    ]);
   };
 
   const handleHelpSupport = () => {
-    Linking.openURL('mailto:support@beautyapp.com');
+    Linking.openURL("mailto:support@beautyapp.com");
   };
 
   const handleAbout = () => {
-    Alert.alert(
-      'About Beauty App',
-      'Version 1.0.0\n\nYour premium destination for authentic beauty and cosmetic products. We curate the finest selection of makeup, skincare, and beauty tools from renowned brands worldwide.\n\nOur Mission:\nTo make premium beauty products accessible to everyone while ensuring authenticity and quality.\n\nFeatures:\n• Authentic products guaranteed\n• Fast & secure delivery\n• Easy returns policy\n• 24/7 customer support\n• Exclusive deals & offers\n\nThank you for choosing us!\n\n© 2025 Beauty App. All rights reserved.',
-      [{ text: 'OK' }]
-    );
+    Alert.alert(t("aboutApp"), t("aboutAppText"), [{ text: t("ok") }]);
   };
 
   const handleRateApp = () => {
-    Alert.alert(
-      'Rate Our App',
-      'Love our app? Please take a moment to rate us on the App Store. Your feedback helps us improve!',
-      [
-        {
-          text: 'Rate Now',
-          onPress: () => {
-            Alert.alert('Thank You!', 'This would redirect to the App Store in a production app.');
-          },
+    Alert.alert(t("rateOurApp"), t("rateAppMessage"), [
+      {
+        text: t("rateNow"),
+        onPress: () => {
+          Alert.alert(t("thankYou"), t("appStoreRedirect"));
         },
-        {
-          text: 'Maybe Later',
-          style: 'cancel',
-        },
-      ]
-    );
+      },
+      {
+        text: t("maybeLater"),
+        style: "cancel",
+      },
+    ]);
   };
 
   // ========== SECTIONS ARRAY (Now after all handlers are declared) ==========
-  
+
   const sections: SettingSection[] = [
     {
-      title: 'General',
+      title: t("general"),
       items: [
         {
-          id: 'language',
+          id: "language",
           icon: Globe,
-          label: 'Language',
-          type: 'action',
-          badge: locale === 'en' ? 'English' : 'العربية',
+          label: t("language"),
+          type: "action",
+          badge: locale === "en" ? t("english") : t("arabic"),
           onPress: handleLanguageChange,
         },
         {
-          id: 'currency',
+          id: "currency",
           icon: DollarSign,
-          label: 'Currency',
-          type: 'action',
-          badge: currentCurrency ? `${currentCurrency.code} (${currentCurrency.symbol})` : 'USD ($)',
+          label: t("currency"),
+          type: "action",
+          badge: currentCurrency
+            ? `${currentCurrency.code} (${currentCurrency.symbol})`
+            : "USD ($)",
           onPress: handleCurrencyPress,
         },
         {
-          id: 'customizeHomepage',
+          id: "customizeHomepage",
           icon: Layout,
-          label: 'Customize Homepage',
-          type: 'navigation',
-          onPress: () => router.push('/customize-homepage' as any),
+          label: t("customizeHomepage"),
+          type: "navigation",
+          onPress: () => router.push("/customize-homepage" as any),
         },
       ],
     },
 
     {
-      title: 'Notifications',
+      title: t("notifications"),
       items: [
         {
-          id: 'pushNotifications',
+          id: "pushNotifications",
           icon: Bell,
-          label: 'Push Notifications',
-          type: 'toggle',
+          label: t("pushNotifications"),
+          type: "toggle",
           value: pushNotifications,
           onToggle: setPushNotifications,
         },
         {
-          id: 'orderUpdates',
+          id: "orderUpdates",
           icon: Bell,
-          label: 'Order Updates',
-          type: 'toggle',
+          label: t("orderUpdates"),
+          type: "toggle",
           value: orderUpdates,
           onToggle: setOrderUpdates,
         },
         {
-          id: 'emailNotifications',
+          id: "emailNotifications",
           icon: Mail,
-          label: 'Email Notifications',
-          type: 'toggle',
+          label: t("emailNotifications"),
+          type: "toggle",
           value: emailNotifications,
           onToggle: setEmailNotifications,
         },
       ],
     },
     {
-      title: 'Support',
+      title: t("support"),
       items: [
         {
-          id: 'help',
+          id: "help",
           icon: HelpCircle,
-          label: 'Help & Support',
-          type: 'navigation',
+          label: t("helpSupport"),
+          type: "navigation",
           onPress: handleHelpSupport,
         },
         {
-          id: 'contact',
+          id: "contact",
           icon: Mail,
-          label: 'Contact Us',
-          type: 'navigation',
-          badge: 'support@beautyapp.com',
-          onPress: () => Linking.openURL('mailto:support@beautyapp.com'),
+          label: t("contactUs"),
+          type: "navigation",
+          badge: "support@beautyapp.com",
+          onPress: () => Linking.openURL("mailto:support@beautyapp.com"),
         },
       ],
     },
     {
-      title: 'Legal',
+      title: t("legal"),
       items: [
         {
-          id: 'privacy',
+          id: "privacy",
           icon: Shield,
-          label: 'Privacy Policy',
-          type: 'navigation',
+          label: t("privacyPolicy"),
+          type: "navigation",
           onPress: handlePrivacyPolicy,
         },
         {
-          id: 'terms',
+          id: "terms",
           icon: FileText,
-          label: 'Terms & Conditions',
-          type: 'navigation',
+          label: t("termsConditions"),
+          type: "navigation",
           onPress: handleTermsConditions,
         },
       ],
     },
     {
-      title: 'About',
+      title: t("about"),
       items: [
         {
-          id: 'about',
+          id: "about",
           icon: Info,
-          label: 'About App',
-          type: 'navigation',
-          badge: 'v1.0.0',
+          label: t("aboutApp"),
+          type: "navigation",
+          badge: "v1.0.0",
           onPress: handleAbout,
         },
         {
-          id: 'rate',
+          id: "rate",
           icon: Star,
-          label: 'Rate Our App',
-          type: 'navigation',
+          label: t("rateOurApp"),
+          type: "navigation",
           onPress: handleRateApp,
         },
       ],
@@ -260,40 +252,40 @@ export default function SettingsScreen() {
   ];
 
   // ========== HELPER FUNCTIONS for Currency Modal ==========
-  
+
   const getEquivalentAmount = (currency: any) => {
-    if (!baseCurrency) return '';
-    
+    if (!baseCurrency) return "";
+
     if (currency.code === baseCurrency.code) {
       return `1 ${baseCurrency.code} = 1 ${currency.code}`;
     }
-    
+
     if (currency.exchangeRate) {
       return `1 ${baseCurrency.code} = ${currency.exchangeRate.rate} ${currency.code}`;
     }
-    
-    return '';
+
+    return "";
   };
 
   const getExampleConversion = (currency: any) => {
-    if (!baseCurrency) return '';
-    
+    if (!baseCurrency) return "";
+
     const exampleAmount = 100;
-    
+
     if (currency.code === baseCurrency.code) {
       return formatPrice(exampleAmount);
     }
-    
+
     if (currency.exchangeRate) {
       const converted = exampleAmount * currency.exchangeRate.rate;
       return `${formatPrice(exampleAmount)} = ${currency.symbol}${converted.toFixed(2)}`;
     }
-    
-    return '';
+
+    return "";
   };
 
   // ========== RENDER FUNCTIONS ==========
-  
+
   const renderSettingItem = (item: SettingItem) => {
     const Icon = item.icon;
 
@@ -303,22 +295,33 @@ export default function SettingsScreen() {
         style={({ pressed }) => [
           styles.settingItem,
           pressed && styles.settingItemPressed,
+          isRTL && styles.settingItemRTL,
         ]}
-        onPress={item.type === 'toggle' ? undefined : item.onPress}
+        onPress={item.type === "toggle" ? undefined : item.onPress}
       >
-        <View style={styles.settingItemLeft}>
-          <View style={styles.iconContainer}>
+        <View
+          style={[styles.settingItemLeft, isRTL && styles.settingItemLeftRTL]}
+        >
+          <View
+            style={[styles.iconContainer, isRTL && styles.iconContainerRTL]}
+          >
             <Icon size={20} color={Colors.primary} />
           </View>
-          <Text style={styles.settingLabel}>{item.label}</Text>
+          <Text style={[styles.settingLabel, isRTL && styles.settingLabelRTL]}>
+            {item.label}
+          </Text>
         </View>
 
-        <View style={styles.settingItemRight}>
+        <View
+          style={[styles.settingItemRight, isRTL && styles.settingItemRightRTL]}
+        >
           {item.badge && (
-            <Text style={styles.badge}>{item.badge}</Text>
+            <Text style={[styles.badge, isRTL && styles.badgeRTL]}>
+              {item.badge}
+            </Text>
           )}
-          
-          {item.type === 'toggle' && item.onToggle && (
+
+          {item.type === "toggle" && item.onToggle && (
             <Switch
               value={item.value}
               onValueChange={item.onToggle}
@@ -327,13 +330,21 @@ export default function SettingsScreen() {
               ios_backgroundColor={Colors.border}
             />
           )}
-          
-          {item.type === 'navigation' && (
-            <ChevronRight size={20} color={Colors.textSecondary} />
+
+          {item.type === "navigation" && (
+            <ChevronRight
+              size={20}
+              color={Colors.textSecondary}
+              style={isRTL && { transform: [{ scaleX: -1 }] }}
+            />
           )}
-          
-          {item.type === 'action' && (
-            <ChevronRight size={20} color={Colors.textSecondary} />
+
+          {item.type === "action" && (
+            <ChevronRight
+              size={20}
+              color={Colors.textSecondary}
+              style={isRTL && { transform: [{ scaleX: -1 }] }}
+            />
           )}
         </View>
       </Pressable>
@@ -348,16 +359,26 @@ export default function SettingsScreen() {
       visible={currencyModalVisible}
       onRequestClose={() => setCurrencyModalVisible(false)}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+      <View style={[styles.modalOverlay, isRTL && styles.modalOverlayRTL]}>
+        <View style={[styles.modalContent, isRTL && styles.modalContentRTL]}>
           {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <View style={styles.modalHeaderLeft}>
+          <View style={[styles.modalHeader, isRTL && styles.modalHeaderRTL]}>
+            <View
+              style={[
+                styles.modalHeaderLeft,
+                isRTL && styles.modalHeaderLeftRTL,
+              ]}
+            >
               <DollarSign size={24} color={Colors.primary} />
-              <Text style={styles.modalTitle}>Select Currency</Text>
+              <Text style={[styles.modalTitle, isRTL && styles.modalTitleRTL]}>
+                {t("selectCurrency")}
+              </Text>
             </View>
             <TouchableOpacity
-              style={styles.modalCloseButton}
+              style={[
+                styles.modalCloseButton,
+                isRTL && styles.modalCloseButtonRTL,
+              ]}
               onPress={() => setCurrencyModalVisible(false)}
             >
               <X size={24} color={Colors.textSecondary} />
@@ -366,17 +387,46 @@ export default function SettingsScreen() {
 
           {/* Base Currency Info */}
           {baseCurrency && (
-            <View style={styles.baseCurrencyInfo}>
-              <View style={styles.baseCurrencyBadge}>
+            <View
+              style={[
+                styles.baseCurrencyInfo,
+                isRTL && styles.baseCurrencyInfoRTL,
+              ]}
+            >
+              <View
+                style={[
+                  styles.baseCurrencyBadge,
+                  isRTL && styles.baseCurrencyBadgeRTL,
+                ]}
+              >
                 <TrendingUp size={16} color={Colors.white} />
-                <Text style={styles.baseCurrencyBadgeText}>Base Currency</Text>
+                <Text
+                  style={[
+                    styles.baseCurrencyBadgeText,
+                    isRTL && styles.baseCurrencyBadgeTextRTL,
+                  ]}
+                >
+                  {t("baseCurrency")}
+                </Text>
               </View>
-              <Text style={styles.baseCurrencyText}>
+              <Text
+                style={[
+                  styles.baseCurrencyText,
+                  isRTL && styles.baseCurrencyTextRTL,
+                ]}
+              >
                 {baseCurrency.name} ({baseCurrency.code})
               </Text>
-              <Text style={styles.baseCurrencyRate}>
-                1 {baseCurrency.code} = 1 {baseCurrency.code}
-              </Text>
+              {/* <Text
+                style={[
+                  styles.baseCurrencyRate,
+                  isRTL && styles.baseCurrencyRateRTL,
+                ]}
+              >
+                {t("baseCurrencyRate")
+                  // replace("{code}", baseCurrency.code)}
+                  .replace("{code1}", baseCurrency?.code || "")}
+              </Text> */}
             </View>
           )}
 
@@ -385,59 +435,159 @@ export default function SettingsScreen() {
             data={currencies}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.currencyList}
+            contentContainerStyle={[
+              styles.currencyList,
+              isRTL && styles.currencyListRTL,
+            ]}
             renderItem={({ item }) => {
               const isSelected = currentCurrency?.id === item.id;
               const isBaseCurrency = baseCurrency?.id === item.id;
-              
+
               return (
                 <TouchableOpacity
                   style={[
                     styles.currencyItem,
                     isSelected && styles.currencyItemSelected,
+                    isRTL && styles.currencyItemRTL,
                   ]}
                   onPress={() => handleCurrencySelect(item)}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.currencyItemLeft}>
-                    <View style={styles.currencySymbolContainer}>
-                      <Text style={styles.currencySymbol}>{item.symbol}</Text>
+                  <View
+                    style={[
+                      styles.currencyItemLeft,
+                      isRTL && styles.currencyItemLeftRTL,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.currencySymbolContainer,
+                        isRTL && styles.currencySymbolContainerRTL,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.currencySymbol,
+                          isRTL && styles.currencySymbolRTL,
+                        ]}
+                      >
+                        {item.symbol}
+                      </Text>
                     </View>
-                    <View style={styles.currencyInfo}>
-                      <View style={styles.currencyNameRow}>
-                        <Text style={styles.currencyCode}>{item.code}</Text>
+                    <View
+                      style={[
+                        styles.currencyInfo,
+                        isRTL && styles.currencyInfoRTL,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.currencyNameRow,
+                          isRTL && styles.currencyNameRowRTL,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.currencyCode,
+                            isRTL && styles.currencyCodeRTL,
+                          ]}
+                        >
+                          {item.code}
+                        </Text>
                         {isBaseCurrency && (
-                          <View style={styles.baseBadge}>
-                            <Text style={styles.baseBadgeText}>BASE</Text>
+                          <View
+                            style={[
+                              styles.baseBadge,
+                              isRTL && styles.baseBadgeRTL,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.baseBadgeText,
+                                isRTL && styles.baseBadgeTextRTL,
+                              ]}
+                            >
+                              {t("base")}
+                            </Text>
                           </View>
                         )}
                       </View>
-                      <Text style={styles.currencyName}>{item.name}</Text>
-                      
-                      {/* Exchange Rate Info */}
+                      <Text
+                        style={[
+                          styles.currencyName,
+                          isRTL && styles.currencyNameRTL,
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+
+                      {/* Exchange Rate Info - FIXED with string replacement */}
                       {item.exchangeRate && !isBaseCurrency && (
-                        <View style={styles.rateContainer}>
-                          <Text style={styles.rateText}>
-                            1 {baseCurrency?.code} = {item.exchangeRate.rate} {item.code}
+                        <View
+                          style={[
+                            styles.rateContainer,
+                            isRTL && styles.rateContainerRTL,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.rateText,
+                              isRTL && styles.rateTextRTL,
+                            ]}
+                          >
+                            {t("exchangeRate")
+                              .replace("{baseCode}", baseCurrency?.code || "")
+                              .replace(
+                                "{rate}",
+                                item.exchangeRate.rate.toString(),
+                              )
+                              .replace("{code}", item.code)}
                           </Text>
-                          <Text style={styles.exampleText}>
-                            $100 USD ≈ {item.symbol}{(100 * item.exchangeRate.rate).toFixed(2)}
+                          <Text
+                            style={[
+                              styles.exampleText,
+                              isRTL && styles.exampleTextRTL,
+                            ]}
+                          >
+                            {t("exampleConversion")
+                              .replace("{amount}", "100")
+                              .replace("{baseCode}", baseCurrency?.code || "")
+                              .replace("{symbol}", item.symbol)
+                              .replace(
+                                "{converted}",
+                                (100 * item.exchangeRate.rate).toFixed(2),
+                              )}
                           </Text>
                         </View>
                       )}
-                      
+
                       {isBaseCurrency && (
-                        <View style={styles.rateContainer}>
-                          <Text style={styles.rateText}>
-                            Base Currency
+                        <View
+                          style={[
+                            styles.rateContainer,
+                            isRTL && styles.rateContainerRTL,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.rateText,
+                              isRTL && styles.rateTextRTL,
+                            ]}
+                          >
+                            {t("baseCurrency")}
                           </Text>
                         </View>
                       )}
                     </View>
                   </View>
-                  
+
                   {isSelected && (
-                    <View style={styles.checkmarkContainer}>
+                    <View
+                      style={[
+                        styles.checkmarkContainer,
+                        isRTL && styles.checkmarkContainerRTL,
+                      ]}
+                    >
                       <Check size={20} color={Colors.primary} />
                     </View>
                   )}
@@ -447,9 +597,14 @@ export default function SettingsScreen() {
           />
 
           {/* Footer Note */}
-          <View style={styles.modalFooter}>
-            <Text style={styles.modalFooterText}>
-              All prices will be converted using the selected currency
+          <View style={[styles.modalFooter, isRTL && styles.modalFooterRTL]}>
+            <Text
+              style={[
+                styles.modalFooterText,
+                isRTL && styles.modalFooterTextRTL,
+              ]}
+            >
+              {t("currencyModalNote")}
             </Text>
           </View>
         </View>
@@ -458,30 +613,41 @@ export default function SettingsScreen() {
   );
 
   // ========== MAIN RETURN ==========
-  
+
   return (
     <>
       <Stack.Screen
         options={{
-          title: 'Settings',
-          headerBackTitle: 'Back',
+          title: t("settings"),
+          headerBackTitle: t("back"),
         }}
       />
-      <View style={styles.container}>
+      <View style={[styles.container, isRTL && styles.containerRTL]}>
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
         >
           {sections.map((section, index) => (
-            <View key={section.title} style={styles.section}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              <View style={styles.settingsCard}>
+            <View
+              key={section.title}
+              style={[styles.section, isRTL && styles.sectionRTL]}
+            >
+              <Text
+                style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
+              >
+                {section.title}
+              </Text>
+              <View
+                style={[styles.settingsCard, isRTL && styles.settingsCardRTL]}
+              >
                 {section.items.map((item, itemIndex) => (
                   <React.Fragment key={item.id}>
                     {renderSettingItem(item)}
                     {itemIndex < section.items.length - 1 && (
-                      <View style={styles.divider} />
+                      <View
+                        style={[styles.divider, isRTL && styles.dividerRTL]}
+                      />
                     )}
                   </React.Fragment>
                 ))}
@@ -489,8 +655,8 @@ export default function SettingsScreen() {
             </View>
           ))}
 
-          <Text style={styles.footerText}>
-            Made with ❤️ for Beauty Lovers
+          <Text style={[styles.footerText, isRTL && styles.footerTextRTL]}>
+            {t("madeWithLove")}
           </Text>
         </ScrollView>
       </View>
@@ -501,11 +667,14 @@ export default function SettingsScreen() {
   );
 }
 
-// All styles remain the same
+// All styles with RTL support
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  containerRTL: {
+    direction: "rtl",
   },
   content: {
     flex: 1,
@@ -517,120 +686,167 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingHorizontal: 20,
   },
+  sectionRTL: {},
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '600' as const,
+    fontWeight: "600",
     color: Colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 12,
     marginLeft: 4,
   },
+  sectionTitleRTL: {
+    textAlign: "left",
+    marginLeft: 0,
+    marginRight: 4,
+  },
   settingsCard: {
     backgroundColor: Colors.white,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
+  settingsCardRTL: {},
   settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 16,
     paddingHorizontal: 16,
     minHeight: 56,
+  },
+  settingItemRTL: {
+    // flexDirection: "row-reverse",
   },
   settingItemPressed: {
     backgroundColor: Colors.cardBackground,
   },
   settingItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
+  },
+  settingItemLeftRTL: {
+    // flexDirection: "row-reverse",
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 12,
     backgroundColor: Colors.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
+  },
+  iconContainerRTL: {
+    marginRight: 0,
+    marginLeft: 12,
   },
   settingLabel: {
     fontSize: 16,
-    fontWeight: '500' as const,
+    fontWeight: "500",
     color: Colors.text,
     flex: 1,
   },
+  settingLabelRTL: {
+    textAlign: "left",
+  },
   settingItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
+  },
+  settingItemRightRTL: {
+    flexDirection: "row-reverse",
   },
   badge: {
     fontSize: 14,
     color: Colors.textSecondary,
-    fontWeight: '500' as const,
+    fontWeight: "500",
+  },
+  badgeRTL: {
+    textAlign: "right",
   },
   divider: {
     height: 1,
     backgroundColor: Colors.border,
     marginLeft: 68,
   },
+  dividerRTL: {
+    marginLeft: 0,
+    marginRight: 68,
+  },
   footerText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 40,
     paddingHorizontal: 20,
   },
-  
+  footerTextRTL: {
+    textAlign: "center",
+  },
+
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
+  modalOverlayRTL: {},
   modalContent: {
     backgroundColor: Colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    minHeight: '80%',
+    minHeight: "80%",
     paddingTop: 20,
     paddingBottom: 30,
   },
+  modalContentRTL: {
+    direction: "rtl",
+  },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
+  modalHeaderRTL: {
+    // flexDirection: "row-reverse",
+  },
   modalHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
+  },
+  modalHeaderLeftRTL: {
+    // flexDirection: "row-reverse",
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.text,
+  },
+  modalTitleRTL: {
+    textAlign: "right",
   },
   modalCloseButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: Colors.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
+  modalCloseButtonRTL: {},
   baseCurrencyInfo: {
     backgroundColor: Colors.borderLight,
     marginHorizontal: 20,
@@ -639,133 +855,184 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
   },
+  baseCurrencyInfoRTL: {},
   baseCurrencyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.primary,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
     marginBottom: 8,
     gap: 4,
   },
+  baseCurrencyBadgeRTL: {
+    // flexDirection: "row-reverse",
+    alignSelf: "flex-start",
+  },
   baseCurrencyBadgeText: {
     color: Colors.white,
     fontSize: 12,
-    fontWeight: '600' as const,
+    fontWeight: "600",
+  },
+  baseCurrencyBadgeTextRTL: {
+    textAlign: "right",
   },
   baseCurrencyText: {
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 4,
+  },
+  baseCurrencyTextRTL: {
+    textAlign: "left",
   },
   baseCurrencyRate: {
     fontSize: 14,
     color: Colors.textSecondary,
   },
+  baseCurrencyRateRTL: {
+    textAlign: "left",
+  },
   currencyList: {
     paddingHorizontal: 20,
     paddingTop: 8,
   },
+  currencyListRTL: {},
   currencyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 16,
     paddingHorizontal: 16,
     backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     marginBottom: 8,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: "transparent",
+  },
+  currencyItemRTL: {
+    // flexDirection: "row-reverse",
   },
   currencyItemSelected: {
     borderColor: Colors.primary,
     backgroundColor: Colors.white,
   },
   currencyItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     gap: 12,
+  },
+  currencyItemLeftRTL: {
+    // flexDirection: "row-reverse",
   },
   currencySymbolContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: Colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+  currencySymbolContainerRTL: {},
   currencySymbol: {
     fontSize: 20,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.primary,
   },
+  currencySymbolRTL: {},
   currencyInfo: {
     flex: 1,
   },
+  currencyInfoRTL: {
+    alignItems: "flex-start",
+  },
   currencyNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 2,
   },
+  currencyNameRowRTL: {
+    // flexDirection: "row-reverse",
+  },
   currencyCode: {
     fontSize: 16,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.text,
   },
+  currencyCodeRTL: {
+    textAlign: "left",
+  },
   baseBadge: {
-    backgroundColor: Colors.primary + '20',
+    backgroundColor: Colors.primary + "20",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
+  baseBadgeRTL: {},
   baseBadgeText: {
     fontSize: 10,
-    fontWeight: '700' as const,
+    fontWeight: "700",
     color: Colors.primary,
+  },
+  baseBadgeTextRTL: {
+    textAlign: "left",
   },
   currencyName: {
     fontSize: 14,
     color: Colors.textSecondary,
     marginBottom: 4,
   },
+  currencyNameRTL: {
+    textAlign: "left",
+  },
   rateContainer: {
     marginTop: 2,
   },
+  rateContainerRTL: {},
   rateText: {
     fontSize: 13,
-    fontWeight: '500' as const,
+    fontWeight: "500",
     color: Colors.primary,
+  },
+  rateTextRTL: {
+    textAlign: "right",
   },
   exampleText: {
     fontSize: 12,
     color: Colors.textSecondary,
     marginTop: 2,
   },
+  exampleTextRTL: {
+    textAlign: "right",
+  },
   checkmarkContainer: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: Colors.primary + "20",
+    justifyContent: "center",
+    alignItems: "center",
   },
+  checkmarkContainerRTL: {},
   modalFooter: {
     paddingHorizontal: 20,
     paddingTop: 16,
     marginTop: 8,
   },
+  modalFooterRTL: {},
   modalFooterText: {
     fontSize: 13,
     color: Colors.textSecondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  modalFooterTextRTL: {
+    textAlign: "center",
   },
 });

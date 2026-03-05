@@ -247,6 +247,193 @@ const en = {
   partiallyAddedDetails:
     "{successCount} added, {failCount} failed:\n{failedItems}",
   reorderFailedDetails: "Items may no longer be available.",
+
+  // Edit Profile
+  editProfile: "Edit Profile",
+  personalInformation: "Personal Information",
+  firstName: "First Name",
+  enterFirstName: "Enter your first name",
+  lastName: "Last Name",
+  enterLastName: "Enter your last name",
+  email: "Email",
+  enterEmail: "Enter your email",
+  phone: "Phone",
+  enterPhone: "Enter your phone number",
+  gender: "Gender",
+  genderPlaceholder: "MALE / FEMALE / OTHER",
+  dateOfBirth: "Date of Birth",
+  dobPlaceholder: "YYYY-MM-DD",
+  security: "Security",
+  currentPassword: "Current Password",
+  enterCurrentPassword: "Enter current password",
+  newPassword: "New Password",
+  enterNewPassword: "Enter new password",
+  confirmNewPassword: "Confirm New Password",
+  enterConfirmPassword: "Confirm your new password",
+  newsletterSubscription: "Newsletter Subscription",
+  saveChanges: "Save Changes",
+  passwordsDoNotMatch: "Passwords do not match",
+  profileUpdatedSuccess: "Profile updated successfully",
+  updateFailed: "Update Failed",
+  somethingWentWrong: "Something went wrong",
+
+  // Addresses Screen
+  signInToManageAddresses: "Please sign in to manage your addresses",
+  noAddresses: "No Addresses",
+  addAddressToCheckout: "Add an address to make checkout faster",
+  setAsDefault: "Set as Default",
+  edit: "Edit",
+  deleteAddress: "Delete Address",
+  deleteAddressConfirmation: "Are you sure you want to delete this address?",
+  delete: "Delete",
+  addressDeletedSuccess: "Address deleted successfully",
+  failedToDeleteAddress: "Failed to delete address",
+  defaultAddressUpdated: "Default address updated",
+  failedToSetDefaultAddress: "Failed to set default address",
+  editAddress: "Edit Address",
+  save: "Save",
+  companyName: "Company Name",
+  companyNameOptional: "Company Name (Optional)",
+  firstNamePlaceholder: "John",
+  lastNamePlaceholder: "Doe",
+  emailPlaceholder: "email@example.com",
+  address: "Address",
+  addressPlaceholder: "Street, Building, Apartment",
+  city: "City",
+  cityPlaceholder: "Ramallah",
+  postcode: "Postcode",
+  postcodePlaceholder: "00970",
+  country: "Country",
+  countryPlaceholder: "PS",
+  state: "State",
+  statePlaceholder: "WB",
+  phonePlaceholder: "+970 59 123 4567",
+  setAsDefaultAddress: "Set as default address",
+  addressNote:
+    'Note: For Palestine, use "PS" for country and "WB" for West Bank. Phone number and email are required fields.',
+  fillRequiredFields: "Please fill in all required fields (*)",
+  validEmailRequired: "Please enter a valid email address",
+  countryCodeError: "Country must be a 2-letter code (e.g., PS for Palestine)",
+  stateCodeError: "State must be a 2-letter code (e.g., WB for West Bank)",
+  addressUpdatedSuccess: "Address updated successfully",
+  addressAddedSuccess: "Address added successfully",
+
+  // Settings Screen
+  settings: "Settings",
+  back: "Back",
+  general: "General",
+  language: "Language",
+  english: "English",
+  arabic: "العربية",
+  currency: "Currency",
+  customizeHomepage: "Customize Homepage",
+  notifications: "Notifications",
+  pushNotifications: "Push Notifications",
+  orderUpdates: "Order Updates",
+  emailNotifications: "Email Notifications",
+  support: "Support",
+  helpSupport: "Help & Support",
+  contactUs: "Contact Us",
+  legal: "Legal",
+  privacyPolicy: "Privacy Policy",
+  termsConditions: "Terms & Conditions",
+  about: "About",
+  aboutApp: "About App",
+  rateOurApp: "Rate Our App",
+  changeLanguage: "Change Language",
+  selectLanguage: "Select your preferred language",
+  rateNow: "Rate Now",
+  maybeLater: "Maybe Later",
+  thankYou: "Thank You!",
+  appStoreRedirect: "This would redirect to the App Store in a production app.",
+  privacyPolicyText:
+    "We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we handle your personal data when you visit our app and tell you about your privacy rights.\n\nData Collection:\n• Personal identification information\n• Order and purchase history\n• Delivery addresses\n• Payment information\n\nData Usage:\n• Process orders\n• Improve our services\n• Send promotional offers (with consent)\n• Customer support\n\nData Protection:\nWe implement security measures to maintain the safety of your personal information.\n\nFor more details, please contact our support team.",
+  termsConditionsText:
+    "Welcome to our Beauty Shop App. By accessing and using this application, you accept and agree to be bound by the terms and conditions.\n\nAccount Terms:\n• You must be 18 years or older\n• Provide accurate account information\n• Keep your password secure\n\nOrders & Payment:\n• Prices are subject to change\n• Payment must be made at time of order\n• We reserve the right to refuse any order\n\nShipping & Returns:\n• Delivery times are estimates\n• Return policy: 14 days from delivery\n• Products must be unused and in original packaging\n\nIntellectual Property:\nAll content is owned by us and protected by copyright laws.\n\nContact: support@beautyapp.com",
+  aboutAppText:
+    "Version 1.0.0\n\nYour premium destination for authentic beauty and cosmetic products. We curate the finest selection of makeup, skincare, and beauty tools from renowned brands worldwide.\n\nOur Mission:\nTo make premium beauty products accessible to everyone while ensuring authenticity and quality.\n\nFeatures:\n• Authentic products guaranteed\n• Fast & secure delivery\n• Easy returns policy\n• 24/7 customer support\n• Exclusive deals & offers\n\nThank you for choosing us!\n\n© 2025 Beauty App. All rights reserved.",
+  rateAppMessage:
+    "Love our app? Please take a moment to rate us on the App Store. Your feedback helps us improve!",
+  selectCurrency: "Select Currency",
+  baseCurrency: "Base Currency",
+  baseCurrencyRate: "1 {code} = 1 {code}",
+  exchangeRate: "1 {baseCode} = {rate} {code}",
+  exampleConversion: "$100 {baseCode} ≈ {symbol}{converted}",
+  currencyModalNote: "All prices will be converted using the selected currency",
+  base: "BASE",
+  madeWithLove: "Made with ❤️ for Beauty Lovers",
+
+  // Navigation
+  wishlist: "Wishlist",
+  signUp: "Sign Up",
+  addresses: "Addresses",
+  orderHistory: "Order History",
+
+  // Not Found Screen
+  oops: "Oops!",
+  pageNotFound: "This page doesn't exist.",
+  goToHome: "Go to home screen",
+
+  // Image Viewer
+  noImagesToDisplay: "No images to display.",
+  goBack: "Go Back",
+  close: "Close",
+
+  // Login Screen
+  welcomeBack: "Welcome Back",
+  signInToAccount: "Sign in to your account",
+  password: "Password",
+  forgotPassword: "Forgot Password?",
+  resetPasswordMessage: "Password reset functionality will be available soon.",
+  or: "OR",
+  noAccount: "Don't have an account?",
+  enterEmailPassword: "Please enter both email and password",
+  loginFailed: "Login Failed",
+  invalidCredentials: "Invalid email or password",
+  info: "Info",
+
+  // Signup Screen
+  createAccount: "Create Account",
+  signUpToGetStarted: "Sign up to get started",
+  confirmPassword: "Confirm Password",
+  fillAllFields: "Please fill in all fields",
+  passwordMinLength: "Password must be at least 5 characters",
+  signupFailed: "Signup Failed",
+  couldNotCreateAccount: "Could not create account",
+  alreadyHaveAccount: "Already have an account?",
+
+  // Brand Products Screen
+  loadingBrandProducts: "Loading {brand} products...",
+  all: "All",
+  noProductsForBrand: "No products found for {brand}",
+
+  // Category Screen
+  category: "Category",
+  loadingProducts: "Loading products...",
+  noProductsInCategory: "No products found in this category",
+
+  // Product Detail Screen
+  loadingProduct: "Loading product...",
+  errorLoadingProduct: "Error Loading Product",
+  failedToLoadProduct: "Failed to load product",
+  productNotFound: "Product Not Found",
+  productNotFoundMessage: "The product you're looking for doesn't exist.",
+  inStock: "In Stock",
+  noDescription: "No description available.",
+  additionalInfo: "Additional Information",
+  anonymous: "Anonymous",
+  failedToAddToCart: "Failed to add to cart",
+
+  // Products Screen
+  tryDifferentKeywords: "Try different keywords",
+
+  // Product Card
+  added: "Added",
+
+  // Login Prompt
+  loginRequired: "Login Required",
+  loginPromptMessage: "Please login to continue",
+  login: "Login",
 };
 
 export type TranslationKeys = keyof typeof en;
