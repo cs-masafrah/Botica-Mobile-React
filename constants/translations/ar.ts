@@ -423,6 +423,10 @@ const ar = {
   additionalInfo: "معلومات إضافية",
   anonymous: "مجهول",
   failedToAddToCart: "فشلت الإضافة إلى السلة",
+
+  // Products Screen
+  tryDifferentKeywords: "جرب كلمات بحث مختلفة",
+  added: "تمت الإضافة",
 };
 
 export type TranslationKeys = keyof typeof ar;

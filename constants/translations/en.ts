@@ -423,6 +423,12 @@ const en = {
   additionalInfo: "Additional Information",
   anonymous: "Anonymous",
   failedToAddToCart: "Failed to add to cart",
+
+  // Products Screen
+  tryDifferentKeywords: "Try different keywords",
+
+  // Product Card
+  added: "Added",
 };
 
 export type TranslationKeys = keyof typeof en;
