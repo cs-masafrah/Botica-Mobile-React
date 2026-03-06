@@ -1,4 +1,3 @@
-import { SHOPIFY_CONFIG } from "@/constants/shopify";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
@@ -73,12 +72,24 @@ class AuthService {
     };
   }
 
+  // Get current locale from context (will be injected from outside)
+  private getLocaleHeader(locale?: string): Record<string, string> {
+    console.log("locale Asafrah : " + locale);
+    return locale ? { "X-Locale": locale } : {};
+  }
+
   // -------------------------------
   // CUSTOMER LOGIN
   // -------------------------------
-  async login(email: string, password: string): Promise<AuthState> {
+  async login(
+    email: string,
+    password: string,
+    locale?: string,
+  ): Promise<AuthState> {
     try {
-      console.log("Attempting customer login:", email);
+      console.log(
+        `Attempting customer login: ${email} with locale: ${locale || "en"}`,
+      );
 
       const query = `
         mutation CustomerLogin(
@@ -129,7 +140,10 @@ class AuthService {
 
       const response = await fetch(this.baseUrl, {
         method: "POST",
-        headers: this.headers,
+        headers: {
+          ...this.headers,
+          ...this.getLocaleHeader(locale),
+        },
         body: JSON.stringify({ query, variables }),
       });
 
@@ -204,9 +218,12 @@ class AuthService {
     password: string,
     firstName: string,
     lastName: string,
+    locale?: string,
   ): Promise<AuthState> {
     try {
-      console.log("Signing up customer:", email);
+      console.log(
+        `Signing up customer: ${email} with locale: ${locale || "en"}`,
+      );
 
       const query = `
         mutation CustomerSignUp($input: SignUpInput!) {
@@ -256,7 +273,10 @@ class AuthService {
 
       const response = await fetch(this.baseUrl, {
         method: "POST",
-        headers: this.headers,
+        headers: {
+          ...this.headers,
+          ...this.getLocaleHeader(locale),
+        },
         body: JSON.stringify({ query, variables }),
       });
 
@@ -326,7 +346,7 @@ class AuthService {
     }
   }
 
-  async getCustomer(): Promise<Customer> {
+  async getCustomer(locale?: string): Promise<Customer> {
     const auth = await this.getStoredAuth();
     if (!auth) throw new Error("Not authenticated");
 
@@ -380,6 +400,7 @@ class AuthService {
       method: "POST",
       headers: {
         ...this.headers,
+        ...this.getLocaleHeader(locale),
         Authorization: `Bearer ${auth.accessToken}`,
       },
       body: JSON.stringify({ query }),
@@ -432,7 +453,7 @@ class AuthService {
     return customer;
   }
 
-  async logout(): Promise<void> {
+  async logout(locale?: string): Promise<void> {
     try {
       console.log("Logging out...");
 
@@ -449,6 +470,7 @@ class AuthService {
         method: "POST",
         headers: {
           ...this.headers,
+          ...this.getLocaleHeader(locale),
           Authorization: `Bearer ${(await this.getStoredAuth())?.accessToken}`,
         },
         body: JSON.stringify({ query }),
@@ -506,19 +528,22 @@ class AuthService {
     }
   }
 
-  async updateAccount(input: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    gender?: "MALE" | "FEMALE" | "OTHER" | string | undefined;
-    dateOfBirth?: string | null;
-    phone?: string | null;
-    currentPassword?: string;
-    newPassword?: string;
-    newPasswordConfirmation?: string;
-    newsletterSubscriber?: boolean;
-    image?: string | null;
-  }): Promise<Customer> {
+  async updateAccount(
+    input: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      gender?: "MALE" | "FEMALE" | "OTHER" | string | undefined;
+      dateOfBirth?: string | null;
+      phone?: string | null;
+      currentPassword?: string;
+      newPassword?: string;
+      newPasswordConfirmation?: string;
+      newsletterSubscriber?: boolean;
+      image?: string | null;
+    },
+    locale?: string,
+  ): Promise<Customer> {
     try {
       const authState = await this.getStoredAuth();
       if (!authState) throw new Error("Not authenticated");
@@ -544,6 +569,7 @@ class AuthService {
         method: "POST",
         headers: {
           ...this.headers,
+          ...this.getLocaleHeader(locale),
           Authorization: `Bearer ${authState.accessToken}`,
         },
         body: JSON.stringify({ query, variables }),
@@ -581,9 +607,11 @@ class AuthService {
     }
   }
 
-  async getAddresses(): Promise<Address[]> {
+  async getAddresses(locale?: string): Promise<Address[]> {
     try {
-      console.log("Fetching customer addresses...");
+      console.log(
+        `Fetching customer addresses with locale: ${locale || "en"}...`,
+      );
 
       const auth = await this.getStoredAuth();
       if (!auth) throw new Error("Not authenticated");
@@ -639,6 +667,7 @@ class AuthService {
         method: "POST",
         headers: {
           ...this.headers,
+          ...this.getLocaleHeader(locale),
           Authorization: `Bearer ${auth.accessToken}`,
         },
         body: JSON.stringify({ query, variables }),
@@ -678,9 +707,15 @@ class AuthService {
   }
 
   // Update the addAddress method in services/auth.ts
-  async addAddress(address: Omit<Address, "id">): Promise<Address> {
+  async addAddress(
+    address: Omit<Address, "id">,
+    locale?: string,
+  ): Promise<Address> {
     try {
-      console.log("Adding new address:", JSON.stringify(address, null, 2));
+      console.log(
+        `Adding new address with locale: ${locale || "en"}:`,
+        JSON.stringify(address, null, 2),
+      );
 
       const auth = await this.getStoredAuth();
       if (!auth) throw new Error("Not authenticated");
@@ -730,6 +765,7 @@ class AuthService {
         method: "POST",
         headers: {
           ...this.headers,
+          ...this.getLocaleHeader(locale),
           Authorization: `Bearer ${auth.accessToken}`,
         },
         body: JSON.stringify({ query, variables }),
@@ -779,8 +815,14 @@ class AuthService {
   async updateAddress(
     addressId: string,
     address: Omit<Address, "id">,
+    locale?: string,
   ): Promise<Address> {
     try {
+      console.log(
+        `Updating address with locale: ${locale || "en"}:`,
+        addressId,
+      );
+
       const auth = await this.getStoredAuth();
       if (!auth) throw new Error("Not authenticated");
 
@@ -830,6 +872,7 @@ class AuthService {
         method: "POST",
         headers: {
           ...this.headers,
+          ...this.getLocaleHeader(locale),
           Authorization: `Bearer ${auth.accessToken}`,
         },
         body: JSON.stringify({ query, variables }),
@@ -869,9 +912,12 @@ class AuthService {
     }
   }
 
-  async deleteAddress(addressId: string): Promise<void> {
+  async deleteAddress(addressId: string, locale?: string): Promise<void> {
     try {
-      console.log("Deleting customer address (Bagisto)...", addressId);
+      console.log(
+        `Deleting customer address (Bagisto) with locale: ${locale || "en"}:`,
+        addressId,
+      );
 
       const auth = await this.getStoredAuth();
       if (!auth) throw new Error("Not authenticated");
@@ -893,6 +939,7 @@ class AuthService {
         method: "POST",
         headers: {
           ...this.headers,
+          ...this.getLocaleHeader(locale),
           Authorization: `Bearer ${auth.accessToken}`,
         },
         body: JSON.stringify({ query, variables }),
@@ -918,15 +965,18 @@ class AuthService {
     }
   }
 
-  async setDefaultAddress(addressId: string): Promise<void> {
+  async setDefaultAddress(addressId: string, locale?: string): Promise<void> {
     try {
-      console.log("Setting default address...", addressId);
+      console.log(
+        `Setting default address with locale: ${locale || "en"}:`,
+        addressId,
+      );
 
       const auth = await this.getStoredAuth();
       if (!auth) throw new Error("Not authenticated");
 
       // First, get all addresses for this customer
-      const addresses = await this.getAddresses();
+      const addresses = await this.getAddresses(locale);
 
       // Find the address to set as default
       const addressToUpdate = addresses.find((addr) => addr.id === addressId);
@@ -950,7 +1000,7 @@ class AuthService {
         defaultAddress: true,
       };
 
-      await this.updateAddress(addressId, updatedAddress);
+      await this.updateAddress(addressId, updatedAddress, locale);
 
       // Also, set other addresses of this customer to not default
       const otherAddresses = addresses.filter((addr) => addr.id !== addressId);
@@ -973,7 +1023,7 @@ class AuthService {
           };
 
           try {
-            await this.updateAddress(address.id, nonDefaultAddress);
+            await this.updateAddress(address.id, nonDefaultAddress, locale);
           } catch (error) {
             console.error(`Failed to update address ${address.id}:`, error);
           }

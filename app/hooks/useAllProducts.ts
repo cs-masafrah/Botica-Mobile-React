@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { request, gql } from "graphql-request";
 import { useAuth } from "@/contexts/AuthContext";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
@@ -207,15 +208,19 @@ const GET_ALL_PRODUCTS = gql`
 
 const fetchAllProducts = async (
   filters: FilterHomeCategoriesInput[] = [],
-  accessToken?: string | null
+  accessToken?: string | null,
+  locale: string = "en",
 ): Promise<AllProductsResponse> => {
   try {
-    console.log("📡 Fetching products from:", GRAPHQL_ENDPOINT);
-    
+    console.log(
+      `📡 Fetching products from: ${GRAPHQL_ENDPOINT} with locale: ${locale}`,
+    );
+
     const variables = { input: filters };
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "X-Locale": locale, // Add locale header
     };
 
     if (accessToken) {
@@ -229,19 +234,26 @@ const fetchAllProducts = async (
       requestHeaders: headers,
     });
 
-    console.log(`✅ Products API response received: ${data.allProducts.data.length} products`);
+    console.log(
+      `✅ Products API response received: ${data.allProducts.data.length} products`,
+    );
     return data;
   } catch (error: any) {
     console.error("❌ Error fetching products:", error.message || error);
-    
-    // Try without auth headers if auth fails
+
+    // Try without auth headers if auth fails, but keep locale
     try {
       const variables = { input: filters };
-      const data = await request<AllProductsResponse>(
-        GRAPHQL_ENDPOINT,
-        GET_ALL_PRODUCTS,
-        variables
-      );
+      const headers: Record<string, string> = {
+        "X-Locale": locale, // Keep locale even in retry
+      };
+
+      const data = await request<AllProductsResponse>({
+        url: GRAPHQL_ENDPOINT,
+        document: GET_ALL_PRODUCTS,
+        variables,
+        requestHeaders: headers,
+      });
       return data;
     } catch (noAuthError: any) {
       console.error("❌ Error fetching without auth:", noAuthError);
@@ -251,19 +263,18 @@ const fetchAllProducts = async (
 };
 
 export const useAllProducts = (
-  filters: FilterHomeCategoriesInput[] = [
-    { key: "status", value: "1" },
-  ],
+  filters: FilterHomeCategoriesInput[] = [{ key: "status", value: "1" }],
   options?: {
     enabled?: boolean;
     staleTime?: number;
-  }
+  },
 ) => {
   const { accessToken } = useAuth();
+  const { locale } = useLanguage(); // Get locale from language context
 
   return useQuery<AllProductsResponse, Error>({
-    queryKey: ["allProducts", filters, accessToken],
-    queryFn: () => fetchAllProducts(filters, accessToken),
+    queryKey: ["allProducts", filters, accessToken, locale], // Add locale to queryKey for proper caching
+    queryFn: () => fetchAllProducts(filters, accessToken, locale),
     staleTime: options?.staleTime || 5 * 60 * 1000, // 5 minutes default
     retry: 1,
     refetchOnWindowFocus: false,

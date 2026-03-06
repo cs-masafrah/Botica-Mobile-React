@@ -17,6 +17,8 @@ import { FloatingCart } from "@/components/FloatingCart";
 import { preloadImages, extractImageUrls } from "@/utils/imagePreloader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Alert } from "react-native";
+import { bagistoService } from "@/services/bagisto";
+import { orderService } from "@/services/OrderService";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,6 +27,7 @@ const queryClient = new QueryClient();
 function RootLayoutNav() {
   const [, setImagesPreloaded] = useState(false);
   const { t, isRTL } = useLanguage();
+  const { locale } = useLanguage();
 
   // Force RTL/LTR layout based on language
   useEffect(() => {
@@ -33,6 +36,13 @@ function RootLayoutNav() {
       I18nManager.forceRTL(isRTL);
     }
   }, [isRTL]);
+
+  useEffect(() => {
+    // Set locale whenever it changes
+    orderService.setLocale(locale);
+    bagistoService.setLocale(locale);
+    console.log(`🌐 App locale changed to: ${locale}`);
+  }, [locale]);
 
   useEffect(() => {
     const preloadAppImages = async () => {

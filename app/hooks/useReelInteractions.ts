@@ -4,6 +4,7 @@ import { request, gql } from "graphql-request";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
 import { Reel, ReelLikeResponse, ReelViewResponse } from "../types/reels";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
@@ -57,8 +58,13 @@ const CHECK_MUTATIONS = gql`
 
 // First, let's check what mutations are available
 export const checkAvailableMutations = async () => {
+  const { locale } = useLanguage(); // This won't work in regular function, need to handle differently
   try {
-    const data = await request(GRAPHQL_ENDPOINT, CHECK_MUTATIONS);
+    const headers: Record<string, string> = {
+      "X-Locale": locale, // Add locale header
+    };
+
+    const data = await request(GRAPHQL_ENDPOINT, CHECK_MUTATIONS, {}, headers);
     console.log("📋 Available mutations:", data.__schema.mutationType.fields);
     return data.__schema.mutationType.fields;
   } catch (error) {
@@ -68,130 +74,15 @@ export const checkAvailableMutations = async () => {
 };
 
 // Like/Unlike a reel
-// Like/Unlike a reel
-// export const useLikeReel = () => {
-//   const queryClient = useQueryClient();
-//   const { accessToken, isAuthenticated } = useAuth();
-
-//   return useMutation({
-//     mutationFn: async (reelId: string): Promise<ReelLikeResponse> => {
-//       try {
-//         console.log(`❤️ Liking reel: ${reelId}`);
-
-//         // Check authentication
-//         if (!isAuthenticated || !accessToken) {
-//           throw new Error("LOGIN_REQUIRED");
-//         }
-
-//         const variables = { id: reelId };
-//         const headers: Record<string, string> = {
-//           "Content-Type": "application/json",
-//           Accept: "application/json",
-//           Authorization: `Bearer ${accessToken}`,
-//         };
-
-//         const data = await request<{ likeReel: ReelLikeResponse }>({
-//           url: GRAPHQL_ENDPOINT,
-//           document: LIKE_REEL,
-//           variables,
-//           requestHeaders: headers,
-//         });
-
-//         console.log("✅ Like response:", data.likeReel);
-
-//         if (!data?.likeReel) {
-//           throw new Error("Invalid response from server");
-//         }
-
-//         // Check if the mutation was successful
-//         if (!data.likeReel.success) {
-//           // If not successful and it's an auth error
-//           if (
-//             data.likeReel.message?.includes("Authentication required") ||
-//             data.likeReel.message?.includes("Please login")
-//           ) {
-//             throw new Error("LOGIN_REQUIRED");
-//           }
-//           throw new Error(data.likeReel.message || "Failed to like reel");
-//         }
-
-//         return data.likeReel;
-//       } catch (error: any) {
-//         console.error("❌ Error liking reel:", error);
-
-//         // Extract error message
-//         let errorMessage = "Failed to like reel";
-//         if (error.response?.errors?.[0]?.message) {
-//           errorMessage = error.response.errors[0].message;
-//         } else if (error.message) {
-//           errorMessage = error.message;
-//         }
-
-//         // Check if it's an auth error
-//         if (
-//           errorMessage.includes("Authentication required") ||
-//           errorMessage.includes("Please login") ||
-//           errorMessage.includes("LOGIN_REQUIRED") ||
-//           errorMessage.includes("Unauthorized")
-//         ) {
-//           throw new Error("LOGIN_REQUIRED");
-//         }
-
-//         throw new Error(errorMessage);
-//       }
-//     },
-//     onMutate: async (reelId: string) => {
-//       // Cancel any outgoing refetches
-//       await queryClient.cancelQueries({ queryKey: ["reels"] });
-
-//       // Snapshot the previous value
-//       const previousReels = queryClient.getQueryData<Reel[]>(["reels"]);
-
-//       // Optimistically update the cache
-//       if (previousReels) {
-//         const updatedReels = previousReels.map((reel) => {
-//           if (reel.id === reelId) {
-//             const currentlyLiked = reel.is_liked || false;
-//             return {
-//               ...reel,
-//               is_liked: !currentlyLiked,
-//               likes_count: currentlyLiked
-//                 ? reel.likes_count - 1
-//                 : reel.likes_count + 1,
-//             };
-//           }
-//           return reel;
-//         });
-
-//         queryClient.setQueryData<Reel[]>(["reels"], updatedReels);
-//       }
-
-//       return { previousReels };
-//     },
-//     onError: (err: Error, reelId: string, context: any) => {
-//       console.error("Mutation error:", err);
-
-//       // Rollback to previous state on error
-//       if (context?.previousReels) {
-//         queryClient.setQueryData<Reel[]>(["reels"], context.previousReels);
-//       }
-//     },
-//     onSettled: () => {
-//       // Refetch reels to ensure data is in sync
-//       queryClient.invalidateQueries({ queryKey: ["reels"] });
-//     },
-//   });
-// };
-
-// Like/Unlike a reel
 export const useLikeReel = () => {
   const queryClient = useQueryClient();
   const { accessToken, isAuthenticated } = useAuth();
+  const { locale } = useLanguage(); // Get locale from language context
 
   return useMutation({
     mutationFn: async (reelId: string): Promise<ReelLikeResponse> => {
       try {
-        console.log(`❤️ Liking reel: ${reelId}`);
+        console.log(`❤️ Liking reel: ${reelId} with locale: ${locale}`);
 
         // Check authentication
         if (!isAuthenticated || !accessToken) {
@@ -202,6 +93,7 @@ export const useLikeReel = () => {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
           Accept: "application/json",
+          "X-Locale": locale, // Add locale header
           Authorization: `Bearer ${accessToken}`,
         };
 
@@ -302,16 +194,20 @@ export const useLikeReel = () => {
 export const useViewReel = () => {
   const queryClient = useQueryClient();
   const { accessToken } = useAuth();
+  const { locale } = useLanguage(); // Get locale from language context
 
   return useMutation({
     mutationFn: async (reelId: string): Promise<ReelViewResponse> => {
       try {
-        console.log(`👀 Tracking view for reel: ${reelId}`);
+        console.log(
+          `👀 Tracking view for reel: ${reelId} with locale: ${locale}`,
+        );
 
         const variables = { id: reelId };
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
           Accept: "application/json",
+          "X-Locale": locale, // Add locale header
         };
 
         if (accessToken) {
@@ -334,7 +230,7 @@ export const useViewReel = () => {
         return data.viewReel;
       } catch (error: any) {
         console.error("❌ Error tracking view:", error);
-        
+
         // Return a fallback response
         return {
           success: false,
@@ -347,7 +243,7 @@ export const useViewReel = () => {
     onSuccess: (data: ReelViewResponse, reelId: string) => {
       if (data.success && data.reel) {
         console.log(`✅ View tracked successfully for reel ${reelId}`);
-        
+
         // Update reels cache with new views count
         queryClient.setQueryData<Reel[]>(["reels"], (oldData) => {
           if (!oldData || !Array.isArray(oldData)) return oldData;
@@ -371,11 +267,14 @@ export const useViewReel = () => {
 // Alternative: Simple view tracking that increments locally
 export const useTrackView = () => {
   const queryClient = useQueryClient();
+  const { locale } = useLanguage(); // Get locale from language context
 
   return useMutation({
     mutationFn: async (reelId: string) => {
       // Just increment locally without API call
-      console.log(`👀 Incrementing view count for reel: ${reelId}`);
+      console.log(
+        `👀 Incrementing view count for reel: ${reelId} with locale: ${locale}`,
+      );
       return { success: true, reelId };
     },
     onMutate: async (reelId: string) => {

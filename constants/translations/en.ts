@@ -434,6 +434,10 @@ const en = {
   loginRequired: "Login Required",
   loginPromptMessage: "Please login to continue",
   login: "Login",
+  FooterLink: "Important links",
+
+  categoriesCollection: "Categories Collections",
+  serviceContent: "Services"
 };
 
 export type TranslationKeys = keyof typeof en;

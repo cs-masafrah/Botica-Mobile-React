@@ -3,6 +3,7 @@ import { request, gql } from "graphql-request";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
 import { Reel } from "../types/reels";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
@@ -59,13 +60,17 @@ const fetchReels = async (
   page = 1,
   first = 10,
   accessToken?: string | null,
+  locale: string = "en",
 ): Promise<Reel[]> => {
   try {
-    console.log("📡 Fetching reels from:", GRAPHQL_ENDPOINT);
+    console.log(
+      `📡 Fetching reels from: ${GRAPHQL_ENDPOINT} with locale: ${locale}`,
+    );
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "X-Locale": locale, // Add locale header
     };
 
     // Always use public query for initial fetch
@@ -76,11 +81,11 @@ const fetchReels = async (
       requestHeaders: headers,
     });
 
-    console.log("✅ Reels API response received");
+    console.log(`✅ Reels API response received for locale: ${locale}`);
 
     if (!data?.reels?.data) {
       console.error("❌ Invalid API response structure:", data);
-      return getMockReels();
+      return getMockReels(locale);
     }
 
     // Filter active reels and sort by sort_order
@@ -88,7 +93,9 @@ const fetchReels = async (
       .filter((reel) => reel.is_active)
       .sort((a, b) => a.sort_order - b.sort_order);
 
-    console.log(`📊 Loaded ${activeReels.length} active reels`);
+    console.log(
+      `📊 Loaded ${activeReels.length} active reels for locale: ${locale}`,
+    );
 
     // If user is authenticated, fetch is_liked status for each reel
     if (accessToken) {
@@ -119,7 +126,10 @@ const fetchReels = async (
                 };
               }
             } catch (error) {
-              console.warn(`⚠️ Failed to fetch like status for reel ${reel.id}:`, error);
+              console.warn(
+                `⚠️ Failed to fetch like status for reel ${reel.id}:`,
+                error,
+              );
               // If fails, return reel without is_liked
               return {
                 ...reel,
@@ -130,14 +140,17 @@ const fetchReels = async (
               ...reel,
               is_liked: false,
             };
-          })
+          }),
         );
 
         return reelsWithLikes;
       } catch (error) {
-        console.warn("⚠️ Failed to fetch like status, using public data:", error);
+        console.warn(
+          "⚠️ Failed to fetch like status, using public data:",
+          error,
+        );
         // If fetching like status fails, return reels with is_liked = false
-        return activeReels.map(reel => ({
+        return activeReels.map((reel) => ({
           ...reel,
           is_liked: false,
         }));
@@ -145,72 +158,121 @@ const fetchReels = async (
     }
 
     // For non-authenticated users, set is_liked = false
-    return activeReels.map(reel => ({
+    return activeReels.map((reel) => ({
       ...reel,
       is_liked: false,
     }));
   } catch (error: any) {
     console.error("❌ Error fetching reels:", error.message || error);
-    
+
     // Try mock data if everything fails
-    console.log("🔄 Falling back to mock data...");
-    return getMockReels();
+    console.log(`🔄 Falling back to mock data for locale: ${locale}`);
+    return getMockReels(locale);
   }
 };
 
-// Mock data for testing
-const getMockReels = (): Reel[] => {
-  console.log("📱 Using mock reels data");
-  return [
-    {
-      id: "1",
-      title: "Summer Collection 2024",
-      caption: "Check out our new summer collection!",
-      video_url:
-        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      thumbnail_url:
-        "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800",
-      is_active: true,
-      duration: 30,
-      sort_order: 1,
-      likes_count: 1500,
-      views_count: 25000,
-      is_liked: false,
-      product: {
-        id: "101",
-        name: "Summer Dress",
-        sku: "SUMMER-001",
+// Mock data for testing - with translations
+const getMockReels = (locale: string = "en"): Reel[] => {
+  console.log(`📱 Using mock reels data for locale: ${locale}`);
+
+  // Mock data with translations
+  const mockReels = {
+    en: [
+      {
+        id: "1",
+        title: "Summer Collection 2024",
+        caption: "Check out our new summer collection!",
+        video_url:
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        thumbnail_url:
+          "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800",
+        is_active: true,
+        duration: 30,
+        sort_order: 1,
+        likes_count: 1500,
+        views_count: 25000,
+        is_liked: false,
+        product: {
+          id: "101",
+          name: "Summer Dress",
+          sku: "SUMMER-001",
+        },
       },
-    },
-    {
-      id: "2",
-      title: "Winter Jackets Collection",
-      caption: "Stay warm with our winter collection",
-      video_url:
-        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      thumbnail_url:
-        "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800",
-      is_active: true,
-      duration: 25,
-      sort_order: 2,
-      likes_count: 890,
-      views_count: 15000,
-      is_liked: false,
-      product: {
-        id: "102",
-        name: "Winter Jacket",
-        sku: "WINTER-001",
+      {
+        id: "2",
+        title: "Winter Jackets Collection",
+        caption: "Stay warm with our winter collection",
+        video_url:
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+        thumbnail_url:
+          "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800",
+        is_active: true,
+        duration: 25,
+        sort_order: 2,
+        likes_count: 890,
+        views_count: 15000,
+        is_liked: false,
+        product: {
+          id: "102",
+          name: "Winter Jacket",
+          sku: "WINTER-001",
+        },
       },
-    },
-  ];
+    ],
+    ar: [
+      {
+        id: "1",
+        title: "مجموعة الصيف 2024",
+        caption: "اكتشف مجموعتنا الجديدة للصيف!",
+        video_url:
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        thumbnail_url:
+          "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800",
+        is_active: true,
+        duration: 30,
+        sort_order: 1,
+        likes_count: 1500,
+        views_count: 25000,
+        is_liked: false,
+        product: {
+          id: "101",
+          name: "فستان صيفي",
+          sku: "SUMMER-001",
+        },
+      },
+      {
+        id: "2",
+        title: "مجموعة السترات الشتوية",
+        caption: "ابق دافئاً مع مجموعتنا الشتوية",
+        video_url:
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+        thumbnail_url:
+          "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800",
+        is_active: true,
+        duration: 25,
+        sort_order: 2,
+        likes_count: 890,
+        views_count: 15000,
+        is_liked: false,
+        product: {
+          id: "102",
+          name: "سترة شتوية",
+          sku: "WINTER-001",
+        },
+      },
+    ],
+  };
+
+  return mockReels[locale as keyof typeof mockReels] || mockReels.en;
 };
 
 export const useReels = (page = 1, first = 10) => {
   const { accessToken } = useAuth();
+  const { locale } = useLanguage(); // Get locale from language context
 
   return useQuery<Reel[], Error>({
-    queryKey: ["reels", page, first, accessToken],
-    queryFn: () => fetchReels(page, first, accessToken),
+    queryKey: ["reels", page, first, accessToken, locale], // Add locale to queryKey
+    queryFn: () => fetchReels(page, first, accessToken, locale),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
     refetchOnWindowFocus: false,
@@ -220,13 +282,15 @@ export const useReels = (page = 1, first = 10) => {
 // New hook to fetch individual reel with like status
 export const useReel = (reelId: string) => {
   const { accessToken } = useAuth();
+  const { locale } = useLanguage(); // Get locale from language context
 
   return useQuery<Reel, Error>({
-    queryKey: ["reel", reelId, accessToken],
+    queryKey: ["reel", reelId, accessToken, locale], // Add locale to queryKey
     queryFn: async () => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         Accept: "application/json",
+        "X-Locale": locale, // Add locale header
       };
 
       if (accessToken) {

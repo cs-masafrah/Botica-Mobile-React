@@ -80,7 +80,7 @@ export const translationssss = {
     home: "الرئيسية",
     categories: "الفئات",
     cart: "السلة",
-    profile: "الملف الشخصي",
+    profile: "حسابي",
     bannerTitle: "عطور فاخرة",
     bannerSubtitle: "مجموعة حصرية من العطور الفاخرة",
     shopNow: "تسوق الآن",
