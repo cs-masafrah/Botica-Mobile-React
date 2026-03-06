@@ -1,4 +1,4 @@
-// services/bagisto.ts - COMPLETE UPDATED VERSION
+// services/bagisto.ts - COMPLETE UPDATED VERSION WITH LOCALE
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -41,6 +41,7 @@ async function fetchGraphQL<T>(
 export class BagistoService {
   private token: string | null = null;
   private cartToken: string | null = null;
+  private currentLocale: string = 'en'; // Default locale
 
   constructor() {
     this.loadTokens();
@@ -55,10 +56,17 @@ export class BagistoService {
     }
   }
 
+  // Set locale for all requests
+  setLocale(locale: string) {
+    this.currentLocale = locale;
+    console.log(`🌐 [BAGISTO] Locale set to: ${locale}`);
+  }
+
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "X-Locale": this.currentLocale, // Add locale header to all requests
     };
 
     if (this.token) {
@@ -74,6 +82,8 @@ export class BagistoService {
 
   async executeQuery<T>(query: string, variables: any = {}): Promise<T | null> {
     try {
+      console.log(`📡 [BAGISTO] Executing query with locale: ${this.currentLocale}`);
+      
       const response = await fetchGraphQL<T>(
         query,
         variables,
@@ -100,6 +110,8 @@ export class BagistoService {
 
   async getCartDetails(): Promise<any> {
     try {
+      console.log(`🛒 [BAGISTO] Getting cart details with locale: ${this.currentLocale}`);
+      
       const query = `
         query GetCartDetails {
           cartDetail {
@@ -156,6 +168,8 @@ export class BagistoService {
 
   async addToCart(input: any): Promise<any> {
     try {
+      console.log(`🛒 [BAGISTO] Adding to cart with locale: ${this.currentLocale}`);
+      
       const query = `
         mutation AddItemToCart($input: AddItemToCartInput!) {
           addItemToCart(input: $input) {
@@ -220,6 +234,8 @@ export class BagistoService {
     items: Array<{ id: string; quantity: number }>,
   ): Promise<any> {
     try {
+      console.log(`🔄 [BAGISTO] Updating cart items with locale: ${this.currentLocale}`);
+      
       const qty = items.map((item) => ({
         cartItemId: item.id,
         quantity: item.quantity,
@@ -255,6 +271,8 @@ export class BagistoService {
 
   async removeFromCart(id: string): Promise<any> {
     try {
+      console.log(`🗑️ [BAGISTO] Removing from cart with locale: ${this.currentLocale}`);
+      
       const query = `
         mutation RemoveCartItem($id: ID!) {
           removeCartItem(id: $id) {
@@ -288,6 +306,8 @@ export class BagistoService {
 
   async applyCoupon(code: string): Promise<any> {
     try {
+      console.log(`🏷️ [BAGISTO] Applying coupon with locale: ${this.currentLocale}`);
+      
       const query = `
         mutation ApplyCoupon($input: ApplyCouponInput!) {
           applyCoupon(input: $input) {
@@ -317,6 +337,8 @@ export class BagistoService {
 
   async removeCoupon(): Promise<any> {
     try {
+      console.log(`🗑️ [BAGISTO] Removing coupon with locale: ${this.currentLocale}`);
+      
       const query = `
         mutation RemoveCoupon {
           removeCoupon {
@@ -341,7 +363,7 @@ export class BagistoService {
     shipping: any;
   }): Promise<any> {
     try {
-      console.log("🏠 [BAGISTO] Saving checkout addresses");
+      console.log(`🏠 [BAGISTO] Saving checkout addresses with locale: ${this.currentLocale}`);
 
       const query = `
         mutation SaveCheckoutAddresses($input: SaveShippingAddressInput!) {
@@ -387,7 +409,7 @@ export class BagistoService {
 
   async saveShippingMethod(method: string): Promise<any> {
     try {
-      console.log("🚚 [BAGISTO] Saving shipping method:", method);
+      console.log(`🚚 [BAGISTO] Saving shipping method with locale: ${this.currentLocale}:`, method);
 
       const query = `
         mutation SaveShippingMethod($input: saveShippingMethodInput!) {
@@ -417,7 +439,7 @@ export class BagistoService {
 
   async savePayment(method: string): Promise<any> {
     try {
-      console.log("💳 [BAGISTO] Saving payment method:", method);
+      console.log(`💳 [BAGISTO] Saving payment method with locale: ${this.currentLocale}:`, method);
 
       // EXACT MUTATION AS IN YOUR EXAMPLE
       const query = `
@@ -449,7 +471,7 @@ export class BagistoService {
 
   async placeOrder(): Promise<any> {
     try {
-      console.log("🛍️ [BAGISTO] Placing order...");
+      console.log(`🛍️ [BAGISTO] Placing order with locale: ${this.currentLocale}...`);
 
       // EXACT MUTATION AS IN YOUR EXAMPLE
       const query = `
@@ -486,6 +508,8 @@ export class BagistoService {
 
   async getShippingMethods(): Promise<any> {
     try {
+      console.log(`🚚 [BAGISTO] Getting shipping methods with locale: ${this.currentLocale}`);
+      
       const query = `
         query GetShippingMethods {
           shippingMethods {
@@ -510,7 +534,7 @@ export class BagistoService {
   async getPaymentMethods(shippingMethod: string): Promise<any> {
     try {
       console.log(
-        "💳 [BAGISTO] Getting payment methods for shipping:",
+        `💳 [BAGISTO] Getting payment methods with locale: ${this.currentLocale} for shipping:`,
         shippingMethod,
       );
 
@@ -540,7 +564,7 @@ export class BagistoService {
     try {
       await AsyncStorage.removeItem("@bagisto_cart_token");
       this.cartToken = null;
-      console.log("🗑️ [BAGISTO] Cleared cart storage");
+      console.log(`🗑️ [BAGISTO] Cleared cart storage with locale: ${this.currentLocale}`);
     } catch (error) {
       console.error("❌ [BAGISTO] Failed to clear cart storage:", error);
     }

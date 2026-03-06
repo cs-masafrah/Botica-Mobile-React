@@ -13,6 +13,7 @@ import Colors from "@/constants/colors";
 import { Check, Plus, MapPin, Sparkles } from "lucide-react-native";
 import { authService, Address } from "@/services/auth";
 import { router } from "expo-router";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const AddressStep: React.FC = () => {
   const {
@@ -28,6 +29,7 @@ const AddressStep: React.FC = () => {
     null,
   );
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const { locale } = useLanguage();
 
   /* ------------------ LOAD CUSTOMER ADDRESSES ------------------ */
   useEffect(() => {
@@ -35,7 +37,7 @@ const AddressStep: React.FC = () => {
 
     const loadAddresses = async () => {
       try {
-        const result = await authService.getAddresses();
+        const result = await authService.getAddresses(locale);
         if (!mounted) return;
 
         setAddresses(result);

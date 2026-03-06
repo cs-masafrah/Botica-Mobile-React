@@ -25,24 +25,29 @@ interface Category {
 
 const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
   theme,
-  locale = "en",
+  locale: propLocale,
 }) => {
-  const { t, isRTL } = useLanguage();
-  const { data: allCategories } = useCategories();
+  const { t, isRTL, locale: contextLocale } = useLanguage();
+  
+  // Use prop locale if provided, otherwise use context locale
+  const activeLocale = propLocale || contextLocale;
+  
+  // Pass locale to useCategories hook for X-Locale header
+  const { data: allCategories } = useCategories(activeLocale);
 
-  // Extract static values
+  // Extract static values with locale support
   const { title, filters } = useMemo(() => {
     const translation =
-      theme.translations?.find((t) => t.localeCode === locale) ||
+      theme.translations?.find((t) => t.localeCode === activeLocale) ||
       theme.translations?.[0];
 
     return {
       title: translation?.options?.title || theme.name,
       filters: translation?.options?.filters || [],
     };
-  }, [theme.translations, theme.name, locale]);
+  }, [theme.translations, theme.name, activeLocale]);
 
-  // Filter categories using useMemo instead of useState + useEffect
+  // Filter categories using useMemo
   const filteredCategories = useMemo(() => {
     if (!allCategories?.length) return [];
 
@@ -61,14 +66,15 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
       result = result.slice(0, parseInt(filtersObj.limit, 10));
     }
 
+    // Use locale-aware sorting
     if (filtersObj.sort === "asc") {
-      result.sort((a, b) => a.name.localeCompare(b.name));
+      result.sort((a, b) => a.name.localeCompare(b.name, activeLocale));
     } else if (filtersObj.sort === "desc") {
-      result.sort((a, b) => b.name.localeCompare(a.name));
+      result.sort((a, b) => b.name.localeCompare(a.name, activeLocale));
     }
 
     return result;
-  }, [allCategories, filters]); // Include filters in dependencies
+  }, [allCategories, filters, activeLocale]); // Add activeLocale to dependencies
 
   if (!filteredCategories.length) {
     return null;
@@ -78,9 +84,12 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       {/* Header */}
       <View style={[styles.header, isRTL && styles.headerRTL]}>
-        <Text style={[styles.title, isRTL && styles.titleRTL]}>{title}</Text>
+        <Text style={[styles.title, isRTL && styles.titleRTL]}>
+          {t("categoriesCollection") || title}
+        </Text>
         <Text style={[styles.subtitle, isRTL && styles.subtitleRTL]}>
-          {t("discoverFragrance") || "Discover your perfect fragrance"}
+          {/* {t("discoverFragrance") || "Discover your perfect fragrance"} */}
+          {/* {subTitle} */}
         </Text>
       </View>
 
@@ -126,7 +135,7 @@ const CategoryCarouselTheme: React.FC<CategoryCarouselThemeProps> = ({
 
             {/* Centered Category Name */}
             <Text style={[styles.cardText, isRTL && styles.cardTextRTL]}>
-              {t(item.name) || item.name}
+              {item.name}
             </Text>
           </Pressable>
         )}

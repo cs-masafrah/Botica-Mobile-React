@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { request, gql } from "graphql-request";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
 import { Product } from "@/types/product";
 
@@ -121,15 +122,17 @@ const GET_FILTERED_PRODUCTS = gql`
 
 const fetchFilteredProducts = async (
   filters: FilterHomeCategoriesInput[] = [],
-  accessToken?: string | null
+  accessToken?: string | null,
+  locale: string = 'en'
 ): Promise<BagistoProduct[]> => {
   try {
-    console.log("📡 Fetching filtered products with filters:", filters);
+    console.log(`📡 Fetching filtered products with locale: ${locale} and filters:`, filters);
     
     const variables = { input: filters };
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "X-Locale": locale, // Add locale header
     };
 
     if (accessToken) {
@@ -148,14 +151,19 @@ const fetchFilteredProducts = async (
   } catch (error: any) {
     console.error("❌ Error fetching filtered products:", error.message || error);
     
-    // Try without auth headers if auth fails
+    // Try without auth headers if auth fails, but keep locale
     try {
       const variables = { input: filters };
-      const data = await request<{ allProducts: { data: BagistoProduct[] } }>(
-        GRAPHQL_ENDPOINT,
-        GET_FILTERED_PRODUCTS,
-        variables
-      );
+      const headers: Record<string, string> = {
+        "X-Locale": locale, // Keep locale even in retry
+      };
+      
+      const data = await request<{ allProducts: { data: BagistoProduct[] } }>({
+        url: GRAPHQL_ENDPOINT,
+        document: GET_FILTERED_PRODUCTS,
+        variables,
+        requestHeaders: headers,
+      });
       return data.allProducts.data;
     } catch (noAuthError: any) {
       console.error("❌ Error fetching without auth:", noAuthError);
@@ -166,10 +174,11 @@ const fetchFilteredProducts = async (
 
 export const useFilteredProducts = (filters: FilterHomeCategoriesInput[] = []) => {
   const { accessToken } = useAuth();
+  const { locale } = useLanguage(); // Get locale from language context
 
   return useQuery<BagistoProduct[], Error>({
-    queryKey: ["filteredProducts", filters, accessToken],
-    queryFn: () => fetchFilteredProducts(filters, accessToken),
+    queryKey: ["filteredProducts", filters, accessToken, locale], // Add locale to queryKey
+    queryFn: () => fetchFilteredProducts(filters, accessToken, locale),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
     refetchOnWindowFocus: false,

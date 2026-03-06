@@ -1,20 +1,22 @@
-import createContextHook from '@nkzw/create-context-hook';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { authService, Address } from '@/services/auth';
-import { useAuth } from './AuthContext';
+import createContextHook from "@nkzw/create-context-hook";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { authService, Address } from "@/services/auth";
+import { useAuth } from "./AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const [AddressContext, useAddress] = createContextHook(() => {
   const { isAuthenticated, customer } = useAuth();
   const queryClient = useQueryClient();
+  const { locale } = useLanguage();
 
   // Query to fetch addresses
   const addressesQuery = useQuery({
-    queryKey: ['addresses', customer?.id],
+    queryKey: ["addresses", customer?.id],
     queryFn: async () => {
       if (!customer?.id) {
         throw new Error("Customer ID not available");
       }
-      return authService.getAddresses();
+      return authService.getAddresses(locale);
     },
     enabled: isAuthenticated && !!customer?.id, // Ensure customer ID exists
     staleTime: 5 * 60 * 1000,
@@ -22,29 +24,35 @@ export const [AddressContext, useAddress] = createContextHook(() => {
 
   // Mutation to add address
   const addAddressMutation = useMutation({
-    mutationFn: async (address: Omit<Address, 'id'>) => {
+    mutationFn: async (address: Omit<Address, "id">) => {
       return authService.addAddress(address);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
     onError: (error) => {
-      console.error('Add address error:', error);
+      console.error("Add address error:", error);
     },
   });
 
   // Mutation to update address
   const updateAddressMutation = useMutation({
-    mutationFn: async ({ id, address }: { id: string; address: Omit<Address, 'id'> }) => {
+    mutationFn: async ({
+      id,
+      address,
+    }: {
+      id: string;
+      address: Omit<Address, "id">;
+    }) => {
       return authService.updateAddress(id, address);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
     onError: (error) => {
-      console.error('Update address error:', error);
+      console.error("Update address error:", error);
     },
-});
+  });
 
   // Mutation to delete address
   const deleteAddressMutation = useMutation({
@@ -52,11 +60,11 @@ export const [AddressContext, useAddress] = createContextHook(() => {
       await authService.deleteAddress(addressId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      console.log('Address deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+      console.log("Address deleted successfully");
     },
     onError: (error) => {
-      console.error('Delete address error:', error);
+      console.error("Delete address error:", error);
     },
   });
 
@@ -66,11 +74,11 @@ export const [AddressContext, useAddress] = createContextHook(() => {
       await authService.setDefaultAddress(addressId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      console.log('Default address set successfully');
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+      console.log("Default address set successfully");
     },
     onError: (error) => {
-      console.error('Set default address error:', error);
+      console.error("Set default address error:", error);
     },
   });
 
@@ -79,22 +87,22 @@ export const [AddressContext, useAddress] = createContextHook(() => {
     isLoading: addressesQuery.isLoading,
     isError: addressesQuery.isError,
     error: addressesQuery.error,
-    
+
     addAddress: addAddressMutation.mutateAsync,
     updateAddress: updateAddressMutation.mutateAsync,
     deleteAddress: deleteAddressMutation.mutateAsync,
     setDefaultAddress: setDefaultAddressMutation.mutateAsync,
-    
+
     isAddingAddress: addAddressMutation.isPending,
     isUpdatingAddress: updateAddressMutation.isPending,
     isDeletingAddress: deleteAddressMutation.isPending,
     isSettingDefault: setDefaultAddressMutation.isPending,
-    
+
     addAddressError: addAddressMutation.error,
     updateAddressError: updateAddressMutation.error,
     deleteAddressError: deleteAddressMutation.error,
     setDefaultAddressError: setDefaultAddressMutation.error,
-    
+
     refetchAddresses: addressesQuery.refetch,
   };
 });

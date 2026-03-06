@@ -181,6 +181,14 @@ interface FilterCustomerOrderInput {
 }
 
 class OrderService {
+  private currentLocale: string = 'en';
+
+  // Set locale for all requests
+  setLocale(locale: string) {
+    this.currentLocale = locale;
+    console.log(`🌐 [ORDER SERVICE] Locale set to: ${locale}`);
+  }
+
   // Get order list - FIXED AUTHENTICATION
   async getOrdersList(params?: {
     page?: number;
@@ -189,7 +197,7 @@ class OrderService {
     try {
       const { page = 1, limit = 10 } = params || {};
 
-      console.log("📋 [ORDER SERVICE] Fetching orders list...");
+      console.log(`📋 [ORDER SERVICE] Fetching orders list with locale: ${this.currentLocale}`);
 
       // First, get the authentication token from authService
       const auth = await authService.getStoredAuth();
@@ -260,10 +268,11 @@ class OrderService {
         page: page,
       };
 
-      // Create headers with the auth token
+      // Create headers with the auth token and locale
       const headers = {
         "Content-Type": "application/json",
         Accept: "application/json",
+        "X-Locale": this.currentLocale, // Add locale header
         Authorization: `Bearer ${auth.accessToken}`,
       };
 
@@ -295,7 +304,7 @@ class OrderService {
 
       if (json.data?.ordersList) {
         console.log(
-          `✅ [ORDER SERVICE] Fetched ${json.data.ordersList.data.length} orders`,
+          `✅ [ORDER SERVICE] Fetched ${json.data.ordersList.data.length} orders for locale: ${this.currentLocale}`,
         );
         return {
           data: json.data.ordersList.data,
@@ -331,7 +340,7 @@ class OrderService {
   // Get single order detail - FIXED AUTHENTICATION
   async getOrderDetail(orderId: string): Promise<Order | null> {
     try {
-      console.log("📋 [ORDER SERVICE] Fetching order detail:", orderId);
+      console.log(`📋 [ORDER SERVICE] Fetching order detail with locale: ${this.currentLocale}:`, orderId);
 
       // First, get the authentication token
       const auth = await authService.getStoredAuth();
@@ -398,6 +407,7 @@ class OrderService {
       const headers = {
         "Content-Type": "application/json",
         Accept: "application/json",
+        "X-Locale": this.currentLocale, // Add locale header
         Authorization: `Bearer ${auth.accessToken}`,
       };
 
@@ -428,6 +438,7 @@ class OrderService {
       }
 
       if (json.data?.orderDetail) {
+        console.log(`✅ [ORDER SERVICE] Order detail fetched successfully for locale: ${this.currentLocale}`);
         return json.data.orderDetail;
       }
 
@@ -442,13 +453,14 @@ class OrderService {
   // Get order by increment ID
   async getOrderByIncrementId(incrementId: string): Promise<Order | null> {
     try {
-      console.log("📋 [ORDER SERVICE] Fetching order by number:", incrementId);
+      console.log(`📋 [ORDER SERVICE] Fetching order by number with locale: ${this.currentLocale}:`, incrementId);
 
       // First get orders list and search
       const ordersList = await this.getOrdersList({ limit: 50 });
       const order = ordersList.data.find((o) => o.incrementId === incrementId);
 
       if (order) {
+        console.log(`✅ [ORDER SERVICE] Order found by increment ID for locale: ${this.currentLocale}`);
         return order;
       }
 

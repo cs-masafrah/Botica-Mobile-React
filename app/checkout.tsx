@@ -67,6 +67,7 @@ const CheckoutScreen = () => {
   const { items, cartDetails, loadCart, clearCart } = useCart();
   const { formatPrice, currentCurrency } = useCurrency(); // Add currency hook
   const { t, isRTL } = useLanguage();
+  const { locale } = useLanguage();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -117,7 +118,7 @@ const CheckoutScreen = () => {
     let mounted = true;
     const loadAddresses = async () => {
       try {
-        const result = await authService.getAddresses();
+        const result = await authService.getAddresses(locale);
         if (!mounted) return;
         setAddresses(result);
         // Find default address - property name changed from isDefault to defaultAddress
@@ -2095,7 +2096,7 @@ const CheckoutScreen = () => {
       )}
     </SafeAreaView>
   );
-}
+};
 
 // All styles remain exactly the same
 const styles = StyleSheet.create({

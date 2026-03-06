@@ -1,16 +1,17 @@
-// Update your AuthContext.tsx
-
-import createContextHook from '@nkzw/create-context-hook';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { authService, Customer } from '@/services/auth';
+import createContextHook from "@nkzw/create-context-hook";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { authService, Customer } from "@/services/auth";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const [AuthContext, useAuth] = createContextHook(() => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
+  const { locale } = useLanguage();
+
   const checkAuthQuery = useQuery({
-    queryKey: ['auth-status'],
+    queryKey: ["auth-status"],
     queryFn: async () => {
       const authState = await authService.getStoredAuth();
       if (authState) {
@@ -23,13 +24,19 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      return await authService.login(email, password);
+    mutationFn: async ({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+    }) => {
+      return await authService.login(email, password, locale);
     },
     onSuccess: (authState) => {
       setCustomer(authState.customer);
       setAccessToken(authState.accessToken);
-      console.log('Login successful:', authState.customer.email);
+      console.log("Login successful:", authState.customer.email);
     },
   });
 
@@ -45,25 +52,25 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       firstName: string;
       lastName: string;
     }) => {
-      return await authService.signup(email, password, firstName, lastName);
+      return await authService.signup(email, password, firstName, lastName, locale);
     },
     onSuccess: (authState) => {
       setCustomer(authState.customer);
       setAccessToken(authState.accessToken);
-      console.log('Signup successful:', authState.customer.email);
+      console.log("Signup successful:", authState.customer.email);
     },
   });
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
       if (accessToken) {
-        await authService.logout();
+        await authService.logout(locale);
       }
     },
     onSuccess: () => {
       setCustomer(null);
       setAccessToken(null);
-      console.log('Logout successful');
+      console.log("Logout successful");
     },
   });
 
@@ -72,8 +79,8 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       firstName: string;
       lastName: string;
       email: string;
-      gender: 'MALE' | 'FEMALE' | 'OTHER' | string | undefined;
-      dateOfBirth?: string | null;            
+      gender: "MALE" | "FEMALE" | "OTHER" | string | undefined;
+      dateOfBirth?: string | null;
       phone?: string | null;
       currentPassword?: string;
       newPassword?: string;
@@ -81,12 +88,12 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       newsletterSubscriber?: boolean;
       image?: string | null;
     }) => {
-      if (!accessToken) throw new Error('Not authenticated');
-      return await authService.updateAccount(input);
+      if (!accessToken) throw new Error("Not authenticated");
+      return await authService.updateAccount(input,locale);
     },
     onSuccess: (updatedCustomer) => {
       setCustomer(updatedCustomer);
-      console.log('Profile updated:', updatedCustomer);
+      console.log("Profile updated:", updatedCustomer);
     },
   });
 

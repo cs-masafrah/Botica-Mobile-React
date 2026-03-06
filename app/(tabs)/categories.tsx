@@ -22,20 +22,20 @@ import { useCategories } from "@/app/hooks/useCategories";
 import ProductByBrandTheme from "@/components/themes/ProductByBrandTheme";
 
 // Helper function to get icon component
-const getIconComponent = (iconName: string) => {
-  switch (iconName) {
-    case "User":
-      return User;
-    case "Globe":
-      return Globe;
-    case "Star":
-      return Star;
-    case "Gem":
-      return Gem;
-    default:
-      return Sparkles;
-  }
-};
+// const getIconComponent = (iconName: string) => {
+//   switch (iconName) {
+//     case "User":
+//       return User;
+//     case "Globe":
+//       return Globe;
+//     case "Star":
+//       return Star;
+//     case "Gem":
+//       return Gem;
+//     default:
+//       return Sparkles;
+//   }
+// };
 
 // Responsive breakpoints and helpers
 const getResponsiveValues = (width: number) => {
@@ -71,7 +71,7 @@ const CategoryCard = ({
 }) => {
   const { t, isRTL } = useLanguage();
 
-  const IconComponent = getIconComponent(category.icon);
+  // const IconComponent = getIconComponent(category.icon);
 
   const handleCategoryPress = () => {
     router.push({
@@ -107,7 +107,7 @@ const CategoryCard = ({
       />
       <View style={styles.overlay} />
       <View style={styles.categoryContent}>
-        <View
+        {/* <View
           style={[
             styles.iconContainer,
             {
@@ -118,14 +118,14 @@ const CategoryCard = ({
           ]}
         >
           <IconComponent size={responsive.iconSize} color={Colors.white} />
-        </View>
+        </View> */}
         <Text
           style={[
             styles.categoryName,
             { fontSize: responsive.categoryNameSize },
           ]}
         >
-          {t(category.name) || category.name}
+          {category.name}
         </Text>
       </View>
     </Pressable>
@@ -141,7 +141,7 @@ export default function CategoriesScreen() {
     data: categories = [],
     isLoading: categoriesLoading,
     refetch: refetchCategories,
-  } = useCategories();
+  } = useCategories(locale); // Pass locale to useCategories hook
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
@@ -158,13 +158,15 @@ export default function CategoriesScreen() {
   // Filter categories that have images
   const categoriesWithImages = categories.filter((cat) => cat.image);
 
-  // Define a theme object for the ProductByBrandTheme
+  // Define a theme object for the ProductByBrandTheme with locale support
   const brandTheme = {
     translations: [
       {
         localeCode: locale,
         options: {
-          title: t("shopByBrand") || "Shop By Brand",
+          title:
+            t("shopByBrand") ||
+            (locale === "ar" ? "تسوق حسب الماركة" : "Shop By Brand"),
         },
       },
     ],
@@ -204,7 +206,8 @@ export default function CategoriesScreen() {
                 isRTL && styles.titleRTL,
               ]}
             >
-              {t("shopByCategory") || "Shop by Category"}
+              {t("shopByCategory") ||
+                (locale === "ar" ? "تسوق حسب الفئة" : "Shop by Category")}
             </Text>
             <Text
               style={[
@@ -213,7 +216,7 @@ export default function CategoriesScreen() {
                 isRTL && styles.subtitleRTL,
               ]}
             >
-              {t("discoverFragrance") || "Discover your perfect fragrance"}
+              {/* Optional subtitle can be added here */}
             </Text>
           </View>
 
@@ -223,7 +226,10 @@ export default function CategoriesScreen() {
               <Text
                 style={[styles.loadingText, isRTL && styles.loadingTextRTL]}
               >
-                {t("loading") || "Loading categories..."}
+                {t("loading") ||
+                  (locale === "ar"
+                    ? "جاري تحميل الفئات..."
+                    : "Loading categories...")}
               </Text>
             </View>
           ) : categoriesWithImages.length > 0 ? (
@@ -246,7 +252,10 @@ export default function CategoriesScreen() {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, isRTL && styles.emptyTextRTL]}>
-                {t("noCategoriesAvailable") || "No categories available"}
+                {t("noCategoriesAvailable") ||
+                  (locale === "ar"
+                    ? "لا توجد فئات متاحة"
+                    : "No categories available")}
               </Text>
             </View>
           )}
@@ -286,7 +295,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   titleRTL: {
-    textAlign: "left",
+    textAlign: "right", // Changed from "left" to "right" for RTL
   },
   subtitle: {
     fontSize: 14,
@@ -294,7 +303,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   subtitleRTL: {
-    textAlign: "left",
+    textAlign: "right", // Changed from "left" to "right" for RTL
   },
   grid: {
     flexDirection: "row",
@@ -302,7 +311,7 @@ const styles = StyleSheet.create({
     gap: 19,
   },
   gridRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   categoryCard: {
     aspectRatio: 1,

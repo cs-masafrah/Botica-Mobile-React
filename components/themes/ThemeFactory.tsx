@@ -16,12 +16,14 @@ import ProductByBrandTheme from './ProductByBrandTheme';
 
 interface ThemeFactoryProps {
   theme: Theme;
+  locale?: string; // Keep this prop even though we use from context
 }
 
 const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
   const { locale, isRTL, t } = useLanguage();
   
   console.log(`🔍 [ThemeFactory] Processing theme: ${theme.id} - ${theme.type} - "${theme.name}"`);
+  console.log(`   Current locale from context: ${locale}`);
   
   const translation = useMemo(() => {
     const t = theme.translations?.find(t => t.localeCode === locale) || theme.translations?.[0];
@@ -53,11 +55,12 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
     );
   }
 
-  console.log(`   ✅ Will render ${theme.type} component`);
+  console.log(`   ✅ Will render ${theme.type} component with locale: ${locale}`);
 
+  // Pass the locale to all theme components
   return (
     <View style={[styles.container, isRTL && styles.containerRTL]}>
-      <ThemeComponent theme={theme} />
+      <ThemeComponent theme={theme} locale={locale} />
     </View>
   );
 };

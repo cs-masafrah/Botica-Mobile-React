@@ -50,7 +50,7 @@ export default function CartScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [manualLoading, setManualLoading] = useState(false);
-  const displayCurrency = currentCurrency?.code || 'USD';
+  const displayCurrency = currentCurrency?.code || "USD";
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -259,7 +259,8 @@ export default function CartScreen() {
           style={[styles.itemsContainer, isRTL && styles.itemsContainerRTL]}
         >
           {items.map((item) => {
-            const isUnavailable = !item.product.variantId || !item.product.inStock;
+            const isUnavailable =
+              !item.product.variantId || !item.product.inStock;
 
             return (
               <View
@@ -479,11 +480,11 @@ export default function CartScreen() {
             if (nextDiscountEntry) {
               const remaining = Math.max(
                 0,
-                nextDiscountEntry.threshold - subtotal
+                nextDiscountEntry.threshold - subtotal,
               );
               const progress = Math.min(
                 (subtotal / nextDiscountEntry.threshold) * 100,
-                100
+                100,
               );
 
               return (
@@ -742,7 +743,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   retryButtonRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   retryButtonText: {
     color: Colors.white,
@@ -821,7 +822,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   refreshButtonRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   refreshButtonText: {
     color: Colors.white,
@@ -871,7 +872,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   headerLeftRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   headerIconWrapper: {
     width: 48,
@@ -936,7 +937,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cartItemRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   itemImage: {
     width: 90,
@@ -974,7 +975,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   itemHeaderRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   itemInfo: {
     flex: 1,
@@ -993,7 +994,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   brandTextRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   itemName: {
     fontSize: 15,
@@ -1003,7 +1004,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   itemNameRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   unavailableBadge: {
     flexDirection: "row",
@@ -1043,7 +1044,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   itemPriceRowRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   itemPrice: {
     fontSize: 17,
@@ -1051,14 +1052,14 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   itemPriceRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   itemTotalLabel: {
     fontSize: 13,
     color: Colors.textSecondary,
   },
   itemTotalLabelRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   itemTotalValue: {
     fontWeight: "600",
@@ -1073,7 +1074,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   quantityContainerRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   quantityLabel: {
     fontSize: 13,
@@ -1139,7 +1140,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   freeShippingBadgeRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   freeShippingText: {
     fontSize: 14,
@@ -1165,7 +1166,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   progressHeaderRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   progressHeaderText: {
     fontSize: 13,
@@ -1206,7 +1207,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   summaryRowRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   summaryLabel: {
     fontSize: 14,

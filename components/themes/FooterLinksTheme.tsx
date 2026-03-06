@@ -15,8 +15,7 @@ const FooterLinksTheme: React.FC<FooterLinksThemeProps> = ({
   theme,
   locale = "en",
 }) => {
-  const { isRTL, t } = useLanguage();
-
+  const { t, isRTL } = useLanguage(); // Only need isRTL for layout, not t() for translations
   const translation = useMemo(() => {
     return (
       theme.translations?.find((t) => t.localeCode === locale) ||
@@ -24,6 +23,7 @@ const FooterLinksTheme: React.FC<FooterLinksThemeProps> = ({
     );
   }, [theme.translations, locale]);
 
+  // Get translated content from the theme translation
   const column1 = translation?.options?.column_1 || [];
   const column2 = translation?.options?.column_2 || [];
   const column3 = translation?.options?.column_3 || [];
@@ -64,7 +64,7 @@ const FooterLinksTheme: React.FC<FooterLinksThemeProps> = ({
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       {title ? (
         <Text style={[styles.title, isRTL && styles.titleRTL]}>
-          {t(title) || title}
+          {t("FooterLink")}
         </Text>
       ) : null}
 
@@ -80,7 +80,8 @@ const FooterLinksTheme: React.FC<FooterLinksThemeProps> = ({
                 onPress={() => handleLinkPress(link)}
               >
                 <Text style={[styles.linkText, isRTL && styles.linkTextRTL]}>
-                  {t(link.title) || link.title}
+                  {link.title}{" "}
+                  {/* Directly use link.title from translation, no t() needed */}
                 </Text>
               </Pressable>
             ))}
@@ -96,7 +97,7 @@ const FooterLinksTheme: React.FC<FooterLinksThemeProps> = ({
                 onPress={() => handleLinkPress(link)}
               >
                 <Text style={[styles.linkText, isRTL && styles.linkTextRTL]}>
-                  {t(link.title) || link.title}
+                  {link.title}
                 </Text>
               </Pressable>
             ))}
@@ -112,7 +113,7 @@ const FooterLinksTheme: React.FC<FooterLinksThemeProps> = ({
                 onPress={() => handleLinkPress(link)}
               >
                 <Text style={[styles.linkText, isRTL && styles.linkTextRTL]}>
-                  {t(link.title) || link.title}
+                  {link.title}
                 </Text>
               </Pressable>
             ))}
@@ -141,27 +142,27 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   titleRTL: {
-    textAlign: "right",
+    textAlign: "left",
   },
   columnsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
   columnsContainerRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   column: {
     flex: 1,
     paddingHorizontal: 8,
   },
   columnRTL: {
-    alignItems: "flex-end",
+    alignItems: "flex-start",
   },
   linkButton: {
     paddingVertical: 8,
   },
   linkButtonRTL: {
-    alignItems: "flex-end",
+    alignItems: "flex-start",
   },
   linkText: {
     fontSize: 14,

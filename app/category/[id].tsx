@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     flexWrap: "nowrap",
   },
   rowRTL: {
-    // flexDirection: "row-reverse",
+    flexDirection: "row-reverse",
   },
   productCard: {
     width: CARD_WIDTH,

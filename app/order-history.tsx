@@ -44,6 +44,7 @@ const OrderHistoryScreen = () => {
   const insets = useSafeAreaInsets();
   const { addToCart } = useCart();
   const { t, isRTL } = useLanguage();
+  const { locale } = useLanguage();
 
   useEffect(() => {
     checkAuth();

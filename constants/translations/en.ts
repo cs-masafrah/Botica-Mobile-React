@@ -434,6 +434,10 @@ const en = {
   loginRequired: "Login Required",
   loginPromptMessage: "Please login to continue",
   login: "Login",
+  FooterLink: "Important links",
+
+  categoriesCollection: "Categories Collections",
+  serviceContent: "Services"
 
   // Forgot Password translations
     enterValidEmail: "Please enter a valid email address",

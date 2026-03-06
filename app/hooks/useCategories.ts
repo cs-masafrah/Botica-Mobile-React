@@ -25,26 +25,40 @@ const GET_HOME_CATEGORIES = gql`
   }
 `;
 
-// Debug version with maximum logging
-export const useCategories = () => {
+// Updated hook with locale support for X-Locale header
+export const useCategories = (locale = "en") => {
   return useQuery({
-    queryKey: ["categories"],
+    queryKey: ["categories", locale], // Add locale to queryKey for proper caching
     queryFn: async () => {
       try {
         console.log("=== FETCHING CATEGORIES ===");
         console.log("GraphQL Endpoint:", GRAPHQL_ENDPOINT);
+        console.log("Requested locale:", locale);
 
         const filters = [{ key: "status", value: "1" }];
-        const data = await request(GRAPHQL_ENDPOINT, GET_HOME_CATEGORIES, {
-          filters,
-        });
+
+        // Add headers with X-Locale
+        const headers = {
+          "X-Locale": locale,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        };
+
+        const data = await request(
+          GRAPHQL_ENDPOINT,
+          GET_HOME_CATEGORIES,
+          { filters },
+          headers, // Pass headers
+        );
 
         console.log("Raw API response received");
         console.log("Number of categories:", data.homeCategories?.length || 0);
 
         // Log each category with details
         data.homeCategories?.forEach((cat, i) => {
-          console.log(`\n[${i}] ${cat.name} (ID: ${cat.id})`);
+          console.log(
+            `\n[${i}] ${cat.name} (ID: ${cat.id}) - Locale: ${locale}`,
+          );
           console.log(`  - Banner: ${cat.bannerUrl ? "YES" : "NO"}`);
           console.log(`  - Logo: ${cat.logoUrl ? "YES" : "NO"}`);
           console.log(`  - Children: ${cat.children?.length || 0}`);
@@ -65,14 +79,14 @@ export const useCategories = () => {
       }
     },
     select: (data) => {
-
       // Simple deduplication - only show top-level categories with images
       const seenIds = new Set();
       const result = [];
 
       data.forEach((cat) => {
-        // Skip "Root"
-        if (cat.name.toLowerCase() === "root") return;
+        // Skip "Root" (check in both English and Arabic)
+        const catNameLower = cat.name.toLowerCase();
+        if (catNameLower === "root" || catNameLower === "الجذر") return;
 
         // Skip if already seen
         if (seenIds.has(cat.id)) return;
@@ -84,7 +98,7 @@ export const useCategories = () => {
             id: cat.id,
             name: cat.name,
             image: cat.bannerUrl || cat.logoUrl || "",
-            icon: getIconByCategoryName(cat.name),
+            icon: getIconByCategoryName(cat.name, locale),
             slug: cat.slug,
           });
         }
@@ -92,12 +106,39 @@ export const useCategories = () => {
 
       return result;
     },
+    // Add locale to dependencies to refetch when language changes
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
-// Helper function to assign icons based on category name
-const getIconByCategoryName = (categoryName) => {
-  const iconMap = {
+// Updated helper function with Arabic category name support
+const getIconByCategoryName = (categoryName, locale = "en") => {
+  // Arabic category names mapping
+  const arabicIconMap = {
+    رجال: "User",
+    نساء: "User",
+    أطفال: "User",
+    الكترونيات: "Globe",
+    ملابس: "Sparkles",
+    أحذية: "Star",
+    إكسسوارات: "Gem",
+    تجميل: "Sparkles",
+    منزل: "Globe",
+    رياضة: "Star",
+    كتب: "Gem",
+    طعام: "Sparkles",
+    صحة: "Star",
+    سيارات: "Globe",
+    ألعاب: "Gem",
+    مجوهرات: "Gem",
+    ساعات: "Star",
+    حقائب: "Sparkles",
+    عطور: "Sparkles",
+    مستلزمات: "User",
+  };
+
+  // English category names mapping
+  const englishIconMap = {
     men: "User",
     women: "User",
     kids: "User",
@@ -113,15 +154,31 @@ const getIconByCategoryName = (categoryName) => {
     health: "Star",
     automotive: "Globe",
     toys: "Gem",
+    jewelry: "Gem",
+    watches: "Star",
+    bags: "Sparkles",
+    perfume: "Sparkles",
+    supplies: "User",
   };
 
   const lowerName = categoryName.toLowerCase();
+
+  // Choose the appropriate icon map based on locale
+  const iconMap = locale === "ar" ? arabicIconMap : englishIconMap;
+
+  // Try to find matching icon
   for (const [key, icon] of Object.entries(iconMap)) {
-    if (lowerName.includes(key)) {
+    if (lowerName.includes(key.toLowerCase())) {
       return icon;
     }
   }
 
+  // Default icons for categories without specific mapping
   const defaultIcons = ["Sparkles", "User", "Globe", "Star", "Gem"];
   return defaultIcons[Math.floor(Math.random() * defaultIcons.length)];
+};
+
+// Optional: Create a separate hook for getting translated category names
+export const useTranslatedCategories = (locale = "en") => {
+  return useCategories(locale);
 };

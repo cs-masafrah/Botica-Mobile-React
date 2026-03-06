@@ -6,14 +6,15 @@ import { BAGISTO_CONFIG } from "@/constants/bagisto";
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
 const GET_BRANDS = gql`
-  query GetBrands {
-    attributeValuesWithCounts(attribute: "brand") {
+  query GetBrands($locale: String) {
+    attributeValuesWithCounts(attribute: "brand", locale: $locale) {
       values {
         value
         label
         product_count
         option_id
         image_url
+        # locale field removed from here
       }
     }
   }
@@ -25,6 +26,7 @@ interface BrandRawData {
   product_count: number;
   option_id: number;
   image_url?: string;
+  // locale field removed from interface
 }
 
 interface BrandData {
@@ -33,6 +35,7 @@ interface BrandData {
   image?: string;
   value: string;
   option_id: number;
+  // locale field removed from interface
 }
 
 interface BrandResponse {
@@ -41,9 +44,15 @@ interface BrandResponse {
   };
 }
 
-const fetchBrands = async (): Promise<BrandRawData[]> => {
+interface UseBrandsOptions {
+  locale?: string;
+}
+
+const fetchBrands = async (locale?: string): Promise<BrandRawData[]> => {
   try {
-    const data = await request<BrandResponse>(GRAPHQL_ENDPOINT, GET_BRANDS);
+    const data = await request<BrandResponse>(GRAPHQL_ENDPOINT, GET_BRANDS, {
+      locale
+    });
     return data.attributeValuesWithCounts.values;
   } catch (error) {
     console.error("Error fetching brands:", error);
@@ -51,10 +60,12 @@ const fetchBrands = async (): Promise<BrandRawData[]> => {
   }
 };
 
-export const useBrands = () => {
+export const useBrands = (options?: UseBrandsOptions) => {
+  const { locale } = options || {};
+
   return useQuery({
-    queryKey: ["brands"],
-    queryFn: fetchBrands,
+    queryKey: ["brands", locale],
+    queryFn: () => fetchBrands(locale),
     select: (data: BrandRawData[]): BrandData[] =>
       data.map((brand) => ({
         name: brand.label,
@@ -62,7 +73,8 @@ export const useBrands = () => {
         image: brand.image_url,
         value: brand.value,
         option_id: brand.option_id,
+        // locale field removed from mapping
       })),
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 };

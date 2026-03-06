@@ -84,6 +84,7 @@ const ar = {
   noCategoriesAvailable: "لا توجد فئات متاحة",
 
   shopByBrand: "تسوق حسب العلامة التجارية",
+  categoriesCollection: "مجموعة الفئات",
   discoverLuxuryBrands: "اكتشف العلامات التجارية الفاخرة",
   // items: "منتجات",
   noProductsMatchFilters: "لا توجد منتجات تطابق الفلاتر الحالية",
@@ -432,6 +433,8 @@ const ar = {
   loginRequired: "تسجيل الدخول مطلوب",
   loginPromptMessage: "الرجاء تسجيل الدخول للمتابعة",
   login: "تسجيل الدخول",
+  FooterLink: "روابط مهمة",
+  serviceContent: "خدماتنا"
 
   // Forgot Password translations
     enterValidEmail: "الرجاء إدخال بريد إلكتروني صحيح",
