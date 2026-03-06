@@ -438,6 +438,16 @@ const en = {
 
   categoriesCollection: "Categories Collections",
   serviceContent: "Services"
+
+  // Forgot Password translations
+    enterValidEmail: "Please enter a valid email address",
+    forgotPasswordFailed: "Failed to send reset email. Please try again.",
+    enterEmailForReset: "Enter your email address and we'll send you a link to reset your password.",
+    sendResetLink: "Send Reset Link",
+    backToLogin: "Back to Login",
+    resetPasswordEmailSent: "Reset email sent!",
+    checkYourEmail: "Check your email",
+    resetPasswordEmailSentMessage: "We've sent a password reset link to your email address.",
 };
 
 export type TranslationKeys = keyof typeof en;

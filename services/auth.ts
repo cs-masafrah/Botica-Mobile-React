@@ -1034,6 +1034,53 @@ class AuthService {
       throw error;
     }
   }
+
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log("Requesting password reset for email:", email);
+
+      const query = `
+        mutation ForgotPassword($email: String!) {
+          forgotPassword(email: $email) {
+            success
+            message
+          }
+        }
+      `;
+
+      const variables = {
+        email: email.trim(),
+      };
+
+      const response = await fetch(this.baseUrl, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ query, variables }),
+      });
+
+      const json = await response.json();
+      console.log("Forgot password response:", JSON.stringify(json, null, 2));
+
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
+      }
+
+      const result = json.data?.forgotPassword;
+
+      if (!result) {
+        throw new Error("Invalid response from server");
+      }
+
+      return {
+        success: result.success || false,
+        message: result.message || "Password reset email sent",
+      };
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      throw error;
+    }
+  }
+  
 }
 
 export const authService = new AuthService();

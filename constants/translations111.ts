@@ -71,6 +71,18 @@ export const translationssss = {
     reviews: "reviews",
     sku: "SKU",
     brand: "Brand",
+
+    // Forgot Password translations
+    enterEmail: "Please enter your email",
+    enterValidEmail: "Please enter a valid email address",
+    forgotPasswordFailed: "Failed to send reset email. Please try again.",
+    enterEmailForReset: "Enter your email address and we'll send you a link to reset your password.",
+    sendResetLink: "Send Reset Link",
+    backToLogin: "Back to Login",
+    resetPasswordEmailSent: "Reset email sent!",
+    checkYourEmail: "Check your email",
+    resetPasswordEmailSentMessage: "We've sent a password reset link to your email address.",
+    forgotPassword: "Forgot Password",
   },
   ar: {
     greeting: "مرحباً!",
@@ -143,5 +155,18 @@ export const translationssss = {
     reviews: "تقييمات",
     sku: "الرمز",
     brand: "العلامة التجارية",
+
+    // Forgot Password translations
+    enterEmail: "الرجاء إدخال بريدك الإلكتروني",
+    enterValidEmail: "الرجاء إدخال بريد إلكتروني صحيح",
+    forgotPasswordFailed: "فشل إرسال رابط إعادة تعيين كلمة المرور. الرجاء المحاولة مرة أخرى.",
+    enterEmailForReset: "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
+    sendResetLink: "إرسال رابط إعادة التعيين",
+    backToLogin: "العودة إلى تسجيل الدخول",
+    resetPasswordEmailSent: "تم إرسال البريد الإلكتروني!",
+    checkYourEmail: "تحقق من بريدك الإلكتروني",
+    resetPasswordEmailSentMessage: "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
+    forgotPassword: "نسيت كلمة المرور",
+
   },
 };
