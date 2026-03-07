@@ -404,9 +404,9 @@ const ar = {
   alreadyHaveAccount: "لديك حساب بالفعل؟",
 
   // Brand Products Screen
-  loadingBrandProducts: "جاري تحميل منتجات {brand}...",
+  loadingBrandProducts: "جاري تحميل منتجات...",
   all: "الكل",
-  noProductsForBrand: "لم يتم العثور على منتجات لـ {brand}",
+  noProductsForBrand: "لم يتم العثور على منتجات لـ",
 
   // Category Screen
   category: "الفئة",

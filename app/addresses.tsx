@@ -348,7 +348,7 @@ export default function AddressesScreen() {
                         isRTL && styles.defaultBadgeRTL,
                       ]}
                     >
-                      <Text style={styles.defaultBadgeText}>
+                      <Text style={[styles.defaultBadgeText, isRTL && styles.defaultBadgeTextRTL]}>
                         {t("default")}
                       </Text>
                     </View>
@@ -994,6 +994,9 @@ const styles = StyleSheet.create({
   },
   addressBody: {
     marginBottom: 16,
+  },
+  defaultBadgeTextRTL: {
+    alignItems: "flex-end",
   },
   addressBodyRTL: {
     alignItems: "flex-start",
