@@ -2,10 +2,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { request, gql } from "graphql-request";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
-// Based on your working JS code, it seems you should use allProducts with input filter
+// Remove the top-level useLanguage() call - it's not allowed here
+
 const GET_PRODUCT_BY_ID = gql`
   query GetProductById($input: [FilterHomeCategoriesInput!]) {
     allProducts(input: $input) {
@@ -132,32 +134,40 @@ interface ProductResponse {
 }
 
 const transformProduct = (product: ProductData): any => {
-  const price = parseFloat(product.priceHtml?.finalPrice || product.specialPrice || product.price || '0');
-  const comparePrice = parseFloat(product.priceHtml?.regularPrice || product.price || '0');
-  
+  const price = parseFloat(
+    product.priceHtml?.finalPrice ||
+      product.specialPrice ||
+      product.price ||
+      "0",
+  );
+  const comparePrice = parseFloat(
+    product.priceHtml?.regularPrice || product.price || "0",
+  );
+
   // Get brand from additional data
-  const brand = product.additionalData.find(
-    (data) => data.label === 'Brand' || data.code === 'brand'
-  )?.value || '';
-  
+  const brand =
+    product.additionalData.find(
+      (data) => data.label === "Brand" || data.code === "brand",
+    )?.value || "";
+
   // Get category from additional data
   const categoryData = product.additionalData.find(
-    (data) => data.label === 'Category'
+    (data) => data.label === "Category",
   );
-  const category = categoryData?.value || '';
-  
+  const category = categoryData?.value || "";
+
   // Transform images
   const images = product.images.map((img) => img.url);
-  const mainImage = images[0] || '';
-  
+  const mainImage = images[0] || "";
+
   // Get approved reviews
   const reviews = product.reviews || [];
-  
+
   return {
     id: product.id,
     name: product.name,
-    description: product.description || '',
-    shortDescription: product.shortDescription || '',
+    description: product.description || "",
+    shortDescription: product.shortDescription || "",
     sku: product.sku,
     type: product.type,
     priceHtml: {
@@ -179,69 +189,101 @@ const transformProduct = (product: ProductData): any => {
 };
 
 const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(price);
 };
 
 export const useBagistoProductById = (id?: string) => {
+  // ✅ Call useLanguage() here, inside the custom hook
+  const { locale } = useLanguage();
+
   return useQuery({
-    queryKey: ["bagistoProduct", id],
+    queryKey: ["bagistoProduct", id, locale], // locale is now available
     queryFn: async () => {
       try {
         if (!id) {
-          console.log('❌ No product ID provided');
+          console.log("❌ No product ID provided");
           return null;
         }
-        
-        console.log('📡 Fetching product from Bagisto:', id);
-        
+
+        console.log("📡 Fetching product from Bagisto:", id);
+
+        // Add locale to the input if needed
         const input: FilterHomeCategoriesInput[] = [
           { key: "id", value: id },
           { key: "status", value: "1" },
+          // Add locale filter if your API supports it
+          // { key: "locale", value: locale },
         ];
-        
-        console.log('GraphQL Query:', GET_PRODUCT_BY_ID.loc?.source.body);
-        console.log('Variables:', { input });
 
         const data = await request<ProductResponse>(
           GRAPHQL_ENDPOINT,
           GET_PRODUCT_BY_ID,
-          { input }
+          { input },
+          {
+            "X-Locale": locale, // Add locale header
+          },
         );
 
         if (!data.allProducts?.data?.length) {
-          console.log('❌ Product not found in response');
+          console.log("❌ Product not found in response");
           return null;
         }
 
-        console.log('✅ Product fetched successfully');
+        console.log("✅ Product fetched successfully");
         const product = data.allProducts.data[0];
         return transformProduct(product);
       } catch (error: any) {
-        console.error('❌ Error fetching product:');
-        
-        // Safe error logging
+        console.error("❌ Error fetching product:");
+
         if (error.message) {
-          console.error('Error message:', error.message);
+          console.error("Error message:", error.message);
         }
-        
+
         if (error.response?.errors) {
-          console.error('GraphQL errors:', JSON.stringify(error.response.errors, null, 2));
+          console.error(
+            "GraphQL errors:",
+            JSON.stringify(error.response.errors, null, 2),
+          );
         }
-        
-        if (error.request?.query) {
-          console.error('Failed query:', error.request.query);
-        }
-        
-        if (error.request?.variables) {
-          console.error('Failed query variables:', JSON.stringify(error.request.variables, null, 2));
-        }
-        
-        // Don't throw, return null instead
+
+        return null;
+      }
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+// Optional: Add a variant that doesn't depend on language context
+export const useBagistoProductByIdSimple = (id?: string) => {
+  return useQuery({
+    queryKey: ["bagistoProductSimple", id],
+    queryFn: async () => {
+      try {
+        if (!id) return null;
+
+        const input: FilterHomeCategoriesInput[] = [
+          { key: "id", value: id },
+          { key: "status", value: "1" },
+        ];
+
+        const data = await request<ProductResponse>(
+          GRAPHQL_ENDPOINT,
+          GET_PRODUCT_BY_ID,
+          { input },
+        );
+
+        if (!data.allProducts?.data?.length) return null;
+
+        return transformProduct(data.allProducts.data[0]);
+      } catch (error) {
+        console.error("❌ Error fetching product:", error);
         return null;
       }
     },
