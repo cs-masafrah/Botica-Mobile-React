@@ -41,7 +41,7 @@ export default function ReelsScreen() {
   const { data: reels = [], isLoading, error } = useReels();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, locale } = useLanguage();
 
   // State management
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -431,6 +431,11 @@ export default function ReelsScreen() {
     const isLiked = item.is_liked || false;
     const likesCount = item.likes_count || 0;
 
+    // Get translated content based on current locale
+    const translation = item.translations?.find((t) => t.locale === locale);
+    const displayTitle = translation?.title || item.title;
+    const displayCaption = translation?.caption || item.caption;
+
     const videoDims = getVideoDimensions(item.id);
 
     return (
@@ -635,7 +640,7 @@ export default function ReelsScreen() {
                   style={[styles.title, isRTL && styles.titleRTL]}
                   numberOfLines={2}
                 >
-                  {item.title}
+                  {displayTitle}
                 </Text>
 
                 {/* Product name */}
@@ -767,19 +772,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.black,
   },
+  containerRTL: {
+    direction: "rtl",
+  },
   flatListContent: {
     flexGrow: 1,
   },
+  flatListContentRTL: {},
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: Colors.black,
   },
+  loadingContainerRTL: {},
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: Colors.white,
+  },
+  loadingTextRTL: {
+    textAlign: "right",
   },
   errorContainer: {
     flex: 1,
@@ -788,16 +801,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.black,
     padding: 20,
   },
+  errorContainerRTL: {},
   errorText: {
     fontSize: 18,
     fontWeight: "600",
     color: Colors.error,
     marginBottom: 8,
   },
+  errorTextRTL: {
+    textAlign: "right",
+  },
   errorSubtext: {
     fontSize: 14,
     color: Colors.textSecondary,
     textAlign: "center",
+  },
+  errorSubtextRTL: {
+    textAlign: "right",
   },
   emptyContainer: {
     flex: 1,
@@ -806,6 +826,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     padding: 20,
   },
+  emptyContainerRTL: {},
   emptyText: {
     fontSize: 18,
     fontWeight: "600",
@@ -813,11 +834,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: "center",
   },
+  emptyTextRTL: {
+    textAlign: "right",
+  },
   emptySubtext: {
     fontSize: 14,
     color: Colors.textSecondary,
     textAlign: "center",
     marginBottom: 20,
+  },
+  emptySubtextRTL: {
+    textAlign: "right",
   },
   reelContainer: {
     width: SCREEN_WIDTH,
@@ -827,6 +854,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  reelContainerRTL: {},
   videoTouchable: {
     width: "100%",
     height: "100%",
@@ -853,17 +881,25 @@ const styles = StyleSheet.create({
     color: Colors.white,
     textAlign: "center",
   },
+  noMediaTextRTL: {
+    textAlign: "right",
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "space-between",
     paddingBottom: 120,
     paddingHorizontal: 16,
   },
+  overlayRTL: {},
   topSection: {
     flexDirection: "row",
     justifyContent: "flex-end",
     paddingTop: 60,
     gap: 16,
+  },
+  topSectionRTL: {
+    justifyContent: "flex-start",
+    flexDirection: "row",
   },
   audioButton: {
     width: 44,
@@ -896,6 +932,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  authBadgeRTL: {
+    right: undefined,
+    left: -4,
+  },
   authBadgeText: {
     color: Colors.white,
     fontSize: 10,
@@ -914,6 +954,9 @@ const styles = StyleSheet.create({
     elevation: 8,
     alignItems: "center",
   },
+  ctaButtonRTL: {
+    alignSelf: "flex-end",
+  },
   ctaButtonText: {
     fontSize: 14,
     fontWeight: "700",
@@ -921,11 +964,16 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
+  ctaButtonTextRTL: {},
   bottomSection: {
     gap: 12,
   },
+  bottomSectionRTL: {},
   textContainer: {
     gap: 8,
+  },
+  textContainerRTL: {
+    alignItems: "flex-start",
   },
   title: {
     fontSize: 20,
@@ -934,6 +982,9 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  titleRTL: {
+    textAlign: "right",
   },
   productName: {
     fontSize: 16,
@@ -945,10 +996,18 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  productNameRTL: {
+    marginRight: 0,
+    marginLeft: 12,
+    textAlign: "right",
+  },
   statsContainer: {
     flexDirection: "row",
     gap: 16,
     marginTop: 4,
+  },
+  statsContainerRTL: {
+    flexDirection: "row",
   },
   statsText: {
     fontSize: 13,
@@ -958,6 +1017,9 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
+  statsTextRTL: {
+    textAlign: "right",
+  },
   authHint: {
     marginTop: 8,
     padding: 8,
@@ -966,10 +1028,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 193, 7, 0.3)",
   },
+  authHintRTL: {},
   authHintText: {
     fontSize: 12,
     color: "#FFC107",
     fontWeight: "600",
+  },
+  authHintTextRTL: {
+    textAlign: "right",
   },
   debugContainer: {
     marginTop: 8,
@@ -1010,11 +1076,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: "center",
   },
+  errorOverlayTextRTL: {
+    textAlign: "right",
+  },
   errorOverlaySubtext: {
     fontSize: 14,
     color: Colors.white,
     textAlign: "center",
     marginBottom: 20,
+  },
+  errorOverlaySubtextRTL: {
+    textAlign: "right",
   },
   retryButton: {
     backgroundColor: Colors.primary,
@@ -1026,76 +1098,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: "600",
     fontSize: 14,
-  },
-
-  // RTL specific styles - added at the end
-  containerRTL: {
-    direction: "rtl",
-  },
-  flatListContentRTL: {},
-  loadingContainerRTL: {},
-  loadingTextRTL: {
-    textAlign: "right",
-  },
-  errorContainerRTL: {},
-  errorTextRTL: {
-    textAlign: "right",
-  },
-  errorSubtextRTL: {
-    textAlign: "right",
-  },
-  emptyContainerRTL: {},
-  emptyTextRTL: {
-    textAlign: "right",
-  },
-  emptySubtextRTL: {
-    textAlign: "right",
-  },
-  reelContainerRTL: {},
-  overlayRTL: {},
-  topSectionRTL: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
-  },
-  authBadgeRTL: {
-    right: undefined,
-    left: -4,
-  },
-  ctaButtonRTL: {
-    alignSelf: "flex-end",
-  },
-  ctaButtonTextRTL: {
-  },
-  bottomSectionRTL: {},
-  textContainerRTL: {
-    alignItems: "flex-start",
-  },
-  titleRTL: {
-    textAlign: "right",
-  },
-  productNameRTL: {
-    marginRight: 0,
-    marginLeft: 12,
-    textAlign: "right",
-  },
-  statsContainerRTL: {
-    flexDirection: "row",
-  },
-  statsTextRTL: {
-    textAlign: "right",
-  },
-  authHintRTL: {},
-  authHintTextRTL: {
-    textAlign: "right",
-  },
-  noMediaTextRTL: {
-    textAlign: "right",
-  },
-  errorOverlayTextRTL: {
-    textAlign: "right",
-  },
-  errorOverlaySubtextRTL: {
-    textAlign: "right",
   },
   retryButtonTextRTL: {
     textAlign: "right",

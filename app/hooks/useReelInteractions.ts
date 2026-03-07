@@ -57,11 +57,10 @@ const CHECK_MUTATIONS = gql`
 `;
 
 // First, let's check what mutations are available
-export const checkAvailableMutations = async () => {
-  const { locale } = useLanguage(); // This won't work in regular function, need to handle differently
+export const checkAvailableMutations = async (locale: string = "en") => {
   try {
     const headers: Record<string, string> = {
-      "X-Locale": locale, // Add locale header
+      "X-Locale": locale,
     };
 
     const data = await request(GRAPHQL_ENDPOINT, CHECK_MUTATIONS, {}, headers);
@@ -73,18 +72,18 @@ export const checkAvailableMutations = async () => {
   }
 };
 
-// Like/Unlike a reel
+// app/hooks/useReelInteractions.ts - Updated useLikeReel
+
 export const useLikeReel = () => {
   const queryClient = useQueryClient();
   const { accessToken, isAuthenticated } = useAuth();
-  const { locale } = useLanguage(); // Get locale from language context
+  const { locale } = useLanguage();
 
   return useMutation({
     mutationFn: async (reelId: string): Promise<ReelLikeResponse> => {
       try {
         console.log(`❤️ Liking reel: ${reelId} with locale: ${locale}`);
 
-        // Check authentication
         if (!isAuthenticated || !accessToken) {
           throw new Error("LOGIN_REQUIRED");
         }
@@ -93,7 +92,7 @@ export const useLikeReel = () => {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
           Accept: "application/json",
-          "X-Locale": locale, // Add locale header
+          "X-Locale": locale,
           Authorization: `Bearer ${accessToken}`,
         };
 
@@ -110,9 +109,7 @@ export const useLikeReel = () => {
           throw new Error("Invalid response from server");
         }
 
-        // Check if the mutation was successful
         if (!data.likeReel.success) {
-          // If not successful and it's an auth error
           if (
             data.likeReel.message?.includes("Authentication required") ||
             data.likeReel.message?.includes("Please login")
@@ -125,26 +122,7 @@ export const useLikeReel = () => {
         return data.likeReel;
       } catch (error: any) {
         console.error("❌ Error liking reel:", error);
-
-        // Extract error message
-        let errorMessage = "Failed to like reel";
-        if (error.response?.errors?.[0]?.message) {
-          errorMessage = error.response.errors[0].message;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-
-        // Check if it's an auth error
-        if (
-          errorMessage.includes("Authentication required") ||
-          errorMessage.includes("Please login") ||
-          errorMessage.includes("LOGIN_REQUIRED") ||
-          errorMessage.includes("Unauthorized")
-        ) {
-          throw new Error("LOGIN_REQUIRED");
-        }
-
-        throw new Error(errorMessage);
+        throw error;
       }
     },
     onMutate: async (reelId: string) => {
@@ -163,8 +141,8 @@ export const useLikeReel = () => {
               ...reel,
               is_liked: !currentlyLiked,
               likes_count: currentlyLiked
-                ? reel.likes_count - 1
-                : reel.likes_count + 1,
+                ? Math.max(0, (reel.likes_count || 0) - 1)
+                : (reel.likes_count || 0) + 1,
             };
           }
           return reel;
@@ -178,14 +156,42 @@ export const useLikeReel = () => {
     onError: (err: Error, reelId: string, context: any) => {
       console.error("Mutation error:", err.message || err);
 
-      // Rollback to previous state on error
+      // Rollback on error
       if (context?.previousReels) {
         queryClient.setQueryData<Reel[]>(["reels"], context.previousReels);
       }
     },
+    onSuccess: (data: ReelLikeResponse, reelId: string) => {
+      // Update with server data immediately
+      if (data.success && data.reel) {
+        queryClient.setQueryData<Reel[]>(["reels"], (oldData) => {
+          if (!oldData || !Array.isArray(oldData)) return oldData;
+
+          return oldData.map((reel) => {
+            if (reel.id === reelId) {
+              return {
+                ...reel,
+                // Use the server data directly
+                is_liked: data.liked === true,
+                likes_count: data.reel?.likes_count ?? reel.likes_count,
+                views_count: data.reel?.views_count ?? reel.views_count,
+              };
+            }
+            return reel;
+          });
+        });
+      }
+    },
     onSettled: () => {
-      // Refetch reels to ensure data is in sync
-      queryClient.invalidateQueries({ queryKey: ["reels"] });
+      // DON'T invalidate immediately - this causes flashing
+      // Instead, update the cache with the mutation response
+      // and only refetch after a longer delay or not at all
+
+      // Option 1: Don't refetch at all - trust the mutation response
+      // Option 2: Refetch after a long delay
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["reels"] });
+      }, 5000); // 5 seconds
     },
   });
 };
@@ -254,6 +260,7 @@ export const useViewReel = () => {
                 ...reel,
                 views_count: data.views_count,
                 likes_count: data.reel?.likes_count || reel.likes_count,
+                is_liked: reel.is_liked,
               };
             }
             return reel;
