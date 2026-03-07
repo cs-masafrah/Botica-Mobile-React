@@ -437,7 +437,7 @@ const en = {
   FooterLink: "Important links",
 
   categoriesCollection: "Categories Collections",
-  serviceContent: "Services"
+  serviceContent: "Services",
 
   // Forgot Password translations
     enterValidEmail: "Please enter a valid email address",

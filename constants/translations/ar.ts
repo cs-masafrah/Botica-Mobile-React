@@ -6,7 +6,7 @@ const ar = {
   home: "الرئيسية",
   categories: "الفئات",
   cart: "السلة",
-  profile: "الملف الشخصي",
+  profile: "حسابي",
   bannerTitle: "عطور فاخرة",
   bannerSubtitle: "مجموعة حصرية من العطور الفاخرة",
   shopNow: "تسوق الآن",
@@ -434,18 +434,20 @@ const ar = {
   loginPromptMessage: "الرجاء تسجيل الدخول للمتابعة",
   login: "تسجيل الدخول",
   FooterLink: "روابط مهمة",
-  serviceContent: "خدماتنا"
+  serviceContent: "خدماتنا",
 
   // Forgot Password translations
-    enterValidEmail: "الرجاء إدخال بريد إلكتروني صحيح",
-    forgotPasswordFailed: "فشل إرسال رابط إعادة تعيين كلمة المرور. الرجاء المحاولة مرة أخرى.",
-    enterEmailForReset: "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
-    sendResetLink: "إرسال رابط إعادة التعيين",
-    backToLogin: "العودة إلى تسجيل الدخول",
-    resetPasswordEmailSent: "تم إرسال البريد الإلكتروني!",
-    checkYourEmail: "تحقق من بريدك الإلكتروني",
-    resetPasswordEmailSentMessage: "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
-
+  enterValidEmail: "الرجاء إدخال بريد إلكتروني صحيح",
+  forgotPasswordFailed:
+    "فشل إرسال رابط إعادة تعيين كلمة المرور. الرجاء المحاولة مرة أخرى.",
+  enterEmailForReset:
+    "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
+  sendResetLink: "إرسال رابط إعادة التعيين",
+  backToLogin: "العودة إلى تسجيل الدخول",
+  resetPasswordEmailSent: "تم إرسال البريد الإلكتروني!",
+  checkYourEmail: "تحقق من بريدك الإلكتروني",
+  resetPasswordEmailSentMessage:
+    "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
 };
 
 export type TranslationKeys = keyof typeof ar;

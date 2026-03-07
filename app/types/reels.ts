@@ -11,21 +11,29 @@ export interface Product {
   }>;
 }
 
+// types/reels.ts
 export interface Reel {
   id: string;
   title: string;
   caption?: string;
   video_url: string;
-  thumbnail_url?: string | null;
+  thumbnail_url?: string;
   is_active: boolean;
-  duration: number;
+  duration?: number;
   sort_order: number;
   likes_count: number;
   views_count: number;
-  is_liked?: boolean; // Add this field
-  product?: Product | null;
-  created_at?: string;
-  updated_at?: string;
+  is_liked?: boolean;
+  product?: {
+    id: string;
+    name: string;
+    sku: string;
+  };
+  translations?: Array<{
+    locale: string;
+    title: string;
+    caption?: string;
+  }>;
 }
 
 export interface ReelLikeResponse {
