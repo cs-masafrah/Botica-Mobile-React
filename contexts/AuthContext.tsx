@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { authService, Customer } from "@/services/auth";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Platform } from 'react-native';
 
 export const [AuthContext, useAuth] = createContextHook(() => {
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -107,6 +108,49 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     },
   });
 
+  const socialLoginMutation = useMutation({
+    mutationFn: async ({
+      firstName,
+      lastName,
+      email,
+      phone,
+      signupType,
+      password,
+      passwordConfirmation,
+    }: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      signupType: 'TRUECALLER' | 'FACEBOOK' | 'TWITTER' | 'GOOGLE' | 'LINKEDIN' | 'GITHUB';
+      password?: string;
+      passwordConfirmation?: string;
+    }) => {
+      return await authService.socialLogin(
+        {
+          firstName,
+          lastName,
+          email,
+          phone,
+          signupType,
+          password,
+          passwordConfirmation,
+          remember: true,
+          deviceToken: 'expo-device-token',
+          deviceName: `${Platform.OS} ${Platform.Version}`,
+        },
+        locale
+      );
+    },
+    onSuccess: (authState) => {
+      setCustomer(authState.customer);
+      setAccessToken(authState.accessToken);
+      console.log("Social login successful:", authState.customer.email);
+    },
+  });
+
+// Add these to the return object:
+
   const isAuthenticated = !!customer && !!accessToken;
   const isLoading = checkAuthQuery.isLoading;
 
@@ -128,5 +172,10 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     loginError: loginMutation.error,
     signupError: signupMutation.error,
     forgotPasswordError: forgotPasswordMutation.error, // Add this line
+
+    // ... existing returns
+    socialLogin: socialLoginMutation.mutateAsync,
+    socialLoginLoading: socialLoginMutation.isPending,
+    socialLoginError: socialLoginMutation.error,
   };
 });

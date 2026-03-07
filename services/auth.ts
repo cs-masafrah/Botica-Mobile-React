@@ -1080,6 +1080,147 @@ class AuthService {
       throw error;
     }
   }
+
+  // In services/auth.ts - Add this method to the AuthService class
+
+  async socialLogin(
+    input: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      signupType: 'TRUECALLER' | 'FACEBOOK' | 'TWITTER' | 'GOOGLE' | 'LINKEDIN' | 'GITHUB';
+      password?: string;
+      passwordConfirmation?: string;
+      remember?: boolean;
+      deviceToken?: string;
+      deviceName?: string;
+    },
+    locale?: string,
+  ): Promise<AuthState> {
+    try {
+      console.log(
+        `Attempting social login with ${input.signupType} and locale: ${locale || "en"}`,
+      );
+
+      const query = `
+        mutation CustomerSocialSignIn($input: SocialSignInInput!) {
+          customerSocialSignIn(input: $input) {
+            success
+            message
+            accessToken
+            tokenType
+            expiresIn
+            customer {
+              id
+              firstName
+              lastName
+              email
+              phone
+              defaultAddress {
+                id
+                firstName
+                lastName
+                address
+                city
+                state
+                postcode
+                country
+                phone
+                defaultAddress
+              }
+            }
+          }
+        }
+      `;
+
+      const variables = {
+        input: {
+          firstName: input.firstName || '',
+          lastName: input.lastName || '',
+          email: input.email || '',
+          phone: input.phone || '',
+          signupType: input.signupType,
+          password: input.password,
+          passwordConfirmation: input.passwordConfirmation,
+          remember: input.remember ?? true,
+          deviceToken: input.deviceToken || 'expo-device-token',
+          deviceName: input.deviceName || 'Expo App',
+        },
+      };
+
+      const response = await fetch(this.baseUrl, {
+        method: "POST",
+        headers: {
+          ...this.headers,
+          ...this.getLocaleHeader(locale),
+        },
+        body: JSON.stringify({ query, variables }),
+      });
+
+      const json = await response.json();
+      console.log("Social login response:", JSON.stringify(json, null, 2));
+
+      if (json.errors?.length) {
+        throw new Error(json.errors.map((e: any) => e.message).join(", "));
+      }
+
+      const result = json?.data?.customerSocialSignIn;
+
+      if (!result?.success) {
+        throw new Error(result?.message || "Social login failed");
+      }
+
+      if (!result.accessToken) {
+        throw new Error("No access token received");
+      }
+
+      const customer: Customer = {
+        id: result.customer.id,
+        email: result.customer.email,
+        firstName: result.customer.firstName,
+        lastName: result.customer.lastName,
+        name: `${result.customer.firstName} ${result.customer.lastName}`.trim(),
+        phone: result.customer.phone,
+        defaultAddress: result.customer.defaultAddress
+          ? {
+              id: result.customer.defaultAddress.id,
+              companyName: result.customer.defaultAddress.companyName || "",
+              firstName: result.customer.defaultAddress.firstName,
+              lastName: result.customer.defaultAddress.lastName,
+              email: result.customer.defaultAddress.email || result.customer.email,
+              vatId: result.customer.defaultAddress.vatId || "",
+              address: result.customer.defaultAddress.address,
+              country: result.customer.defaultAddress.country,
+              state: result.customer.defaultAddress.state,
+              city: result.customer.defaultAddress.city,
+              postcode: result.customer.defaultAddress.postcode,
+              phone: result.customer.defaultAddress.phone,
+              defaultAddress: result.customer.defaultAddress.defaultAddress || false,
+            }
+          : undefined,
+      };
+
+      const expiresAt = new Date(
+        Date.now() + result.expiresIn * 1000,
+      ).toISOString();
+
+      const authState: AuthState = {
+        accessToken: result.accessToken,
+        expiresAt,
+        customer,
+      };
+
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authState));
+
+      console.log("Social login successful:", customer.email);
+
+      return authState;
+    } catch (error) {
+      console.error("Social login error:", error);
+      throw error;
+    }
+  }
   
 }
 
