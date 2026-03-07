@@ -437,7 +437,7 @@ const en = {
   FooterLink: "Important links",
 
   categoriesCollection: "Categories Collections",
-  serviceContent: "Services"
+  serviceContent: "Services",
 
   // Forgot Password translations
     enterValidEmail: "Please enter a valid email address",
@@ -448,6 +448,17 @@ const en = {
     resetPasswordEmailSent: "Reset email sent!",
     checkYourEmail: "Check your email",
     resetPasswordEmailSentMessage: "We've sent a password reset link to your email address.",
+    
+    // Add these new filter-related translations at the end or in the appropriate section
+  filters: "Filters",
+  filterHint: "Select gender to filter products",
+  inStockOnly: "In Stock Only",
+  reset: "Reset",
+  applyFilters: "Apply Filters",
+  sortBy: "Sort By",
+  priceRange: "Price Range",
+  min: "Min",
+  max: "Max",
 };
 
 export type TranslationKeys = keyof typeof en;

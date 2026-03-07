@@ -434,7 +434,7 @@ const ar = {
   loginPromptMessage: "الرجاء تسجيل الدخول للمتابعة",
   login: "تسجيل الدخول",
   FooterLink: "روابط مهمة",
-  serviceContent: "خدماتنا"
+  serviceContent: "خدماتنا",
 
   // Forgot Password translations
     enterValidEmail: "الرجاء إدخال بريد إلكتروني صحيح",
@@ -445,6 +445,18 @@ const ar = {
     resetPasswordEmailSent: "تم إرسال البريد الإلكتروني!",
     checkYourEmail: "تحقق من بريدك الإلكتروني",
     resetPasswordEmailSentMessage: "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
+
+    // Add these new filter-related translations at the end or in the appropriate section
+    filters: "تصفية",
+    filterHint: "اختر الجنس لتصفية المنتجات",
+    inStockOnly: "المتوفرة فقط",
+    reset: "إعادة ضبط",
+    applyFilters: "تطبيق التصفية",
+    sortBy: "ترتيب حسب",
+    priceRage: "نطاق السعر",
+    min: "الحد الأدنى",
+    max: "الحد الأقصى",
+
 
 };
 
