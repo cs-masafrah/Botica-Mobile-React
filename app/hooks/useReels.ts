@@ -7,13 +7,16 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
-// Define the public query (without is_liked)
+// FIXED: Moved first and page inside the input parameter
 const GET_REELS_PUBLIC = gql`
-  query GetReels($page: Int, $first: Int) {
-    reels(first: $first, page: $page) {
+  query GetReels($page: Int, $first: Int, $locale: String) {
+    reels(
+      input: { page: $page, per_page: $first, locale: $locale, is_active: true }
+    ) {
       data {
         id
         title
+        caption
         video_url
         thumbnail_url
         is_active
@@ -21,7 +24,7 @@ const GET_REELS_PUBLIC = gql`
         sort_order
         likes_count
         views_count
-        caption
+        is_liked
         product {
           id
           name
@@ -29,24 +32,29 @@ const GET_REELS_PUBLIC = gql`
         }
       }
       paginatorInfo {
+        total
         currentPage
         lastPage
+        perPage
       }
     }
   }
 `;
 
-// Define the individual reel query (includes is_liked)
+// Individual reel query
 const GET_REEL = gql`
-  query GetReel($id: ID!) {
-    reel(id: $id) {
+  query GetReel($id: ID!, $locale: String) {
+    reel(id: $id, input: { locale: $locale }) {
       id
       title
+      caption
       video_url
       thumbnail_url
       views_count
       likes_count
       is_liked
+      duration
+      sort_order
       product {
         id
         name
@@ -70,14 +78,21 @@ const fetchReels = async (
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
-      "X-Locale": locale, // Add locale header
+      "X-Locale": locale,
     };
 
-    // Always use public query for initial fetch
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+
     const data = await request<{ reels: { data: Reel[] } }>({
       url: GRAPHQL_ENDPOINT,
       document: GET_REELS_PUBLIC,
-      variables: { page, first },
+      variables: {
+        page,
+        first,
+        locale,
+      },
       requestHeaders: headers,
     });
 
@@ -88,100 +103,46 @@ const fetchReels = async (
       return getMockReels(locale);
     }
 
+    // Log the first reel's title to verify translation
+    if (data.reels.data.length > 0) {
+      console.log(
+        `First reel title for locale ${locale}:`,
+        data.reels.data[0].title,
+      );
+    }
+
     // Filter active reels and sort by sort_order
     const activeReels = data.reels.data
       .filter((reel) => reel.is_active)
-      .sort((a, b) => a.sort_order - b.sort_order);
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-    console.log(
-      `📊 Loaded ${activeReels.length} active reels for locale: ${locale}`,
-    );
-
-    // If user is authenticated, fetch is_liked status for each reel
-    if (accessToken) {
-      console.log("🔐 User is authenticated, fetching like status...");
-      try {
-        const authHeaders = {
-          ...headers,
-          Authorization: `Bearer ${accessToken}`,
-        };
-
-        // Fetch like status for each reel
-        const reelsWithLikes = await Promise.all(
-          activeReels.map(async (reel) => {
-            try {
-              const reelData = await request<{ reel: Reel }>({
-                url: GRAPHQL_ENDPOINT,
-                document: GET_REEL,
-                variables: { id: reel.id },
-                requestHeaders: authHeaders,
-              });
-
-              if (reelData?.reel) {
-                return {
-                  ...reel,
-                  is_liked: reelData.reel.is_liked || false,
-                  likes_count: reelData.reel.likes_count || reel.likes_count,
-                  views_count: reelData.reel.views_count || reel.views_count,
-                };
-              }
-            } catch (error) {
-              console.warn(
-                `⚠️ Failed to fetch like status for reel ${reel.id}:`,
-                error,
-              );
-              // If fails, return reel without is_liked
-              return {
-                ...reel,
-                is_liked: false,
-              };
-            }
-            return {
-              ...reel,
-              is_liked: false,
-            };
-          }),
-        );
-
-        return reelsWithLikes;
-      } catch (error) {
-        console.warn(
-          "⚠️ Failed to fetch like status, using public data:",
-          error,
-        );
-        // If fetching like status fails, return reels with is_liked = false
-        return activeReels.map((reel) => ({
-          ...reel,
-          is_liked: false,
-        }));
-      }
-    }
-
-    // For non-authenticated users, set is_liked = false
-    return activeReels.map((reel) => ({
-      ...reel,
-      is_liked: false,
-    }));
+    return activeReels;
   } catch (error: any) {
     console.error("❌ Error fetching reels:", error.message || error);
 
-    // Try mock data if everything fails
+    // Log the full error for debugging
+    if (error.response) {
+      console.error(
+        "GraphQL Error Response:",
+        JSON.stringify(error.response, null, 2),
+      );
+    }
+
     console.log(`🔄 Falling back to mock data for locale: ${locale}`);
     return getMockReels(locale);
   }
 };
 
-// Mock data for testing - with translations
+// Mock data with proper translations
 const getMockReels = (locale: string = "en"): Reel[] => {
   console.log(`📱 Using mock reels data for locale: ${locale}`);
 
-  // Mock data with translations
-  const mockReels = {
+  const mockReels: Record<string, Reel[]> = {
     en: [
       {
-        id: "1",
-        title: "Summer Collection 2024",
-        caption: "Check out our new summer collection!",
+        id: "11",
+        title: "Test",
+        caption: "Test caption",
         video_url:
           "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
         thumbnail_url:
@@ -199,9 +160,9 @@ const getMockReels = (locale: string = "en"): Reel[] => {
         },
       },
       {
-        id: "2",
-        title: "Winter Jackets Collection",
-        caption: "Stay warm with our winter collection",
+        id: "16",
+        title: "test 2",
+        caption: "Test caption 2",
         video_url:
           "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
         thumbnail_url:
@@ -221,9 +182,9 @@ const getMockReels = (locale: string = "en"): Reel[] => {
     ],
     ar: [
       {
-        id: "1",
-        title: "مجموعة الصيف 2024",
-        caption: "اكتشف مجموعتنا الجديدة للصيف!",
+        id: "11",
+        title: "اختبار",
+        caption: "وصف الاختبار",
         video_url:
           "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
         thumbnail_url:
@@ -241,7 +202,7 @@ const getMockReels = (locale: string = "en"): Reel[] => {
         },
       },
       {
-        id: "2",
+        id: "16",
         title: "مجموعة السترات الشتوية",
         caption: "ابق دافئاً مع مجموعتنا الشتوية",
         video_url:
@@ -263,54 +224,71 @@ const getMockReels = (locale: string = "en"): Reel[] => {
     ],
   };
 
-  return mockReels[locale as keyof typeof mockReels] || mockReels.en;
+  return mockReels[locale] || mockReels.en;
 };
 
 export const useReels = (page = 1, first = 10) => {
   const { accessToken } = useAuth();
-  const { locale } = useLanguage(); // Get locale from language context
+  const { locale } = useLanguage();
 
   return useQuery<Reel[], Error>({
-    queryKey: ["reels", page, first, accessToken, locale], // Add locale to queryKey
+    queryKey: ["reels", page, first, locale, accessToken ? "auth" : "public"],
     queryFn: () => fetchReels(page, first, accessToken, locale),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
   });
 };
 
-// New hook to fetch individual reel with like status
+// Individual reel hook
 export const useReel = (reelId: string) => {
   const { accessToken } = useAuth();
-  const { locale } = useLanguage(); // Get locale from language context
+  const { locale } = useLanguage();
 
   return useQuery<Reel, Error>({
-    queryKey: ["reel", reelId, accessToken, locale], // Add locale to queryKey
+    queryKey: ["reel", reelId, locale, accessToken ? "auth" : "public"],
     queryFn: async () => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         Accept: "application/json",
-        "X-Locale": locale, // Add locale header
+        "X-Locale": locale,
       };
 
       if (accessToken) {
         headers["Authorization"] = `Bearer ${accessToken}`;
       }
 
-      const data = await request<{ reel: Reel }>({
-        url: GRAPHQL_ENDPOINT,
-        document: GET_REEL,
-        variables: { id: reelId },
-        requestHeaders: headers,
-      });
+      try {
+        const data = await request<{ reel: Reel }>({
+          url: GRAPHQL_ENDPOINT,
+          document: GET_REEL,
+          variables: {
+            id: reelId,
+            locale,
+          },
+          requestHeaders: headers,
+        });
 
-      if (!data?.reel) {
-        throw new Error("Invalid response from server");
+        if (!data?.reel) {
+          throw new Error("Invalid response from server");
+        }
+
+        return data.reel;
+      } catch (error) {
+        console.error(`Error fetching reel ${reelId}:`, error);
+
+        // Fallback to mock data
+        const mockReels = getMockReels(locale);
+        const mockReel = mockReels.find((r) => r.id === reelId);
+
+        if (mockReel) {
+          return mockReel;
+        }
+
+        throw error;
       }
-
-      return data.reel;
     },
     enabled: !!reelId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 2 * 60 * 1000,
   });
 };

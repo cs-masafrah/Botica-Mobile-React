@@ -6,7 +6,7 @@ const ar = {
   home: "الرئيسية",
   categories: "الفئات",
   cart: "السلة",
-  profile: "الملف الشخصي",
+  profile: "حسابي",
   bannerTitle: "عطور فاخرة",
   bannerSubtitle: "مجموعة حصرية من العطور الفاخرة",
   shopNow: "تسوق الآن",
@@ -404,9 +404,9 @@ const ar = {
   alreadyHaveAccount: "لديك حساب بالفعل؟",
 
   // Brand Products Screen
-  loadingBrandProducts: "جاري تحميل منتجات {brand}...",
+  loadingBrandProducts: "جاري تحميل منتجات...",
   all: "الكل",
-  noProductsForBrand: "لم يتم العثور على منتجات لـ {brand}",
+  noProductsForBrand: "لم يتم العثور على منتجات لـ",
 
   // Category Screen
   category: "الفئة",

@@ -76,6 +76,7 @@ export default function ProductDetailScreen() {
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { formatPrice, currentCurrency } = useCurrency();
   const { t, isRTL } = useLanguage();
+  const { locale } = useLanguage();
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -614,7 +615,7 @@ export default function ProductDetailScreen() {
                         isRTL && styles.additionalDataLabelRTL,
                       ]}
                     >
-                      {item.label}:
+                      {item.label}
                     </Text>
                     <Text
                       style={[

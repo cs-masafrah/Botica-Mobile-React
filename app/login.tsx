@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import SocialLoginButtons from "@/components/SocialLoginButtons";
 
 export default function LoginScreen() {
   const { login, loginLoading } = useAuth();
@@ -172,6 +173,15 @@ export default function LoginScreen() {
               <View style={styles.dividerLine} />
             </View>
 
+            {/* Social Login Section */}
+            <View style={styles.socialSection}>
+              <SocialLoginButtons 
+                isLoading={loginLoading} 
+                disabled={loginLoading}
+              />
+            </View>
+
+            {/* Sign Up Link */}
             <Pressable
               style={[styles.signupButton, isRTL && styles.signupButtonRTL]}
               onPress={() => router.push("/signup")}
@@ -344,6 +354,10 @@ const styles = StyleSheet.create({
   },
   dividerTextRTL: {
     textAlign: "right",
+  },
+  // New style for social login section
+  socialSection: {
+    marginBottom: 24,
   },
   signupButton: {
     alignItems: "center",
