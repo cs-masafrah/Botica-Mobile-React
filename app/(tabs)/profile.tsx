@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuLabelRTL: {
-    textAlign: "left",
+    textAlign: "right",
   },
   chevron: {
     fontSize: 24,
