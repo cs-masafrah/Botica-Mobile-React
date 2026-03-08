@@ -151,13 +151,13 @@ export default function SettingsScreen() {
             : "USD ($)",
           onPress: handleCurrencyPress,
         },
-        {
-          id: "customizeHomepage",
-          icon: Layout,
-          label: t("customizeHomepage"),
-          type: "navigation",
-          onPress: () => router.push("/customize-homepage" as any),
-        },
+        // {
+        //   id: "customizeHomepage",
+        //   icon: Layout,
+        //   label: t("customizeHomepage"),
+        //   type: "navigation",
+        //   onPress: () => router.push("/customize-homepage" as any),
+        // },
       ],
     },
 

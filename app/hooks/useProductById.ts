@@ -1,145 +1,234 @@
-// hooks/useProductById.ts (wrapper for the JS version)
+// hooks/useProductById.ts
 import { useQuery } from "@tanstack/react-query";
 import { request, gql } from "graphql-request";
 import { BAGISTO_CONFIG } from "@/constants/bagisto";
-import {
-  Product,
-  ProductByIdResponse,
-  FilterHomeCategoriesInput,
-} from "../types/bagisto";
+import { Product } from "../types/bagisto";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
 const GET_PRODUCT_BY_ID = gql`
-  query GetProductById($input: [FilterHomeCategoriesInput!]) {
-    allProducts(input: $input) {
-      paginatorInfo {
-        count
-      currentPage
-        lastPage
-        total
+  query GetProductById($id: ID) {
+    product(id: $id) {
+      id
+      sku
+      type
+      parentId
+      attributeFamilyId
+      productNumber
+      name
+      shortDescription
+      description
+      urlKey
+      shareURL
+      new
+      featured
+      status
+      guestCheckout
+      visibleIndividually
+      metaTitle
+      metaKeywords
+      metaDescription
+      price
+      specialPrice
+      specialPriceFrom
+      specialPriceTo
+      weight
+      createdAt
+      updatedAt
+
+      images {
+        id
+        url
       }
-      data {
+
+      cacheBaseImage {
+        smallImageUrl
+        mediumImageUrl
+        largeImageUrl
+        originalImageUrl
+      }
+
+      cacheGalleryImages {
+        smallImageUrl
+        mediumImageUrl
+        largeImageUrl
+        originalImageUrl
+      }
+
+      videos {
         id
         type
-        isInWishlist
-        isInSale
-        isSaleable
-        name
-        shareURL
-        urlKey
-        shortDescription
-        description
-        customizableOptions {
-          id
-          label
-          productId
-          type
-          isRequired
-          maxCharacters
-          supportedFileExtensions
-          product {
-            id
-          }
-          translations {
-            id
-            label
-          }
-          customizableOptionPrices {
-            id
-            label
-            price
-          }
-        }
-        additionalData {
-          id
-          label
-          value
-          type
-        }
-        priceHtml {
-          id
-          type
-          priceHtml
-          regularPrice
-          formattedRegularPrice
-          finalPrice
-          formattedFinalPrice
-        }
-        configutableData {
-          attributes {
-            id
-            code
-            label
-            swatchType
-            options {
-              id
-              label
-              swatchType
-              swatchValue
-            }
-          }
-          index {
-            id
-            attributeOptionIds {
-              attributeId
-              attributeCode
-              attributeOptionId
-            }
-          }
-          variantPrices {
-            id
-            regularPrice {
-              price
-              formattedPrice
-            }
-            finalPrice {
-              price
-              formattedPrice
-            }
-          }
-        }
+        path
+      }
+
+      priceHtml {
+        id
+        type
+        priceHtml
+        regularPrice
+        formattedRegularPrice
+        finalPrice
+        formattedFinalPrice
+      }
+
+      isInWishlist
+      isInSale
+      isSaleable
+
+      averageRating
+      percentageRating
+
+      reviews {
+        id
+        title
+        rating
+        comment
+        createdAt
+      }
+
+      attributeFamily {
+        id
+      }
+
+      attributeValues {
+        id
+        attributeId
+        textValue
+        integerValue
+        floatValue
+        booleanValue
+        dateValue
+        channel
+        locale
+      }
+
+      superAttributes {
+        id
+        code
+        adminName
+        type
+        position
+      }
+
+      variants {
+        id
+        type
         sku
-        parentId
-        variants {
-          id
-          type
-          sku
-        }
-        attributeFamily {
-          id
-        }
-        superAttributes {
-          id
-          code
-          adminName
-          type
-          position
-        }
+        name
         images {
           id
-          type
           url
-          productId
         }
-        averageRating
-        percentageRating
-        reviews {
+        priceHtml {
+          finalPrice
+          formattedFinalPrice
+          regularPrice
+          formattedRegularPrice
+        }
+      }
+
+      relatedProducts {
+        id
+        name
+        sku
+        urlKey
+        isSaleable
+        images {
+          id
+          url
+        }
+        priceHtml {
+          finalPrice
+          formattedFinalPrice
+          regularPrice
+          formattedRegularPrice
+        }
+      }
+
+      upSells {
+        id
+        name
+        sku
+        urlKey
+      }
+
+      crossSells {
+        id
+        name
+        sku
+        urlKey
+      }
+
+      downloadableSamples {
+        id
+        fileName
+        translations {
           id
           title
-          rating
-          comment
-          createdAt
         }
-        groupedProducts {
+      }
+
+      downloadableLinks {
+        id
+        title
+        price
+        url
+        file
+        fileName
+        type
+        sampleUrl
+        sampleFile
+        sampleFileUrl
+        sampleFileName
+        sampleType
+        sortOrder
+        productId
+        downloads
+        translations {
+          id
+          title
+        }
+      }
+
+      groupedProducts {
+        id
+        qty
+        associatedProductId
+        associatedProduct {
+          id
+          name
+          type
+          sku
+          priceHtml {
+            id
+            type
+            priceHtml
+            regularPrice
+            formattedRegularPrice
+            finalPrice
+            formattedFinalPrice
+          }
+        }
+      }
+
+      bundleOptions {
+        id
+        type
+        isRequired
+        sortOrder
+        productId
+        bundleOptionProducts {
           id
           qty
-          associatedProductId
-          associatedProduct {
+          isUserDefined
+          sortOrder
+          isDefault
+          productBundleOptionId
+          productId
+          product {
             id
-            name
-            type
             sku
+            name
             priceHtml {
               id
               type
@@ -151,179 +240,106 @@ const GET_PRODUCT_BY_ID = gql`
             }
           }
         }
-        relatedProducts {
+        translations {
           id
-          name
-          sku
-          urlKey
-          isSaleable
-          priceHtml {
-            finalPrice
-            formattedFinalPrice
-            regularPrice
-            formattedRegularPrice
+          locale
+          label
+          productBundleOptionId
+        }
+      }
+
+      booking {
+        id
+        type
+        qty
+        location
+        showLocation
+        availableEveryWeek
+        availableFrom
+        availableTo
+        productId
+
+        defaultSlot {
+          id
+          bookingType
+          duration
+          breakTime
+          slotManyDays {
+            to
+            from
           }
-          images {
+          slotOneDay {
             id
-            url
+            to
+            from
           }
         }
-        downloadableSamples {
+
+        appointmentSlot {
           id
-          fileName
-          translations {
+          duration
+          breakTime
+          sameSlotAllDays
+          slotManyDays {
+            to
+            from
+          }
+          slotOneDay {
             id
-            title
+            to
+            from
           }
         }
-        downloadableLinks {
+
+        eventTickets {
           id
-          title
           price
-          url
-          file
-          fileName
-          type
-          sampleUrl
-          sampleFile
-          sampleFileUrl
-          sampleFileName
-          sampleType
-          sortOrder
-          productId
-          downloads
-          translations {
-            id
-            title
-          }
-        }
-        bundleOptions {
-          id
-          type
-          isRequired
-          sortOrder
-          productId
-          bundleOptionProducts {
-            id
-            qty
-            isUserDefined
-            sortOrder
-            isDefault
-            productBundleOptionId
-            productId
-            product {
-              sku
-              name
-              id
-              priceHtml {
-                id
-                type
-                priceHtml
-                regularPrice
-                formattedRegularPrice
-                finalPrice
-                formattedFinalPrice
-              }
-            }
-          }
-          translations {
-            id
-            locale
-            label
-            productBundleOptionId
-          }
-        }
-        booking {
-          id
-          type
           qty
-          location
-          showLocation
-          availableEveryWeek
-          availableFrom
-          availableTo
-          productId
-          product {
-            id
-          }
-          defaultSlot {
-            id
-            bookingType
-            duration
-            breakTime
-            slotManyDays {
-              to
-              from
-            }
-            slotOneDay {
-              id
-              to
-              from
-            }
-          }
-          appointmentSlot {
-            id
-            duration
-            breakTime
-            sameSlotAllDays
-            slotManyDays {
-              to
-              from
-            }
-            slotOneDay {
-              id
-              to
-              from
-            }
-          }
-          eventTickets {
-            id
-            price
-            qty
+          name
+          description
+          specialPrice
+          specialPriceFrom
+          specialPriceTo
+          translations {
+            locale
             name
             description
-            specialPrice
-            specialPriceFrom
-            specialPriceTo
-            translations {
-              locale
-              name
-              description
-            }
           }
-          rentalSlot {
-            id
-            rentingType
-            dailyPrice
-            hourlyPrice
-            sameSlotAllDays
-            slotManyDays {
-              to
-              from
-            }
-            slotOneDay {
-              id
-              to
-              from
-            }
+        }
+
+        rentalSlot {
+          id
+          rentingType
+          dailyPrice
+          hourlyPrice
+          sameSlotAllDays
+          slotManyDays {
+            to
+            from
           }
-          tableSlot {
+          slotOneDay {
             id
-            priceType
-            guestLimit
-            duration
-            breakTime
-            preventSchedulingBefore
-            sameSlotAllDays
-            slotManyDays {
-              to
-              from
-            }
-            slotOneDay {
-              id
-              to
-              from
-            }
+            to
+            from
+          }
+        }
+
+        tableSlot {
+          id
+          priceType
+          guestLimit
+          duration
+          breakTime
+          preventSchedulingBefore
+          sameSlotAllDays
+          slotManyDays {
+            to
+            from
+          }
+          slotOneDay {
+            id
+            to
+            from
           }
         }
       }
@@ -331,13 +347,10 @@ const GET_PRODUCT_BY_ID = gql`
   }
 `;
 
-interface ProductByIdVariables {
-  input: FilterHomeCategoriesInput[];
-}
-
 export const useProductById = (productId?: string) => {
   return useQuery<Product | null>({
     queryKey: ["product", productId],
+
     queryFn: async () => {
       if (!productId) {
         console.log("No product ID provided");
@@ -347,26 +360,21 @@ export const useProductById = (productId?: string) => {
       try {
         console.log("Fetching product by ID:", productId);
 
-        const input: FilterHomeCategoriesInput[] = [
-          { key: "id", value: productId },
-          { key: "status", value: "1" },
-        ];
-
-        const data = await request<ProductByIdResponse>(
+        const data = await request<{ product: Product }>(
           GRAPHQL_ENDPOINT,
           GET_PRODUCT_BY_ID,
-          { input },
+          { id: productId }
         );
 
         console.log("Product data received:", data);
 
-        // Return the first product from the array
-        return data?.allProducts?.data?.[0] || null;
+        return data?.product || null;
       } catch (error: any) {
         console.error("Error fetching product by ID:", error);
         return null;
       }
     },
+
     enabled: !!productId,
     staleTime: 5 * 60 * 1000,
     retry: 2,
