@@ -23,13 +23,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import Colors from "@/constants/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const GRID_ITEM_WIDTH = (SCREEN_WIDTH - 32) / 2;
+const GRID_ITEM_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
 interface FilterState {
   gender: string | null;
   minPrice: string;
   maxPrice: string;
   inStock: boolean;
+  sortBy: "newest" | "price-low" | "price-high";
 }
 
 const GENDER_OPTIONS = [
@@ -40,18 +41,22 @@ const GENDER_OPTIONS = [
   { label: "Kids", value: "Kids" },
 ];
 
+const SORT_OPTIONS = [
+  { label: "Newest", value: "newest" },
+  { label: "Price: Low to High", value: "price-low" },
+  { label: "Price: High to Low", value: "price-high" },
+];
+
 export default function AllProductsScreen() {
   const { t, isRTL } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"newest" | "price-low" | "price-high">(
-    "newest",
-  );
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     gender: null,
     minPrice: "",
     maxPrice: "",
     inStock: false,
+    sortBy: "newest",
   });
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
 
@@ -67,7 +72,7 @@ export default function AllProductsScreen() {
 
   // Convert sortBy to API format
   const getSortParams = () => {
-    switch (sortBy) {
+    switch (filters.sortBy) {
       case "price-low":
         return { sortBy: "price", sortOrder: "asc" };
       case "price-high":
@@ -81,7 +86,6 @@ export default function AllProductsScreen() {
   const { sortBy: apiSortBy, sortOrder: apiSortOrder } = getSortParams();
 
   // Use the filter hook ONLY when a gender filter is applied
-  // The API expects one attribute at a time, so we use gender as the main filter
   const hasGenderFilter = !!filters.gender;
   
   const {
@@ -92,14 +96,13 @@ export default function AllProductsScreen() {
   } = useBagistoProductFilters({
     attribute: "gender",
     value: filters.gender || "",
-    ...(filters.minPrice && { minPrice: parseFloat(filters.minPrice) }),
-    ...(filters.maxPrice && { maxPrice: parseFloat(filters.maxPrice) }),
+    // Don't send price filters to API - handle them locally
     inStock: filters.inStock || undefined,
     sortBy: apiSortBy,
     sortOrder: apiSortOrder,
     page: 1,
     perPage: 50,
-    enabled: hasGenderFilter, // Only enable when gender is selected
+    enabled: hasGenderFilter,
   });
 
   // Always fetch all products as fallback
@@ -121,14 +124,15 @@ export default function AllProductsScreen() {
     return allProductsData?.allProducts?.data || [];
   }, [hasGenderFilter, filteredProductsData, allProductsData]);
 
-  // Apply client-side filters for price and stock (since API might not support multiple attributes)
-  const filteredByPriceAndStock = useMemo(() => {
-    let result = products;
+  // Apply client-side filters for price, stock, and sorting
+  const filteredAndSortedProducts = useMemo(() => {
+    let result = [...products]; // Create a copy to avoid mutating original
 
-    // Apply price filters client-side if API doesn't support them
+    // Apply price filters client-side
     if (filters.minPrice || filters.maxPrice) {
       result = result.filter(product => {
-        const price = parseFloat(product.priceHtml?.finalPrice || "0");
+        // Get price from priceHtml or fallback to price field
+        const price = parseFloat(product.priceHtml?.finalPrice || product.price || "0");
         const minOk = !filters.minPrice || price >= parseFloat(filters.minPrice);
         const maxOk = !filters.maxPrice || price <= parseFloat(filters.maxPrice);
         return minOk && maxOk;
@@ -140,11 +144,37 @@ export default function AllProductsScreen() {
       result = result.filter(product => product.isSaleable === true);
     }
 
+    // Apply sorting client-side
+    switch (filters.sortBy) {
+      case "price-low":
+        result.sort((a, b) => {
+          const priceA = parseFloat(a.priceHtml?.finalPrice || a.price || "0");
+          const priceB = parseFloat(b.priceHtml?.finalPrice || b.price || "0");
+          return priceA - priceB;
+        });
+        break;
+      case "price-high":
+        result.sort((a, b) => {
+          const priceA = parseFloat(a.priceHtml?.finalPrice || a.price || "0");
+          const priceB = parseFloat(b.priceHtml?.finalPrice || b.price || "0");
+          return priceB - priceA;
+        });
+        break;
+      case "newest":
+      default:
+        result.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
+        });
+        break;
+    }
+
     return result;
   }, [products, filters]);
 
   // Apply client-side search
-  const filteredProducts = filteredByPriceAndStock.filter(
+  const filteredProducts = filteredAndSortedProducts.filter(
     (product) =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.description?.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -161,6 +191,7 @@ export default function AllProductsScreen() {
       minPrice: "",
       maxPrice: "",
       inStock: false,
+      sortBy: "newest" as const,
     };
     setTempFilters(resetFilters);
     setFilters(resetFilters);
@@ -220,40 +251,8 @@ export default function AllProductsScreen() {
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
-      {/* Header with Back Button, Title, and Filter Button */}
-      <View style={[styles.header, isRTL && styles.headerRTL]}>
-        <View style={[styles.headerContent, isRTL && styles.headerContentRTL]}>
-          <Pressable 
-            style={[styles.backButton, isRTL && styles.backButtonRTL]} 
-            onPress={() => router.back()}
-          >
-            <ChevronLeft 
-              size={24} 
-              color={Colors.text} 
-              style={isRTL && { transform: [{ scaleX: -1 }] }} 
-            />
-          </Pressable>
-          <Text style={[styles.headerTitle, isRTL && styles.headerTitleRTL]}>
-            {t('allProducts')}
-          </Text>
-          
-          {/* Filter Button */}
-          <Pressable 
-            style={[styles.filterButton, isRTL && styles.filterButtonRTL]} 
-            onPress={openFilters}
-          >
-            <Sliders size={20} color={Colors.text} />
-            {activeFiltersCount > 0 && (
-              <View style={[styles.badge, isRTL && styles.badgeRTL]}>
-                <Text style={styles.badgeText}>{activeFiltersCount}</Text>
-              </View>
-            )}
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Search Bar */}
-      <View style={[styles.searchContainer, isRTL && styles.searchContainerRTL]}>
+      {/* Search Bar - Uncommented for better UX */}
+      {/* <View style={[styles.searchContainer, isRTL && styles.searchContainerRTL]}>
         <View style={[styles.searchInputContainer, isRTL && styles.searchInputContainerRTL]}>
           <Search 
             size={20} 
@@ -279,37 +278,29 @@ export default function AllProductsScreen() {
             </Pressable>
           )}
         </View>
-      </View>
+      </View> */}
 
-      {/* Results Count and Sort */}
+      {/* Results Count and Filter Button Row */}
       <View style={[styles.resultsHeader, isRTL && styles.resultsHeaderRTL]}>
         <Text style={[styles.resultsText, isRTL && styles.resultsTextRTL]}>
           {filteredProducts.length} {t("products")}
         </Text>
-
-        <View style={[styles.sortContainer, isRTL && styles.sortContainerRTL]}>
-          {(["newest", "price-low", "price-high"] as const).map((item) => (
-            <Pressable
-              key={item}
-              style={[
-                styles.sortButton,
-                sortBy === item && styles.sortButtonActive,
-                isRTL && styles.sortButtonRTL,
-              ]}
-              onPress={() => setSortBy(item)}
-            >
-              <Text
-                style={[
-                  styles.sortButtonText,
-                  sortBy === item && styles.sortButtonTextActive,
-                  isRTL && styles.sortButtonTextRTL,
-                ]}
-              >
-                {t(item)}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        
+        {/* Filter Button next to count */}
+        <Pressable 
+          style={[styles.filterButton, isRTL && styles.filterButtonRTL]} 
+          onPress={openFilters}
+        >
+          <Sliders size={18} color={Colors.text} />
+          <Text style={[styles.filterButtonText, isRTL && styles.filterButtonTextRTL]}>
+            {t("filters")}
+          </Text>
+          {activeFiltersCount > 0 && (
+            <View style={[styles.badge, isRTL && styles.badgeRTL]}>
+              <Text style={styles.badgeText}>{activeFiltersCount}</Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       {/* Products Grid */}
@@ -336,13 +327,8 @@ export default function AllProductsScreen() {
             <View
               style={[
                 styles.gridItemContainer,
-                isRTL
-                  ? index % 2 === 0
-                    ? styles.gridItemRight
-                    : styles.gridItemLeft
-                  : index % 2 === 0
-                    ? styles.gridItemLeft
-                    : styles.gridItemRight,
+                index % 2 === 0 ? styles.gridItemLeft : styles.gridItemRight,
+                isRTL && index % 2 === 0 ? styles.gridItemRightRTL : styles.gridItemLeftRTL,
               ]}
             >
               <ProductCard product={item} variant="vertical" />
@@ -382,13 +368,41 @@ export default function AllProductsScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
-              {/* Gender Section - Primary Filter */}
+              {/* Sort Section */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, isRTL && styles.filterSectionTitleRTL]}>
+                  {t("sortBy")}
+                </Text>
+                <View style={styles.genderOptions}>
+                  {SORT_OPTIONS.map((option) => (
+                    <Pressable
+                      key={option.value}
+                      style={[
+                        styles.genderOption,
+                        tempFilters.sortBy === option.value && styles.genderOptionSelected,
+                      ]}
+                      onPress={() => setTempFilters({ ...tempFilters, sortBy: option.value as typeof tempFilters.sortBy })}
+                    >
+                      <Text
+                        style={[
+                          styles.genderOptionText,
+                          tempFilters.sortBy === option.value && styles.genderOptionTextSelected,
+                        ]}
+                      >
+                        {t(option.value)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Gender Section */}
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, isRTL && styles.filterSectionTitleRTL]}>
                   {t("gender")}
                 </Text>
                 <Text style={[styles.filterHint, isRTL && styles.filterHintRTL]}>
-                  Select gender to filter products
+                  {t("filterHint")}
                 </Text>
                 <View style={styles.genderOptions}>
                   {GENDER_OPTIONS.map((option) => (
@@ -413,13 +427,10 @@ export default function AllProductsScreen() {
                 </View>
               </View>
 
-              {/* Price Range Section - Applied client-side */}
+              {/* Price Range Section */}
               <View style={styles.filterSection}>
                 <Text style={[styles.filterSectionTitle, isRTL && styles.filterSectionTitleRTL]}>
                   {t("priceRange")}
-                </Text>
-                <Text style={[styles.filterHint, isRTL && styles.filterHintRTL]}>
-                  Filter by price range
                 </Text>
                 <View style={[styles.priceContainer, isRTL && styles.priceContainerRTL]}>
                   <View style={styles.priceInputContainer}>
@@ -456,7 +467,7 @@ export default function AllProductsScreen() {
                 </View>
               </View>
 
-              {/* In Stock Section - Applied client-side */}
+              {/* In Stock Section */}
               <View style={styles.filterSection}>
                 <Pressable
                   style={[styles.stockOption, isRTL && styles.stockOptionRTL]}
@@ -515,74 +526,10 @@ const styles = StyleSheet.create({
     direction: "rtl",
   },
 
-  /* ================= HEADER ================= */
-  header: {
-    backgroundColor: Colors.background,
-  },
-  headerRTL: {},
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: SPACING,
-    paddingVertical: 12,
-  },
-  headerContentRTL: {
-    // flexDirection: "row-reverse",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: -8,
-  },
-  backButtonRTL: {
-    marginLeft: 0,
-    marginRight: -8,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-    textAlign: "center",
-  },
-  headerTitleRTL: {
-    textAlign: "center",
-  },
-  filterButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  filterButtonRTL: {},
-  badge: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 4,
-  },
-  badgeRTL: {
-    right: undefined,
-    left: 4,
-  },
-  badgeText: {
-    color: Colors.white,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-
   /* ================= SEARCH ================= */
   searchContainer: {
     paddingHorizontal: SPACING,
+    paddingTop: 12,
     paddingBottom: 12,
   },
   searchContainerRTL: {},
@@ -593,6 +540,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS,
     paddingHorizontal: 14,
     height: 46,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   searchInputContainerRTL: {
     // flexDirection: "row-reverse",
@@ -622,73 +571,101 @@ const styles = StyleSheet.create({
   },
   clearButtonRTL: {},
 
-  /* ================= RESULTS + SORT ================= */
+  /* ================= RESULTS HEADER WITH FILTER BUTTON ================= */
   resultsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: SPACING,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
-  resultsHeaderRTL: {},
+  resultsHeaderRTL: {
+    flexDirection: "row-reverse",
+  },
   resultsText: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: "500",
     color: Colors.textSecondary,
-    marginBottom: 8,
   },
   resultsTextRTL: {
     textAlign: "left",
   },
-
-  sortContainer: {
+  filterButton: {
     flexDirection: "row",
-    gap: 8,
-  },
-  sortContainerRTL: {
-    // flexDirection: "row-reverse",
-  },
-  sortButton: {
+    alignItems: "center",
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     backgroundColor: Colors.cardBackground,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 6,
+    position: "relative",
   },
-  sortButtonRTL: {},
-  sortButtonActive: {
+  filterButtonRTL: {
+    flexDirection: "row-reverse",
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.text,
+  },
+  filterButtonTextRTL: {
+    textAlign: "right",
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
     backgroundColor: Colors.primary,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
   },
-  sortButtonText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
+  badgeRTL: {
+    right: undefined,
+    left: -4,
   },
-  sortButtonTextRTL: {
-    textAlign: "left",
-  },
-  sortButtonTextActive: {
+  badgeText: {
     color: Colors.white,
-    fontWeight: "600",
+    fontSize: 10,
+    fontWeight: "700",
   },
 
   /* ================= GRID ================= */
   gridListContent: {
     paddingHorizontal: SPACING,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingBottom: 24,
   },
   gridListContentRTL: {},
   gridColumnWrapper: {
     justifyContent: "space-between",
     marginBottom: 12,
+    gap: SPACING,
   },
   gridColumnWrapperRTL: {
     // flexDirection: "row-reverse",
-    // alignSelf: "flex-start",
   },
   gridItemContainer: {
     width: GRID_ITEM_WIDTH,
   },
   gridItemLeft: {
-    marginRight: 8,
+    marginRight: 0,
   },
   gridItemRight: {
-    marginLeft: 8,
+    marginLeft: 0,
+  },
+  gridItemLeftRTL: {
+    marginLeft: 0,
+    marginRight: 0,
+  },
+  gridItemRightRTL: {
+    marginRight: 0,
+    marginLeft: 0,
   },
 
   listFooterSpacer: {
@@ -822,7 +799,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 12,
   },
   filterSectionTitleRTL: {
     textAlign: "right",
