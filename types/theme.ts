@@ -6,7 +6,8 @@ export type ThemeType =
   | 'image_carousel'
   | 'footer_links'
   | 'services_content'
-  | 'product_by_brand';
+  | 'product_by_brand'
+  | 'product_list';
 
 export interface ThemeLink {
   url: string;
