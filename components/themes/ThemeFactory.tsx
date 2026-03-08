@@ -1,4 +1,4 @@
-// components/themes/ThemeFactory.tsx - DEBUG VERSION
+// components/themes/ThemeFactory.tsx
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { Theme, ThemeType } from '@/types/theme';
@@ -13,6 +13,7 @@ import ImageCarouselTheme from './ImageCarouselTheme';
 import FooterLinksTheme from './FooterLinksTheme';
 import ServicesContentTheme from './ServicesContentTheme';
 import ProductByBrandTheme from './ProductByBrandTheme';
+import ProductListTheme from './ProductListTheme'; // Import the new theme
 
 interface ThemeFactoryProps {
   theme: Theme;
@@ -40,6 +41,7 @@ const ThemeFactory: React.FC<ThemeFactoryProps> = ({ theme }) => {
     footer_links: FooterLinksTheme,
     services_content: ServicesContentTheme,
     product_by_brand: ProductByBrandTheme,
+    product_list: ProductListTheme, // Add the new theme type
   };
 
   const ThemeComponent = componentMap[theme.type];
