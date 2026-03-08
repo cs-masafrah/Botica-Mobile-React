@@ -7,7 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
-interface ProductsByAttributeInput {
+interface ProductsByAttributeEavInput {
   attribute: string;
   value: string;
   categories?: string[];
@@ -52,7 +52,7 @@ export function useBagistoProductFilters({
 
   return useQuery({
     queryKey: [
-      "productsByAttribute",
+      "productsByAttributeEav",
       attribute,
       value,
       categories,
@@ -66,13 +66,14 @@ export function useBagistoProductFilters({
       locale,
     ],
     queryFn: async () => {
-      // Convert sortBy to database column names
+      // For EAV, we need to use the correct field names that the GraphQL API expects
+      // The API will handle the EAV complexity on the backend
       let apiSortBy = sortBy;
-      if (sortBy === 'createdAt') apiSortBy = 'created_at';
-      if (sortBy === 'price') apiSortBy = 'price';
-      if (sortBy === 'name') apiSortBy = 'name';
-
-      const input: ProductsByAttributeInput = {
+      
+      // Don't transform the field names - let the API handle it
+      // The API knows how to sort by price in EAV
+      
+      const input: ProductsByAttributeEavInput = {
         attribute,
         value,
         ...(categories?.length && { categories }),
@@ -85,9 +86,12 @@ export function useBagistoProductFilters({
         page,
       };
 
+      // Log the input to see what we're sending
+      console.log("🔍 Sending filter input:", input);
+
       const query = gql`
-        query GetProductsByAttribute($input: ProductsByAttributeInput!) {
-          productsByAttribute(input: $input) {
+        query GetProductsByAttribute($input: ProductsByAttributeEavInput!) {
+          productsByAttributeEav(input: $input) {
             data {
               id
               sku
@@ -115,23 +119,53 @@ export function useBagistoProductFilters({
               weight
               createdAt
               updatedAt
-              variants { id }
-              parent { id }
+
+              variants {
+                id
+                type
+                sku
+              }
+
+              images {
+                id
+                type
+                url
+                productId
+              }
+
               isInWishlist
               isInSale
               isSaleable
-              images {
-                url
+
+              averageRating
+              percentageRating
+
+              reviews {
+                id
+                title
+                rating
+                comment
+                createdAt
               }
+
               priceHtml {
                 id
                 type
-                minPrice
                 priceHtml
-                currencyCode
+                regularPrice
+                formattedRegularPrice
+                finalPrice
                 formattedFinalPrice
               }
+
+              additionalData {
+                id
+                label
+                value
+                type
+              }
             }
+
             paginatorInfo {
               total
               perPage
@@ -154,7 +188,7 @@ export function useBagistoProductFilters({
       try {
         console.log("🔍 Fetching products with filters:", input);
         const response = await request<{
-          productsByAttribute: {
+          productsByAttributeEav: {
             data: any[];
             paginatorInfo: {
               total: number;
@@ -165,12 +199,17 @@ export function useBagistoProductFilters({
           };
         }>(GRAPHQL_ENDPOINT, query, { input }, headers);
 
-        return response.productsByAttribute;
+        return response.productsByAttributeEav;
       } catch (error) {
         console.error("Error fetching products by attribute:", error);
+        // Log the full error for debugging
+        if (error instanceof Object && "response" in error) {
+          console.error("Error response:", (error as any).response);
+        }
         throw error;
       }
     },
     enabled,
+    retry: 1, // Only retry once to avoid infinite loops
   });
 }
