@@ -15,7 +15,14 @@ import {
   ScrollView,
 } from "react-native";
 import { router } from "expo-router";
-import { Search, Grid, ChevronLeft, X, Sliders, Check } from "lucide-react-native";
+import {
+  Search,
+  Grid,
+  ChevronLeft,
+  X,
+  Sliders,
+  Check,
+} from "lucide-react-native";
 import { useAllProducts } from "../hooks/useAllProducts";
 import { useBagistoProductFilters } from "../hooks/useBagistoProductFilters";
 import ProductCard from "@/components/ProductCard";
@@ -87,7 +94,7 @@ export default function AllProductsScreen() {
 
   // Use the filter hook ONLY when a gender filter is applied
   const hasGenderFilter = !!filters.gender;
-  
+
   const {
     data: filteredProductsData,
     isLoading: isFilterLoading,
@@ -130,18 +137,22 @@ export default function AllProductsScreen() {
 
     // Apply price filters client-side
     if (filters.minPrice || filters.maxPrice) {
-      result = result.filter(product => {
+      result = result.filter((product) => {
         // Get price from priceHtml or fallback to price field
-        const price = parseFloat(product.priceHtml?.finalPrice || product.price || "0");
-        const minOk = !filters.minPrice || price >= parseFloat(filters.minPrice);
-        const maxOk = !filters.maxPrice || price <= parseFloat(filters.maxPrice);
+        const price = parseFloat(
+          product.priceHtml?.finalPrice || product.price || "0",
+        );
+        const minOk =
+          !filters.minPrice || price >= parseFloat(filters.minPrice);
+        const maxOk =
+          !filters.maxPrice || price <= parseFloat(filters.maxPrice);
         return minOk && maxOk;
       });
     }
 
     // Apply in-stock filter client-side
     if (filters.inStock) {
-      result = result.filter(product => product.isSaleable === true);
+      result = result.filter((product) => product.isSaleable === true);
     }
 
     // Apply sorting client-side
@@ -285,14 +296,19 @@ export default function AllProductsScreen() {
         <Text style={[styles.resultsText, isRTL && styles.resultsTextRTL]}>
           {filteredProducts.length} {t("products")}
         </Text>
-        
+
         {/* Filter Button next to count */}
-        <Pressable 
-          style={[styles.filterButton, isRTL && styles.filterButtonRTL]} 
+        <Pressable
+          style={[styles.filterButton, isRTL && styles.filterButtonRTL]}
           onPress={openFilters}
         >
           <Sliders size={18} color={Colors.text} />
-          <Text style={[styles.filterButtonText, isRTL && styles.filterButtonTextRTL]}>
+          <Text
+            style={[
+              styles.filterButtonText,
+              isRTL && styles.filterButtonTextRTL,
+            ]}
+          >
             {t("filters")}
           </Text>
           {activeFiltersCount > 0 && (
@@ -328,7 +344,9 @@ export default function AllProductsScreen() {
               style={[
                 styles.gridItemContainer,
                 index % 2 === 0 ? styles.gridItemLeft : styles.gridItemRight,
-                isRTL && index % 2 === 0 ? styles.gridItemRightRTL : styles.gridItemLeftRTL,
+                isRTL && index % 2 === 0
+                  ? styles.gridItemRightRTL
+                  : styles.gridItemLeftRTL,
               ]}
             >
               <ProductCard product={item} variant="vertical" />
@@ -362,15 +380,26 @@ export default function AllProductsScreen() {
               <Text style={[styles.modalTitle, isRTL && styles.modalTitleRTL]}>
                 {t("filters")}
               </Text>
-              <Pressable onPress={() => setFiltersVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Pressable
+                onPress={() => setFiltersVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <X size={24} color={Colors.text} />
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.modalScroll}
+            >
               {/* Sort Section */}
               <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, isRTL && styles.filterSectionTitleRTL]}>
+                <Text
+                  style={[
+                    styles.filterSectionTitle,
+                    isRTL && styles.filterSectionTitleRTL,
+                  ]}
+                >
                   {t("sortBy")}
                 </Text>
                 <View style={styles.genderOptions}>
@@ -379,14 +408,21 @@ export default function AllProductsScreen() {
                       key={option.value}
                       style={[
                         styles.genderOption,
-                        tempFilters.sortBy === option.value && styles.genderOptionSelected,
+                        tempFilters.sortBy === option.value &&
+                          styles.genderOptionSelected,
                       ]}
-                      onPress={() => setTempFilters({ ...tempFilters, sortBy: option.value as typeof tempFilters.sortBy })}
+                      onPress={() =>
+                        setTempFilters({
+                          ...tempFilters,
+                          sortBy: option.value as typeof tempFilters.sortBy,
+                        })
+                      }
                     >
                       <Text
                         style={[
                           styles.genderOptionText,
-                          tempFilters.sortBy === option.value && styles.genderOptionTextSelected,
+                          tempFilters.sortBy === option.value &&
+                            styles.genderOptionTextSelected,
                         ]}
                       >
                         {t(option.value)}
@@ -398,10 +434,17 @@ export default function AllProductsScreen() {
 
               {/* Gender Section */}
               <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, isRTL && styles.filterSectionTitleRTL]}>
+                <Text
+                  style={[
+                    styles.filterSectionTitle,
+                    isRTL && styles.filterSectionTitleRTL,
+                  ]}
+                >
                   {t("gender")}
                 </Text>
-                <Text style={[styles.filterHint, isRTL && styles.filterHintRTL]}>
+                <Text
+                  style={[styles.filterHint, isRTL && styles.filterHintRTL]}
+                >
                   {t("filterHint")}
                 </Text>
                 <View style={styles.genderOptions}>
@@ -410,14 +453,18 @@ export default function AllProductsScreen() {
                       key={option.label}
                       style={[
                         styles.genderOption,
-                        tempFilters.gender === option.value && styles.genderOptionSelected,
+                        tempFilters.gender === option.value &&
+                          styles.genderOptionSelected,
                       ]}
-                      onPress={() => setTempFilters({ ...tempFilters, gender: option.value })}
+                      onPress={() =>
+                        setTempFilters({ ...tempFilters, gender: option.value })
+                      }
                     >
                       <Text
                         style={[
                           styles.genderOptionText,
-                          tempFilters.gender === option.value && styles.genderOptionTextSelected,
+                          tempFilters.gender === option.value &&
+                            styles.genderOptionTextSelected,
                         ]}
                       >
                         {option.label}
@@ -429,12 +476,24 @@ export default function AllProductsScreen() {
 
               {/* Price Range Section */}
               <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, isRTL && styles.filterSectionTitleRTL]}>
+                <Text
+                  style={[
+                    styles.filterSectionTitle,
+                    isRTL && styles.filterSectionTitleRTL,
+                  ]}
+                >
                   {t("priceRange")}
                 </Text>
-                <View style={[styles.priceContainer, isRTL && styles.priceContainerRTL]}>
+                <View
+                  style={[
+                    styles.priceContainer,
+                    isRTL && styles.priceContainerRTL,
+                  ]}
+                >
                   <View style={styles.priceInputContainer}>
-                    <Text style={[styles.priceLabel, isRTL && styles.priceLabelRTL]}>
+                    <Text
+                      style={[styles.priceLabel, isRTL && styles.priceLabelRTL]}
+                    >
                       {t("min")}
                     </Text>
                     <TextInput
@@ -450,7 +509,9 @@ export default function AllProductsScreen() {
                   </View>
                   <View style={styles.priceSeparator} />
                   <View style={styles.priceInputContainer}>
-                    <Text style={[styles.priceLabel, isRTL && styles.priceLabelRTL]}>
+                    <Text
+                      style={[styles.priceLabel, isRTL && styles.priceLabelRTL]}
+                    >
                       {t("max")}
                     </Text>
                     <TextInput
@@ -471,7 +532,12 @@ export default function AllProductsScreen() {
               <View style={styles.filterSection}>
                 <Pressable
                   style={[styles.stockOption, isRTL && styles.stockOptionRTL]}
-                  onPress={() => setTempFilters({ ...tempFilters, inStock: !tempFilters.inStock })}
+                  onPress={() =>
+                    setTempFilters({
+                      ...tempFilters,
+                      inStock: !tempFilters.inStock,
+                    })
+                  }
                 >
                   <View
                     style={[
@@ -479,9 +545,13 @@ export default function AllProductsScreen() {
                       tempFilters.inStock && styles.checkboxChecked,
                     ]}
                   >
-                    {tempFilters.inStock && <Check size={14} color={Colors.white} />}
+                    {tempFilters.inStock && (
+                      <Check size={14} color={Colors.white} />
+                    )}
                   </View>
-                  <Text style={[styles.stockText, isRTL && styles.stockTextRTL]}>
+                  <Text
+                    style={[styles.stockText, isRTL && styles.stockTextRTL]}
+                  >
                     {t("inStockOnly")}
                   </Text>
                 </Pressable>
@@ -490,19 +560,23 @@ export default function AllProductsScreen() {
 
             {/* Modal Footer */}
             <View style={[styles.modalFooter, isRTL && styles.modalFooterRTL]}>
-              <Pressable 
-                style={[styles.modalButton, styles.resetModalButton]} 
+              <Pressable
+                style={[styles.modalButton, styles.resetModalButton]}
                 onPress={handleResetFilters}
               >
-                <Text style={[styles.modalButtonText, styles.resetModalButtonText]}>
+                <Text
+                  style={[styles.modalButtonText, styles.resetModalButtonText]}
+                >
                   {t("reset")}
                 </Text>
               </Pressable>
-              <Pressable 
-                style={[styles.modalButton, styles.applyModalButton]} 
+              <Pressable
+                style={[styles.modalButton, styles.applyModalButton]}
                 onPress={handleApplyFilters}
               >
-                <Text style={[styles.modalButtonText, styles.applyModalButtonText]}>
+                <Text
+                  style={[styles.modalButtonText, styles.applyModalButtonText]}
+                >
                   {t("applyFilters")}
                 </Text>
               </Pressable>
@@ -779,7 +853,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   modalHeaderRTL: {
-    flexDirection: "row-reverse",
+    // flexDirection: "row-reverse",
   },
   modalTitle: {
     fontSize: 20,
