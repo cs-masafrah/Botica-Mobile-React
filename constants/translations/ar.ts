@@ -438,16 +438,26 @@ const ar = {
 
   // Forgot Password translations
   enterValidEmail: "الرجاء إدخال بريد إلكتروني صحيح",
-  forgotPasswordFailed:
-    "فشل إرسال رابط إعادة تعيين كلمة المرور. الرجاء المحاولة مرة أخرى.",
-  enterEmailForReset:
-    "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
+  forgotPasswordFailed: "فشل إرسال رابط إعادة تعيين كلمة المرور. الرجاء المحاولة مرة أخرى.",
+  enterEmailForReset: "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
   sendResetLink: "إرسال رابط إعادة التعيين",
   backToLogin: "العودة إلى تسجيل الدخول",
   resetPasswordEmailSent: "تم إرسال البريد الإلكتروني!",
   checkYourEmail: "تحقق من بريدك الإلكتروني",
-  resetPasswordEmailSentMessage:
-    "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
+  resetPasswordEmailSentMessage: "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
+
+  // Add these new filter-related translations at the end or in the appropriate section
+  filters: "تصفية",
+  filterHint: "اختر الجنس لتصفية المنتجات",
+  inStockOnly: "المتوفرة فقط",
+  reset: "إعادة ضبط",
+  applyFilters: "تطبيق التصفية",
+  sortBy: "ترتيب حسب",
+  priceRage: "نطاق السعر",
+  min: "الحد الأدنى",
+  max: "الحد الأقصى",
+
+
 };
 
 export type TranslationKeys = keyof typeof ar;
