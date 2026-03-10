@@ -7,9 +7,15 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
-interface ProductsByAttributeEavInput {
+export interface ProductFilterInput {
   attribute: string;
-  value: string;
+  value: string[];
+  operator?: "eq" | "gt" | "lt" | "gte" | "lte" | "in" | "like";
+}
+
+export interface ProductsByAttributeEavInput {
+  filters?: ProductFilterInput[];
+  search?: string;
   categories?: string[];
   min_price?: number;
   max_price?: number;
@@ -21,8 +27,8 @@ interface ProductsByAttributeEavInput {
 }
 
 interface UseProductFiltersProps {
-  attribute: string;
-  value: string;
+  filters?: ProductFilterInput[];
+  search?: string;
   categories?: string[];
   minPrice?: number;
   maxPrice?: number;
@@ -35,14 +41,14 @@ interface UseProductFiltersProps {
 }
 
 export function useBagistoProductFilters({
-  attribute,
-  value,
+  filters,
+  search,
   categories,
   minPrice,
   maxPrice,
   inStock,
-  sortBy,
-  sortOrder,
+  sortBy = "created_at",
+  sortOrder = "desc",
   page = 1,
   perPage = 10,
   enabled = true,
@@ -53,8 +59,8 @@ export function useBagistoProductFilters({
   return useQuery({
     queryKey: [
       "productsByAttributeEav",
-      attribute,
-      value,
+      filters,
+      search,
       categories,
       minPrice,
       maxPrice,
@@ -66,28 +72,18 @@ export function useBagistoProductFilters({
       locale,
     ],
     queryFn: async () => {
-      // For EAV, we need to use the correct field names that the GraphQL API expects
-      // The API will handle the EAV complexity on the backend
-      let apiSortBy = sortBy;
-      
-      // Don't transform the field names - let the API handle it
-      // The API knows how to sort by price in EAV
-      
       const input: ProductsByAttributeEavInput = {
-        attribute,
-        value,
+        ...(filters && filters.length > 0 && { filters }),
+        ...(search && { search }),
         ...(categories?.length && { categories }),
         ...(minPrice !== undefined && { min_price: minPrice }),
         ...(maxPrice !== undefined && { max_price: maxPrice }),
         ...(inStock !== undefined && { in_stock: inStock }),
-        ...(apiSortBy && { sortBy: apiSortBy }),
-        ...(sortOrder && { sortOrder }),
+        sortBy,
+        sortOrder,
         perPage,
         page,
       };
-
-      // Log the input to see what we're sending
-      console.log("🔍 Sending filter input:", input);
 
       const query = gql`
         query GetProductsByAttribute($input: ProductsByAttributeEavInput!) {
@@ -179,6 +175,7 @@ export function useBagistoProductFilters({
       const headers: HeadersInit = {
         "Content-Type": "application/json",
         "Accept": "application/json",
+        "X-Locale": locale,
       };
 
       if (accessToken) {
@@ -202,7 +199,6 @@ export function useBagistoProductFilters({
         return response.productsByAttributeEav;
       } catch (error) {
         console.error("Error fetching products by attribute:", error);
-        // Log the full error for debugging
         if (error instanceof Object && "response" in error) {
           console.error("Error response:", (error as any).response);
         }
@@ -210,6 +206,6 @@ export function useBagistoProductFilters({
       }
     },
     enabled,
-    retry: 1, // Only retry once to avoid infinite loops
+    retry: 1,
   });
 }

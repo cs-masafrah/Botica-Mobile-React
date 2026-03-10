@@ -1,5 +1,5 @@
 // app/products/index.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   Modal,
   ScrollView,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   Search,
   Grid,
@@ -24,7 +24,8 @@ import {
   Check,
 } from "lucide-react-native";
 import { useAllProducts } from "../hooks/useAllProducts";
-import { useBagistoProductFilters } from "../hooks/useBagistoProductFilters";
+import { useBagistoProductFilters, ProductFilterInput } from "../hooks/useBagistoProductFilters";
+import { useFilterAttributes, FilterAttribute, SortOrder } from "../hooks/useFilterAttributes";
 import ProductCard from "@/components/ProductCard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Colors from "@/constants/colors";
@@ -32,164 +33,134 @@ import Colors from "@/constants/colors";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GRID_ITEM_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
+interface SelectedFilters {
+  [key: string]: string[]; // attribute code -> selected option ids
+}
+
 interface FilterState {
-  gender: string | null;
+  selectedFilters: SelectedFilters;
   minPrice: string;
   maxPrice: string;
   inStock: boolean;
-  sortBy: "newest" | "price-low" | "price-high";
+  sortBy: string; // Will store the sort value like "created_at-desc"
 }
-
-const GENDER_OPTIONS = [
-  { label: "All", value: null },
-  { label: "Men", value: "Men" },
-  { label: "Women", value: "Women" },
-  { label: "Unisex", value: "Unisex" },
-  { label: "Kids", value: "Kids" },
-];
-
-const SORT_OPTIONS = [
-  { label: "Newest", value: "newest" },
-  { label: "Price: Low to High", value: "price-low" },
-  { label: "Price: High to Low", value: "price-high" },
-];
 
 export default function AllProductsScreen() {
   const { t, isRTL } = useLanguage();
+  const { category } = useLocalSearchParams<{ category: string }>();
+  const categorySlug = category || "all";
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
-    gender: null,
+    selectedFilters: {},
     minPrice: "",
     maxPrice: "",
     inStock: false,
-    sortBy: "newest",
+    sortBy: "created_at-desc",
   });
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
+
+  // Fetch filter attributes
+  const {
+    data: filterAttributesData,
+    isLoading: attributesLoading,
+    error: attributesError,
+  } = useFilterAttributes(categorySlug);
+
+  const filterAttributes = filterAttributesData?.getFilterAttribute.filterAttributes || [];
+  const minPrice = filterAttributesData?.getFilterAttribute.minPrice || 0;
+  const maxPrice = filterAttributesData?.getFilterAttribute.maxPrice || 1000;
+  const sortOrders = filterAttributesData?.getFilterAttribute.sortOrders || [];
 
   // Calculate active filters count
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (filters.gender) count++;
+    
+    // Count selected filter options
+    Object.values(filters.selectedFilters).forEach(values => {
+      count += values.length;
+    });
+    
     if (filters.minPrice) count++;
     if (filters.maxPrice) count++;
     if (filters.inStock) count++;
+    
     return count;
   }, [filters]);
 
-  // Convert sortBy to API format
+  // Convert filters to API format
+  const getApiFilters = useMemo((): ProductFilterInput[] => {
+    const apiFilters: ProductFilterInput[] = [];
+    
+    // Add selected attribute filters
+    Object.entries(filters.selectedFilters).forEach(([attribute, values]) => {
+      if (values.length > 0) {
+        apiFilters.push({
+          attribute,
+          value: values,
+          operator: "eq",
+        });
+      }
+    });
+    
+    return apiFilters;
+  }, [filters.selectedFilters]);
+
+  // Parse sortBy into sort and order
   const getSortParams = () => {
-    switch (filters.sortBy) {
-      case "price-low":
-        return { sortBy: "price", sortOrder: "asc" };
-      case "price-high":
-        return { sortBy: "price", sortOrder: "desc" };
-      case "newest":
-      default:
-        return { sortBy: "createdAt", sortOrder: "desc" };
-    }
+    const [sort, order] = filters.sortBy.split('-');
+    return { sortBy: sort, sortOrder: order };
   };
 
   const { sortBy: apiSortBy, sortOrder: apiSortOrder } = getSortParams();
 
-  // Use the filter hook ONLY when a gender filter is applied
-  const hasGenderFilter = !!filters.gender;
-
+  // Fetch products with filters
   const {
     data: filteredProductsData,
     isLoading: isFilterLoading,
     error: filterError,
     refetch: refetchFilters,
   } = useBagistoProductFilters({
-    attribute: "gender",
-    value: filters.gender || "",
-    // Don't send price filters to API - handle them locally
+    filters: getApiFilters,
+    search: searchQuery || undefined,
+    minPrice: filters.minPrice ? parseFloat(filters.minPrice) : undefined,
+    maxPrice: filters.maxPrice ? parseFloat(filters.maxPrice) : undefined,
     inStock: filters.inStock || undefined,
     sortBy: apiSortBy,
     sortOrder: apiSortOrder,
     page: 1,
     perPage: 50,
-    enabled: hasGenderFilter,
+    enabled: true, // Always enabled now since we have the new API
   });
 
-  // Always fetch all products as fallback
+  // Always fetch all products as fallback (keep for now, but we might remove this)
   const {
     data: allProductsData,
     isLoading: isAllLoading,
     error: allError,
     refetch: refetchAll,
-  } = useAllProducts([{ key: "status", value: "1" }]);
+  } = useAllProducts([{ key: "status", value: "1" }], {
+    enabled: false, // Disable this for now, use the filter API instead
+  });
 
-  const isLoading = isAllLoading || (hasGenderFilter && isFilterLoading);
-  const error = allError || filterError;
+  const isLoading = isFilterLoading || attributesLoading;
+  const error = filterError || attributesError;
 
   // Get products based on filter state
   const products = useMemo(() => {
-    if (hasGenderFilter && filteredProductsData?.data) {
-      return filteredProductsData.data;
-    }
-    return allProductsData?.allProducts?.data || [];
-  }, [hasGenderFilter, filteredProductsData, allProductsData]);
+    return filteredProductsData?.data || [];
+  }, [filteredProductsData]);
 
-  // Apply client-side filters for price, stock, and sorting
-  const filteredAndSortedProducts = useMemo(() => {
-    let result = [...products]; // Create a copy to avoid mutating original
-
-    // Apply price filters client-side
-    if (filters.minPrice || filters.maxPrice) {
-      result = result.filter((product) => {
-        // Get price from priceHtml or fallback to price field
-        const price = parseFloat(
-          product.priceHtml?.finalPrice || product.price || "0",
-        );
-        const minOk =
-          !filters.minPrice || price >= parseFloat(filters.minPrice);
-        const maxOk =
-          !filters.maxPrice || price <= parseFloat(filters.maxPrice);
-        return minOk && maxOk;
-      });
-    }
-
-    // Apply in-stock filter client-side
-    if (filters.inStock) {
-      result = result.filter((product) => product.isSaleable === true);
-    }
-
-    // Apply sorting client-side
-    switch (filters.sortBy) {
-      case "price-low":
-        result.sort((a, b) => {
-          const priceA = parseFloat(a.priceHtml?.finalPrice || a.price || "0");
-          const priceB = parseFloat(b.priceHtml?.finalPrice || b.price || "0");
-          return priceA - priceB;
-        });
-        break;
-      case "price-high":
-        result.sort((a, b) => {
-          const priceA = parseFloat(a.priceHtml?.finalPrice || a.price || "0");
-          const priceB = parseFloat(b.priceHtml?.finalPrice || b.price || "0");
-          return priceB - priceA;
-        });
-        break;
-      case "newest":
-      default:
-        result.sort((a, b) => {
-          const dateA = new Date(a.createdAt || 0).getTime();
-          const dateB = new Date(b.createdAt || 0).getTime();
-          return dateB - dateA;
-        });
-        break;
-    }
-
-    return result;
-  }, [products, filters]);
-
-  // Apply client-side search
-  const filteredProducts = filteredAndSortedProducts.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  // Helper to get option label based on current language
+  const getOptionLabel = (option: any) => {
+    if (!option.translations) return option.adminName;
+    
+    const translation = option.translations.find(
+      (t: any) => t.locale === (isRTL ? "ar" : "en")
+    );
+    return translation?.label || option.adminName;
+  };
 
   const handleApplyFilters = () => {
     setFilters(tempFilters);
@@ -198,11 +169,11 @@ export default function AllProductsScreen() {
 
   const handleResetFilters = () => {
     const resetFilters = {
-      gender: null,
+      selectedFilters: {},
       minPrice: "",
       maxPrice: "",
       inStock: false,
-      sortBy: "newest" as const,
+      sortBy: "created_at-desc",
     };
     setTempFilters(resetFilters);
     setFilters(resetFilters);
@@ -215,11 +186,28 @@ export default function AllProductsScreen() {
   };
 
   const handleRefresh = () => {
-    if (hasGenderFilter) {
-      refetchFilters();
-    } else {
-      refetchAll();
-    }
+    refetchFilters();
+  };
+
+  const toggleFilterOption = (attributeCode: string, optionId: string) => {
+    setTempFilters(prev => {
+      const currentSelected = prev.selectedFilters[attributeCode] || [];
+      const newSelected = currentSelected.includes(optionId)
+        ? currentSelected.filter(id => id !== optionId)
+        : [...currentSelected, optionId];
+      
+      return {
+        ...prev,
+        selectedFilters: {
+          ...prev.selectedFilters,
+          [attributeCode]: newSelected,
+        },
+      };
+    });
+  };
+
+  const isOptionSelected = (attributeCode: string, optionId: string) => {
+    return tempFilters.selectedFilters[attributeCode]?.includes(optionId) || false;
   };
 
   if (isLoading) {
@@ -262,7 +250,7 @@ export default function AllProductsScreen() {
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
-      {/* Search Bar - Uncommented for better UX */}
+      {/* Search Bar */}
       {/* <View style={[styles.searchContainer, isRTL && styles.searchContainerRTL]}>
         <View style={[styles.searchInputContainer, isRTL && styles.searchInputContainerRTL]}>
           <Search 
@@ -294,7 +282,7 @@ export default function AllProductsScreen() {
       {/* Results Count and Filter Button Row */}
       <View style={[styles.resultsHeader, isRTL && styles.resultsHeaderRTL]}>
         <Text style={[styles.resultsText, isRTL && styles.resultsTextRTL]}>
-          {filteredProducts.length} {t("products")}
+          {products.length} {t("products")}
         </Text>
 
         {/* Filter Button next to count */}
@@ -320,7 +308,7 @@ export default function AllProductsScreen() {
       </View>
 
       {/* Products Grid */}
-      {filteredProducts.length === 0 ? (
+      {products.length === 0 ? (
         <View
           style={[styles.emptyContainer, isRTL && styles.emptyContainerRTL]}
         >
@@ -337,7 +325,7 @@ export default function AllProductsScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredProducts}
+          data={products}
           numColumns={2}
           renderItem={({ item, index }) => (
             <View
@@ -393,86 +381,84 @@ export default function AllProductsScreen() {
               style={styles.modalScroll}
             >
               {/* Sort Section */}
-              <View style={styles.filterSection}>
-                <Text
-                  style={[
-                    styles.filterSectionTitle,
-                    isRTL && styles.filterSectionTitleRTL,
-                  ]}
-                >
-                  {t("sortBy")}
-                </Text>
-                <View style={styles.genderOptions}>
-                  {SORT_OPTIONS.map((option) => (
-                    <Pressable
-                      key={option.value}
-                      style={[
-                        styles.genderOption,
-                        tempFilters.sortBy === option.value &&
-                          styles.genderOptionSelected,
-                      ]}
-                      onPress={() =>
-                        setTempFilters({
-                          ...tempFilters,
-                          sortBy: option.value as typeof tempFilters.sortBy,
-                        })
-                      }
-                    >
-                      <Text
+              {sortOrders.length > 0 && (
+                <View style={styles.filterSection}>
+                  <Text
+                    style={[
+                      styles.filterSectionTitle,
+                      isRTL && styles.filterSectionTitleRTL,
+                    ]}
+                  >
+                    {t("sortBy")}
+                  </Text>
+                  <View style={styles.genderOptions}>
+                    {sortOrders.map((sort) => (
+                      <Pressable
+                        key={sort.value}
                         style={[
-                          styles.genderOptionText,
-                          tempFilters.sortBy === option.value &&
-                            styles.genderOptionTextSelected,
+                          styles.genderOption,
+                          tempFilters.sortBy === sort.value &&
+                            styles.genderOptionSelected,
                         ]}
+                        onPress={() =>
+                          setTempFilters({
+                            ...tempFilters,
+                            sortBy: sort.value,
+                          })
+                        }
                       >
-                        {t(option.value)}
-                      </Text>
-                    </Pressable>
-                  ))}
+                        <Text
+                          style={[
+                            styles.genderOptionText,
+                            tempFilters.sortBy === sort.value &&
+                              styles.genderOptionTextSelected,
+                          ]}
+                        >
+                          {sort.title}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
                 </View>
-              </View>
+              )}
 
-              {/* Gender Section */}
-              <View style={styles.filterSection}>
-                <Text
-                  style={[
-                    styles.filterSectionTitle,
-                    isRTL && styles.filterSectionTitleRTL,
-                  ]}
-                >
-                  {t("gender")}
-                </Text>
-                <Text
-                  style={[styles.filterHint, isRTL && styles.filterHintRTL]}
-                >
-                  {t("filterHint")}
-                </Text>
-                <View style={styles.genderOptions}>
-                  {GENDER_OPTIONS.map((option) => (
-                    <Pressable
-                      key={option.label}
-                      style={[
-                        styles.genderOption,
-                        tempFilters.gender === option.value &&
-                          styles.genderOptionSelected,
-                      ]}
-                      onPress={() =>
-                        setTempFilters({ ...tempFilters, gender: option.value })
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.genderOptionText,
-                          tempFilters.gender === option.value &&
-                            styles.genderOptionTextSelected,
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  ))}
+              {/* Dynamic Filter Attributes */}
+              {filterAttributes.map((attribute) => (
+                <View key={attribute.id} style={styles.filterSection}>
+                  <Text
+                    style={[
+                      styles.filterSectionTitle,
+                      isRTL && styles.filterSectionTitleRTL,
+                    ]}
+                  >
+                    {attribute.adminName}
+                  </Text>
+                  <View style={styles.genderOptions}>
+                    {attribute.options.map((option) => {
+                      const isSelected = isOptionSelected(attribute.code, option.id);
+                      return (
+                        <Pressable
+                          key={option.id}
+                          style={[
+                            styles.genderOption,
+                            isSelected && styles.genderOptionSelected,
+                          ]}
+                          onPress={() => toggleFilterOption(attribute.code, option.id)}
+                        >
+                          <Text
+                            style={[
+                              styles.genderOptionText,
+                              isSelected && styles.genderOptionTextSelected,
+                            ]}
+                          >
+                            {getOptionLabel(option)}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
+              ))}
 
               {/* Price Range Section */}
               <View style={styles.filterSection}>
@@ -498,7 +484,7 @@ export default function AllProductsScreen() {
                     </Text>
                     <TextInput
                       style={[styles.priceInput, isRTL && styles.priceInputRTL]}
-                      placeholder="0"
+                      placeholder={minPrice.toString()}
                       keyboardType="numeric"
                       value={tempFilters.minPrice}
                       onChangeText={(text) =>
@@ -516,7 +502,7 @@ export default function AllProductsScreen() {
                     </Text>
                     <TextInput
                       style={[styles.priceInput, isRTL && styles.priceInputRTL]}
-                      placeholder="1000"
+                      placeholder={maxPrice.toString()}
                       keyboardType="numeric"
                       value={tempFilters.maxPrice}
                       onChangeText={(text) =>
