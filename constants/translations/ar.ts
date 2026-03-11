@@ -453,7 +453,7 @@ const ar = {
   reset: "إعادة ضبط",
   applyFilters: "تطبيق التصفية",
   sortBy: "ترتيب حسب",
-  priceRage: "نطاق السعر",
+  priceRange: "نطاق السعر",
   min: "الحد الأدنى",
   max: "الحد الأقصى",
 
