@@ -24,8 +24,15 @@ import {
   Check,
 } from "lucide-react-native";
 import { useAllProducts } from "../hooks/useAllProducts";
-import { useBagistoProductFilters, ProductFilterInput } from "../hooks/useBagistoProductFilters";
-import { useFilterAttributes, FilterAttribute, SortOrder } from "../hooks/useFilterAttributes";
+import {
+  useBagistoProductFilters,
+  ProductFilterInput,
+} from "../hooks/useBagistoProductFilters";
+import {
+  useFilterAttributes,
+  FilterAttribute,
+  SortOrder,
+} from "../hooks/useFilterAttributes";
 import ProductCard from "@/components/ProductCard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Colors from "@/constants/colors";
@@ -49,7 +56,7 @@ export default function AllProductsScreen() {
   const { t, isRTL } = useLanguage();
   const { category } = useLocalSearchParams<{ category: string }>();
   const categorySlug = category || "all";
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
@@ -68,7 +75,8 @@ export default function AllProductsScreen() {
     error: attributesError,
   } = useFilterAttributes(categorySlug);
 
-  const filterAttributes = filterAttributesData?.getFilterAttribute.filterAttributes || [];
+  const filterAttributes =
+    filterAttributesData?.getFilterAttribute.filterAttributes || [];
   const minPrice = filterAttributesData?.getFilterAttribute.minPrice || 0;
   const maxPrice = filterAttributesData?.getFilterAttribute.maxPrice || 1000;
   const sortOrders = filterAttributesData?.getFilterAttribute.sortOrders || [];
@@ -76,23 +84,23 @@ export default function AllProductsScreen() {
   // Calculate active filters count
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    
+
     // Count selected filter options
-    Object.values(filters.selectedFilters).forEach(values => {
+    Object.values(filters.selectedFilters).forEach((values) => {
       count += values.length;
     });
-    
+
     if (filters.minPrice) count++;
     if (filters.maxPrice) count++;
     if (filters.inStock) count++;
-    
+
     return count;
   }, [filters]);
 
   // Convert filters to API format
   const getApiFilters = useMemo((): ProductFilterInput[] => {
     const apiFilters: ProductFilterInput[] = [];
-    
+
     // Add selected attribute filters
     Object.entries(filters.selectedFilters).forEach(([attribute, values]) => {
       if (values.length > 0) {
@@ -103,13 +111,13 @@ export default function AllProductsScreen() {
         });
       }
     });
-    
+
     return apiFilters;
   }, [filters.selectedFilters]);
 
   // Parse sortBy into sort and order
   const getSortParams = () => {
-    const [sort, order] = filters.sortBy.split('-');
+    const [sort, order] = filters.sortBy.split("-");
     return { sortBy: sort, sortOrder: order };
   };
 
@@ -155,9 +163,9 @@ export default function AllProductsScreen() {
   // Helper to get option label based on current language
   const getOptionLabel = (option: any) => {
     if (!option.translations) return option.adminName;
-    
+
     const translation = option.translations.find(
-      (t: any) => t.locale === (isRTL ? "ar" : "en")
+      (t: any) => t.locale === (isRTL ? "ar" : "en"),
     );
     return translation?.label || option.adminName;
   };
@@ -190,12 +198,12 @@ export default function AllProductsScreen() {
   };
 
   const toggleFilterOption = (attributeCode: string, optionId: string) => {
-    setTempFilters(prev => {
+    setTempFilters((prev) => {
       const currentSelected = prev.selectedFilters[attributeCode] || [];
       const newSelected = currentSelected.includes(optionId)
-        ? currentSelected.filter(id => id !== optionId)
+        ? currentSelected.filter((id) => id !== optionId)
         : [...currentSelected, optionId];
-      
+
       return {
         ...prev,
         selectedFilters: {
@@ -207,7 +215,9 @@ export default function AllProductsScreen() {
   };
 
   const isOptionSelected = (attributeCode: string, optionId: string) => {
-    return tempFilters.selectedFilters[attributeCode]?.includes(optionId) || false;
+    return (
+      tempFilters.selectedFilters[attributeCode]?.includes(optionId) || false
+    );
   };
 
   if (isLoading) {
@@ -435,7 +445,10 @@ export default function AllProductsScreen() {
                   </Text>
                   <View style={styles.genderOptions}>
                     {attribute.options.map((option) => {
-                      const isSelected = isOptionSelected(attribute.code, option.id);
+                      const isSelected = isOptionSelected(
+                        attribute.code,
+                        option.id,
+                      );
                       return (
                         <Pressable
                           key={option.id}
@@ -443,7 +456,9 @@ export default function AllProductsScreen() {
                             styles.genderOption,
                             isSelected && styles.genderOptionSelected,
                           ]}
-                          onPress={() => toggleFilterOption(attribute.code, option.id)}
+                          onPress={() =>
+                            toggleFilterOption(attribute.code, option.id)
+                          }
                         >
                           <Text
                             style={[
@@ -862,7 +877,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   filterSectionTitleRTL: {
-    textAlign: "right",
+    textAlign: "left",
+    // marginRight: 20,
+    paddingRight: 12,
   },
   filterHint: {
     fontSize: 12,
@@ -870,7 +887,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   filterHintRTL: {
-    textAlign: "right",
+    textAlign: "left",
+    paddingRight: 12,
   },
   genderOptions: {
     flexDirection: "row",
