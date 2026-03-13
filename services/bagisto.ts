@@ -28,6 +28,7 @@ async function fetchGraphQL<T>(
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`❌ [GRAPHQL] HTTP error ${response.status}: ${errorText}`);
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
