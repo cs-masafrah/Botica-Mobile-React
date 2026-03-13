@@ -10,6 +10,8 @@ import { useCart } from "@/contexts/CartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Product, BagistoProduct } from "@/app/types/product";
+import { ProductWithCustomizableOptions } from "@/app/types/customizable-options";
+
 
 interface ProductCardProps {
   product: Product | BagistoProduct;
@@ -59,7 +61,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
     ? formatPrice(product.priceHtml.regularPrice)
     : "";
 
+  // Cast product to include customizable options
+  const productWithOptions = product as ProductWithCustomizableOptions;
+  const hasCustomizableOptions = productWithOptions.customizableOptions && 
+    productWithOptions.customizableOptions.length > 0;
+
   const handleAddToCart = async () => {
+    // If product has customizable options, navigate to product page
+    if (hasCustomizableOptions) {
+      router.push({ 
+        pathname: "/product/[id]", 
+        params: { id: product.id, fromCard: "true" } 
+      });
+      return;
+    }
+
     if (onAddToCart) {
       onAddToCart(product);
     } else {
@@ -84,7 +100,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             (product as any).configutableData?.attributes?.map((attr: any) => ({
               id: attr.id,
               name: attr.label,
-              values: attr.options.map((opt: any) => opt.label),
+              values: attr.options?.map((opt: any) => opt.label) || [],
             })) || [],
           price: product.priceHtml?.finalPrice || 0,
           ...(product.variants?.[0] && {
