@@ -1,7 +1,9 @@
+// contexts/CartContext.tsx
 import createContextHook from "@nkzw/create-context-hook";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { CartItem, Product, ShippingRate } from "@/types/product";
+import { SelectedCustomizableOption } from "@/app/types/customizable-options";
 import { APP_CURRENCY } from "@/utils/currency";
 import { bagistoService } from "@/services/bagisto";
 import { checkoutService } from "@/services/CheckoutService";
@@ -11,7 +13,6 @@ import {
   extractBagistoImage,
   extractBagistoCurrency,
   extractCartTotals,
-  parseCurrencyString,
 } from "@/utils/bagistoHelpers";
 import { shippingService } from "@/services/ShippingService";
 
@@ -41,7 +42,7 @@ export const [CartContext, useCart] = createContextHook(() => {
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [lastLoadTime, setLastLoadTime] = useState<number>(0);
   const [hasError, setHasError] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); // Add refresh key for forced reloads
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const loadCart = useCallback(async (forceRefresh: boolean = false) => {
     try {
@@ -60,39 +61,22 @@ export const [CartContext, useCart] = createContextHook(() => {
 
       setCartDetails(bagistoCart);
 
-      // Check if cart is empty
-      if (
-        !bagistoCart ||
-        !bagistoCart.items ||
-        bagistoCart.items.length === 0
-      ) {
+      if (!bagistoCart || !bagistoCart.items || bagistoCart.items.length === 0) {
         console.log("🛒 [CART] Cart is empty");
         setItems([]);
         setLastLoadTime(Date.now());
         return;
       }
 
-      // Convert Bagisto cart items to local format
       const convertedItems: CartItem[] = bagistoCart.items
-        .filter((item) => item && item.id)
-        .map((item) => {
+        .filter((item: any) => item && item.id)
+        .map((item: any) => {
           const price = extractBagistoPrice(item);
           const imageUrl = extractBagistoImage(item);
           const currencyCode = extractBagistoCurrency(item);
 
-          console.log(`📦 [CART ITEM] ${item.name}:`, {
-            rawPrice: item.formattedPrice?.price,
-            extractedPrice: price,
-            quantity: item.quantity,
-            total: price * (item.quantity || 1),
-            hasImage: !!imageUrl,
-            currency: currencyCode,
-          });
-
-          // Calculate total for this item
           const itemTotal = price * (item.quantity || 1);
 
-          // Create cart item
           const cartItem: CartItem = {
             id: item.id.toString(),
             quantity: item.quantity || 1,
@@ -108,9 +92,9 @@ export const [CartContext, useCart] = createContextHook(() => {
               brand: item.product?.sku || "",
               type: item.product?.type || item.type || "simple",
               sku: item.product?.sku || item.sku || "",
-              // Bagisto specific fields
               selectedConfigurableOption: item.selectedConfigurableOption,
               selectedOptions: item.selectedOptions || {},
+              customizableOptions: item.customizableOptions || [],
             },
             formattedPrice: {
               price: price,
@@ -130,12 +114,6 @@ export const [CartContext, useCart] = createContextHook(() => {
           (sum, item) => sum + item.product.price * item.quantity,
           0,
         ),
-        items: convertedItems.map((item) => ({
-          name: item.product.name.substring(0, 20),
-          price: item.product.price,
-          quantity: item.quantity,
-          total: item.product.price * item.quantity,
-        })),
       });
 
       setItems(convertedItems);
@@ -154,41 +132,52 @@ export const [CartContext, useCart] = createContextHook(() => {
     }
   }, []);
 
-  // Initial cart load
   useEffect(() => {
     console.log("🛒 [CART] Initial cart load");
     loadCart();
-  }, [loadCart, refreshKey]); // Add refreshKey dependency
+  }, [loadCart, refreshKey]);
 
-  /// Add to cart
   const addToCart = useCallback(
     async (
       product: Product,
       quantity: number = 1,
       selectedOptions?: Record<string, string>,
+      customizableOptions?: SelectedCustomizableOption[],
     ) => {
       try {
         setIsLoading(true);
-        console.log("➕ [CART] Adding product to cart:", {
-          productId: product.productId || product.id,
-          productName: product.name,
-          quantity,
-          selectedOptions,
-          price: product.price,
-        });
+        
+        // LOG THE FULL PRODUCT OBJECT
+        console.log("🔍 [CART] Full product object:", JSON.stringify({
+          id: product.id,
+          productId: product.productId,
+          variantId: product.variantId,
+          selectedConfigurableOption: product.selectedConfigurableOption,
+          type: product.type,
+          sku: product.sku,
+          name: product.name,
+          // Check if it has configurableData
+          hasConfigurableData: !!(product as any).configutableData,
+          configurableData: (product as any).configutableData,
+        }, null, 2));
 
-        // Prepare input matching GraphQL schema
+        const resolvedProductId = product?.variantId ?? product?.productId ?? product?.id;
+        
+        console.log("🔍 [CART] Resolved product ID:", resolvedProductId);
+
+        if (!resolvedProductId) {
+          throw new Error("Invalid product: missing product ID");
+        }
+
         const input: any = {
-          productId: product.productId || product.id,
+          productId: String(resolvedProductId),
           quantity: quantity,
-          isBuyNow: false, // Set to false as in your query
+          isBuyNow: false,
         };
 
-        // Handle configurable options for variants
         if (selectedOptions && Object.keys(selectedOptions).length > 0) {
           console.log("🔄 [CART] Selected options found:", selectedOptions);
 
-          // Convert to superAttribute format (Bagisto expects this format)
           input.superAttribute = Object.entries(selectedOptions).map(
             ([attributeCode, optionValue]) => ({
               attributeCode,
@@ -197,12 +186,33 @@ export const [CartContext, useCart] = createContextHook(() => {
           );
         }
 
-        // Handle selected variant ID if available
+        if (customizableOptions && customizableOptions.length > 0) {
+          console.log("🔄 [CART] Customizable options found:", customizableOptions);
+
+          input.customizableOptions = customizableOptions.map((opt) => {
+            let value: any = opt.optionValue;
+
+            // Handle file uploads
+            if (value && typeof value === "object" && "uri" in value) {
+              value = {
+                uri: value.uri,
+                name: value.name,
+                type: value.mimeType || "application/octet-stream",
+              };
+            }
+
+            // IMPORTANT: Bagisto expects ARRAY values
+            return {
+              id: opt.optionId,
+              value: Array.isArray(value) ? value.map(String) : [String(value)],
+            };
+          });
+        }
+
         if (product.selectedConfigurableOption) {
           input.selectedConfigurableOption = product.selectedConfigurableOption;
         }
 
-        // If variantId is provided, use it as selectedConfigurableOption
         if (product.variantId && !input.selectedConfigurableOption) {
           input.selectedConfigurableOption = product.variantId;
         }
@@ -211,66 +221,45 @@ export const [CartContext, useCart] = createContextHook(() => {
 
         const result = await bagistoService.addToCart(input);
 
-        // Log the response for debugging
         console.log("📨 [CART] Add to cart response:", {
-          success: result.success,
-          message: result.message,
-          cartId: result.cart?.id,
-          itemsCount: result.cart?.itemsCount,
-          items: result.cart?.items?.length || 0,
+          success: result?.success,
+          message: result?.message,
+          cartId: result?.cart?.id,
+          itemsCount: result?.cart?.itemsCount,
         });
 
-        if (result.success && result.cart) {
+        if (result?.success && result.cart) {
           console.log("✅ [CART] Product added successfully!");
 
-          // Log the added item details
-          if (result.cart?.items && result.cart.items.length > 0) {
-            const latestItem = result.cart.items[result.cart.items.length - 1];
-            console.log("📦 [CART] Added item details:", {
-              productName: latestItem.product.name,
-              quantity: latestItem.quantity,
-              price: latestItem.product.price,
-              total: latestItem.quantity * latestItem.product.price,
-              images: latestItem.product.images?.length || 0,
-            });
-          }
-
-          // Update cartDetails state with the new cart data
           setCartDetails(result.cart);
 
-          // Convert and update items state
           if (result.cart.items && result.cart.items.length > 0) {
             const convertedItems: CartItem[] = result.cart.items
-              .filter((item) => item && item.id)
-              .map((item) => {
+              .filter((item: any) => item && item.id)
+              .map((item: any) => {
                 const price = extractBagistoPrice(item);
                 const imageUrl = extractBagistoImage(item);
                 const currencyCode = extractBagistoCurrency(item);
-
-                // Calculate total for this item
                 const itemTotal = price * (item.quantity || 1);
 
-                // Create cart item
-                const cartItem: CartItem = {
+                return {
                   id: item.id.toString(),
                   quantity: item.quantity || 1,
                   product: {
                     id: item.product?.id?.toString() || item.id.toString(),
-                    productId:
-                      item.product?.id?.toString() || item.id.toString(),
+                    productId: item.product?.id?.toString() || item.id.toString(),
                     name: item.name || item.product?.name || "Product",
                     price: price,
                     currencyCode: currencyCode,
                     image: imageUrl,
-                    variantId:
-                      item.product?.id?.toString() || item.id.toString(),
+                    variantId: item.product?.id?.toString() || item.id.toString(),
                     inStock: true,
                     brand: item.product?.sku || "",
                     type: item.product?.type || item.type || "simple",
                     sku: item.product?.sku || item.sku || "",
-                    // Bagisto specific fields
                     selectedConfigurableOption: item.selectedConfigurableOption,
                     selectedOptions: item.selectedOptions || {},
+                    customizableOptions: item.customizableOptions || [],
                   },
                   formattedPrice: {
                     price: price,
@@ -279,41 +268,33 @@ export const [CartContext, useCart] = createContextHook(() => {
                     discountAmount: 0,
                   },
                 };
-
-                return cartItem;
               });
 
             console.log("🔄 [CART] Updated local items state:", {
               itemsCount: convertedItems.length,
-              totalItems: convertedItems.reduce(
-                (sum, item) => sum + item.quantity,
-                0,
-              ),
             });
 
             setItems(convertedItems);
           }
         }
 
-        // Always reload cart to ensure we have the latest state
         await loadCart(true);
 
         console.log("✅ [CART] Product added successfully and cart reloaded");
 
         return {
           success: true,
-          message: result.message || `${product.name} added to cart`,
+          message: result?.message || `${product.name} added to cart`,
           product,
           quantity,
-          cart: result.cart,
-          cartItems: result.cart?.items || [],
+          cart: result?.cart,
+          cartItems: result?.cart?.items || [],
         };
       } catch (error: any) {
         console.error("❌ [CART] Failed to add to cart:", {
           error: error.message,
-          productId: product.productId || product.id,
+          productId: product?.variantId ?? product?.productId ?? product?.id,
           productName: product.name,
-          stack: error.stack,
         });
 
         return {
@@ -326,10 +307,9 @@ export const [CartContext, useCart] = createContextHook(() => {
         setIsLoading(false);
       }
     },
-    [loadCart, setCartDetails, setItems, setIsLoading],
+    [loadCart],
   );
 
-  // Update quantity - FIXED VERSION
   const updateQuantity = useCallback(
     async (cartItemId: string, quantity: number) => {
       if (quantity <= 0) {
@@ -341,25 +321,22 @@ export const [CartContext, useCart] = createContextHook(() => {
         setIsLoading(true);
         console.log("🔄 [CART] Updating quantity:", cartItemId, quantity);
 
-        // Update via Bagisto
         const result = await bagistoService.updateCartItem([
           { id: cartItemId, quantity },
         ]);
 
         console.log("✅ [CART] Update result:", result);
 
-        if (!result.success) {
-          throw new Error(result.message || "Failed to update quantity");
+        if (!result?.success) {
+          throw new Error(result?.message || "Failed to update quantity");
         }
 
-        // Force reload cart
         await loadCart();
 
         console.log("✅ [CART] Quantity updated successfully");
       } catch (error: any) {
         console.error("❌ [CART] Failed to update quantity:", error.message);
 
-        // Update local state as fallback
         const itemIndex = items.findIndex((item) => item.id === cartItemId);
         if (itemIndex >= 0) {
           const updatedItems = [...items];
@@ -384,8 +361,6 @@ export const [CartContext, useCart] = createContextHook(() => {
     [items, loadCart],
   );
 
-  // In CartContext.tsx, update the removeFromCart function:
-
   const removeFromCart = useCallback(
     async (cartItemId: string) => {
       try {
@@ -395,25 +370,22 @@ export const [CartContext, useCart] = createContextHook(() => {
         const result = await bagistoService.removeFromCart(cartItemId);
 
         console.log("✅ [CART] Remove result:", {
-          success: result.success,
-          message: result.message,
-          remainingItems: result.cart?.itemsCount,
+          success: result?.success,
+          message: result?.message,
+          remainingItems: result?.cart?.itemsCount,
         });
 
-        if (!result.success) {
-          throw new Error(result.message || "Failed to remove item");
+        if (!result?.success) {
+          throw new Error(result?.message || "Failed to remove item");
         }
 
-        // Update local state immediately
         setItems((prevItems) =>
           prevItems.filter((item) => item.id !== cartItemId),
         );
 
-        // Also update cart details if available in response
         if (result.cart) {
           setCartDetails(result.cart);
         } else {
-          // Force reload cart to get updated state
           await loadCart();
         }
 
@@ -434,7 +406,6 @@ export const [CartContext, useCart] = createContextHook(() => {
     [loadCart],
   );
 
-  // contexts/CartContext.tsx - Add these methods
   const applyCoupon = useCallback(
     async (code: string) => {
       try {
@@ -447,7 +418,6 @@ export const [CartContext, useCart] = createContextHook(() => {
           throw new Error(result?.message || "Failed to apply coupon");
         }
 
-        // Update cart details with the new coupon data
         await loadCart();
 
         console.log("✅ [CART] Coupon applied successfully");
@@ -480,7 +450,6 @@ export const [CartContext, useCart] = createContextHook(() => {
         throw new Error(result?.message || "Failed to remove coupon");
       }
 
-      // Update cart details to remove coupon
       await loadCart();
 
       console.log("✅ [CART] Coupon removed successfully");
@@ -500,21 +469,19 @@ export const [CartContext, useCart] = createContextHook(() => {
     }
   }, [loadCart]);
 
-  // Get shipping methods
   const getShippingMethods = useCallback(async (shippingMethod?: string) => {
     try {
       setIsLoading(true);
       console.log("🚚 [CART] Getting shipping methods");
 
-      // Use shippingService instead of checkoutService
       const result = await shippingService.getShippingMethods();
 
       console.log("✅ [CART] Shipping methods result:", {
-        message: result.message,
-        shippingMethodsCount: result.shippingMethods?.length || 0,
+        message: result?.message,
+        shippingMethodsCount: result?.shippingMethods?.length || 0,
       });
 
-      setShippingMethods(result.shippingMethods || []);
+      setShippingMethods(result?.shippingMethods || []);
 
       console.log("✅ [CART] Shipping methods loaded");
       return result;
@@ -531,7 +498,6 @@ export const [CartContext, useCart] = createContextHook(() => {
     }
   }, []);
 
-  // Save checkout addresses
   const saveCheckoutAddresses = useCallback(
     async (billing: any, shipping: any) => {
       try {
@@ -545,8 +511,8 @@ export const [CartContext, useCart] = createContextHook(() => {
 
         console.log("✅ [CART] Addresses result:", result);
 
-        setShippingMethods(result.shippingMethods || []);
-        setPaymentMethods(result.paymentMethods || []);
+        setShippingMethods(result?.shippingMethods || []);
+        setPaymentMethods(result?.paymentMethods || []);
 
         console.log("✅ [CART] Addresses saved");
         return result;
@@ -560,7 +526,6 @@ export const [CartContext, useCart] = createContextHook(() => {
     [],
   );
 
-  // Save payment
   const savePayment = useCallback(async (method: string) => {
     try {
       setIsLoading(true);
@@ -578,14 +543,13 @@ export const [CartContext, useCart] = createContextHook(() => {
     }
   }, []);
 
-  // Fetch orders
   const fetchOrders = useCallback(async (params?: any) => {
     try {
       setIsLoading(true);
       console.log("📋 [CART] Fetching orders...");
 
       const result = await orderService.getOrdersList(params);
-      console.log("✅ [CART] Orders loaded:", result.data.length);
+      console.log("✅ [CART] Orders loaded:", result?.data?.length || 0);
       return result;
     } catch (error: any) {
       console.error("❌ [CART] Failed to fetch orders:", error);
@@ -595,7 +559,6 @@ export const [CartContext, useCart] = createContextHook(() => {
     }
   }, []);
 
-  // Fetch order detail
   const fetchOrderDetail = useCallback(async (orderId: string) => {
     try {
       setIsLoading(true);
@@ -612,7 +575,6 @@ export const [CartContext, useCart] = createContextHook(() => {
     }
   }, []);
 
-  // Place order
   const placeOrder = useCallback(async (paymentDetails?: any) => {
     try {
       setIsLoading(true);
@@ -624,20 +586,19 @@ export const [CartContext, useCart] = createContextHook(() => {
         ...paymentDetails,
       });
 
-      if (!response.success) {
-        throw new Error(response.redirectUrl || "Failed to place order");
+      if (!response?.success) {
+        throw new Error(response?.redirectUrl || "Failed to place order");
       }
 
-      // Clear cart after successful order
       setItems([]);
       setCartDetails(null);
 
-      console.log("✅ [CART] Order placed:", response.order.incrementId);
+      console.log("✅ [CART] Order placed:", response?.order?.incrementId);
 
       return {
-        orderId: response.order.id,
-        orderName: response.order.incrementId,
-        redirectUrl: response.redirectUrl,
+        orderId: response?.order?.id,
+        orderName: response?.order?.incrementId,
+        redirectUrl: response?.redirectUrl,
       };
     } catch (error: any) {
       console.error("❌ [CART] Failed to place order:", error);
@@ -647,7 +608,6 @@ export const [CartContext, useCart] = createContextHook(() => {
     }
   }, []);
 
-  // Complete checkout
   const completeCheckout = useCallback(
     async (shippingInfo: {
       fullName: string;
@@ -686,7 +646,7 @@ export const [CartContext, useCart] = createContextHook(() => {
           billingAddress,
         );
 
-        if (addressResponse.shippingMethods.length > 0) {
+        if (addressResponse?.shippingMethods?.length > 0) {
           const firstMethod = addressResponse.shippingMethods[0].methods[0];
           // Handle shipping method selection if needed
         }
@@ -705,54 +665,24 @@ export const [CartContext, useCart] = createContextHook(() => {
     [items, saveCheckoutAddresses, savePayment, placeOrder],
   );
 
-  // Calculate totals
-  // const subtotal = useMemo(() => {
-  //   const cartTotals = extractCartTotals(cartDetails);
-  //   return cartTotals.subtotal;
-  // }, [cartDetails]);
-
-  // const total = useMemo(() => {
-  //   const cartTotals = extractCartTotals(cartDetails);
-  //   return cartTotals.grandTotal;
-  // }, [cartDetails]);
-
-  // const tax = useMemo(() => {
-  //   const cartTotals = extractCartTotals(cartDetails);
-  //   return cartTotals.tax;
-  // }, [cartDetails]);
-
-  // const discount = useMemo(() => {
-  //   const cartTotals = extractCartTotals(cartDetails);
-  //   return cartTotals.discount;
-  // }, [cartDetails]);
-
-  // Calculate totals - FIXED VERSION
   const subtotal = useMemo(() => {
     const cartTotals = extractCartTotals(cartDetails);
-    console.log("🧮 [CART] subtotal calculation:", {
-      raw: cartTotals,
-      subTotal: cartTotals.subTotal, // camelCase
-      cartDetailsKeys: cartDetails ? Object.keys(cartDetails) : [],
-    });
-    return cartTotals.subTotal; // camelCase
+    return cartTotals.subTotal || 0;
   }, [cartDetails]);
 
   const total = useMemo(() => {
     const cartTotals = extractCartTotals(cartDetails);
-    console.log("🧮 [CART] total calculation:", cartTotals.grandTotal);
-    return cartTotals.grandTotal;
+    return cartTotals.grandTotal || 0;
   }, [cartDetails]);
 
   const tax = useMemo(() => {
     const cartTotals = extractCartTotals(cartDetails);
-    console.log("🧮 [CART] tax calculation:", cartTotals.tax);
-    return cartTotals.tax;
+    return cartTotals.tax || 0;
   }, [cartDetails]);
 
   const discount = useMemo(() => {
     const cartTotals = extractCartTotals(cartDetails);
-    console.log("🧮 [CART] discount calculation:", cartTotals.discount);
-    return cartTotals.discount;
+    return cartTotals.discount || 0;
   }, [cartDetails]);
 
   const shippingCost = useMemo(() => {
@@ -765,7 +695,6 @@ export const [CartContext, useCart] = createContextHook(() => {
     [items],
   );
 
-  // Clear cart
   const clearCart = useCallback(async () => {
     try {
       setItems([]);
@@ -774,14 +703,15 @@ export const [CartContext, useCart] = createContextHook(() => {
       setShippingMethods([]);
       setPaymentMethods([]);
       setHasError(false);
-      await bagistoService.clearCartStorage();
+      if (bagistoService.clearCartStorage) {
+        await bagistoService.clearCartStorage();
+      }
       console.log("🛒 [CART] Cart cleared");
     } catch (error) {
       console.error("❌ [CART] Failed to clear cart:", error);
     }
   }, []);
 
-  // Debug cart
   const debugCart = useCallback(async () => {
     console.log("🔍 [CART DEBUG] Current state:", {
       itemsCount: items.length,
@@ -805,12 +735,12 @@ export const [CartContext, useCart] = createContextHook(() => {
       lastLoadTime: new Date(lastLoadTime).toLocaleTimeString(),
     });
 
-    // Test Bagisto service directly
-    const testResult = await bagistoService.testCartConnection();
-    console.log("🔍 [CART DEBUG] Bagisto test:", testResult);
+    if (bagistoService.testCartConnection) {
+      const testResult = await bagistoService.testCartConnection();
+      console.log("🔍 [CART DEBUG] Bagisto test:", testResult);
+    }
   }, [items, isLoading, hasError, cartDetails, lastLoadTime]);
 
-  // Force refresh cart
   const forceRefreshCart = useCallback(async () => {
     console.log("🔄 [CART] Force refreshing cart...");
     setRefreshKey((prev) => prev + 1);
@@ -819,7 +749,6 @@ export const [CartContext, useCart] = createContextHook(() => {
 
   return useMemo(
     () => ({
-      // State
       items,
       cartDetails,
       isLoading,
@@ -830,7 +759,6 @@ export const [CartContext, useCart] = createContextHook(() => {
       paymentMethods,
       lastLoadTime,
 
-      // Cart operations
       addToCart,
       updateQuantity,
       removeFromCart,
@@ -841,7 +769,6 @@ export const [CartContext, useCart] = createContextHook(() => {
       debugCart,
       forceRefreshCart,
 
-      // Checkout operations
       saveCheckoutAddresses,
       savePayment,
       placeOrder,
@@ -850,7 +777,6 @@ export const [CartContext, useCart] = createContextHook(() => {
       fetchOrders,
       fetchOrderDetail,
 
-      // Totals
       subtotal,
       shippingCost,
       total,
@@ -858,7 +784,6 @@ export const [CartContext, useCart] = createContextHook(() => {
       discount,
       itemCount,
 
-      // For compatibility with existing components
       currencyCode: APP_CURRENCY,
       shippingDiscounts: [],
       applicableShippingDiscount: null,

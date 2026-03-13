@@ -1,6 +1,6 @@
 // components/themes/ProductListTheme.tsx
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
 import { useFilteredProducts } from '../../app/hooks/useFilteredProducts';
@@ -9,14 +9,18 @@ import ProductCard from '../ProductCard';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Colors from '@/constants/colors';
 
+const INITIAL_DISPLAY_COUNT = 12;
+const LOAD_MORE_COUNT = 12;
+
 interface ProductListThemeProps {
   theme: Theme;
 }
 
 const ProductListTheme: React.FC<ProductListThemeProps> = ({ theme }) => {
   const { t, isRTL, locale } = useLanguage();
+  const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
   
-  // All hooks must be called at the top level, unconditionally
+  // Get translation and filters
   const translation = useMemo(() => {
     return theme.translations?.find(t => t.localeCode === locale) || 
            theme.translations?.[0];
@@ -25,28 +29,58 @@ const ProductListTheme: React.FC<ProductListThemeProps> = ({ theme }) => {
   const title = translation?.options?.title || theme.name;
   const filters = translation?.options?.filters || [];
   
+  // Extract limit from filters
+  const limitFilter = filters.find(f => f.key === 'limit');
+  const themeLimit = limitFilter ? parseInt(limitFilter.value, 10) : Infinity;
+  
   console.log(`🔍 [ProductListTheme] Theme: ${theme.name}, Title: "${title}"`);
   console.log(`   Filters:`, filters);
+  console.log(`   Theme limit: ${themeLimit}`);
   
-  // Use filtered products hook with theme filters - always called
-  const { data: filteredProducts = [], isLoading } = useFilteredProducts(filters);
+  // Use filtered products hook with theme filters
+  const { data: allProducts = [], isLoading } = useFilteredProducts(filters);
   
-  console.log(`   Filtered products count: ${filteredProducts.length}`);
-  console.log(`   Loading state: ${isLoading}`);
+  console.log(`   Total products from API: ${allProducts.length}`);
+  
+  // Respect the theme limit - only show up to themeLimit products total
+  const availableProducts = useMemo(() => {
+    const limited = allProducts.slice(0, themeLimit);
+    console.log(`   Available products after limit (${themeLimit}): ${limited.length}`);
+    return limited;
+  }, [allProducts, themeLimit]);
 
-  // Calculate number of columns based on screen width - always defined
+  // Get displayed products based on current display count
+  const displayedProducts = useMemo(() => {
+    const displayed = availableProducts.slice(0, displayCount);
+    console.log(`   Displayed products (${displayCount}): ${displayed.length}`);
+    return displayed;
+  }, [availableProducts, displayCount]);
+
+  const hasMoreToShow = displayCount < availableProducts.length;
+  const hasReachedLimit = displayCount >= themeLimit || displayCount >= availableProducts.length;
+  
+  console.log(`   State: displayCount=${displayCount}, availableProducts.length=${availableProducts.length}`);
+  console.log(`   Has more to show: ${hasMoreToShow}`);
+  console.log(`   Has reached limit: ${hasReachedLimit}`);
+
+  // Reset display count when theme changes
+  useEffect(() => {
+    console.log(`   🔄 Resetting display count due to theme change`);
+    setDisplayCount(INITIAL_DISPLAY_COUNT);
+  }, [theme.id]);
+
+  // Calculate number of columns
   const numColumns = 2;
   
-  // Format data for grid with empty items to fill the last row - always called
+  // Format data for grid with empty items to fill the last row
   const formattedData = useMemo(() => {
-    if (!filteredProducts.length) return [];
+    if (!displayedProducts.length) return [];
     
     const itemsPerRow = numColumns;
-    const numberOfFullRows = Math.floor(filteredProducts.length / itemsPerRow);
+    const numberOfFullRows = Math.floor(displayedProducts.length / itemsPerRow);
+    let numberOfElementsInLastRow = displayedProducts.length - (numberOfFullRows * itemsPerRow);
     
-    let numberOfElementsInLastRow = filteredProducts.length - (numberOfFullRows * itemsPerRow);
-    
-    const data = [...filteredProducts];
+    const data = [...displayedProducts];
     
     // Add empty items to complete the last row for proper alignment
     while (numberOfElementsInLastRow !== 0 && numberOfElementsInLastRow < itemsPerRow) {
@@ -55,20 +89,40 @@ const ProductListTheme: React.FC<ProductListThemeProps> = ({ theme }) => {
     }
     
     return data;
-  }, [filteredProducts, numColumns]);
+  }, [displayedProducts, numColumns]);
+
+  const handleButtonPress = useCallback(() => {
+    console.log(`   👆 Button pressed, hasReachedLimit=${hasReachedLimit}`);
+    if (hasReachedLimit) {
+      console.log(`   ➡️ Navigating to /products`);
+      router.push('/products');
+    } else {
+      // Show next chunk of products
+      const nextCount = Math.min(
+        displayCount + LOAD_MORE_COUNT,
+        availableProducts.length
+      );
+      console.log(`   📊 Loading more products: ${displayCount} -> ${nextCount}`);
+      setDisplayCount(nextCount);
+    }
+  }, [hasReachedLimit, displayCount, availableProducts.length]);
+
+  const getButtonText = () => {
+    if (hasReachedLimit) return t('seeAll');
+    return t('seeMore');
+  };
 
   // Loading state
   if (isLoading) {
-    console.log(`   ⏳ Loading products for "${title}"...`);
     return (
       <View style={[styles.container, isRTL && styles.containerRTL]}>
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <Text style={[styles.title, isRTL && styles.titleRTL]}>
             {title}
           </Text>
-          {/* No "See All" in loading state */}
         </View>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={[styles.loadingText, isRTL && styles.loadingTextRTL]}>
             {t('loading')}...
           </Text>
@@ -78,15 +132,13 @@ const ProductListTheme: React.FC<ProductListThemeProps> = ({ theme }) => {
   }
 
   // Empty state
-  if (!filteredProducts.length) {
-    console.log(`❌ [ProductListTheme] No products found for "${title}". Filters:`, filters);
+  if (!availableProducts.length) {
     return (
       <View style={[styles.container, isRTL && styles.containerRTL]}>
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <Text style={[styles.title, isRTL && styles.titleRTL]}>
             {title}
           </Text>
-          {/* No "See All" in empty state */}
         </View>
         <View style={[styles.emptyContainer, isRTL && styles.emptyContainerRTL]}>
           <Text style={[styles.emptyText, isRTL && styles.emptyTextRTL]}>
@@ -103,8 +155,6 @@ const ProductListTheme: React.FC<ProductListThemeProps> = ({ theme }) => {
     );
   }
 
-  console.log(`✅ [ProductListTheme] Rendering "${title}" with ${filteredProducts.length} products`);
-
   const renderItem = ({ item }: { item: any }) => {
     if (item.isEmpty) {
       return <View style={[styles.gridItem, styles.emptyGridItem]} />;
@@ -117,17 +167,26 @@ const ProductListTheme: React.FC<ProductListThemeProps> = ({ theme }) => {
     );
   };
 
+  // ALWAYS show button if we have more products than initially displayed
+  // OR if we've reached the limit but haven't shown all products yet
+  const shouldShowButton = availableProducts.length > INITIAL_DISPLAY_COUNT || 
+                          (displayCount < availableProducts.length) ||
+                          hasReachedLimit;
+  
+  console.log(`   🔘 Should show button: ${shouldShowButton} (available: ${availableProducts.length} > ${INITIAL_DISPLAY_COUNT} = ${availableProducts.length > INITIAL_DISPLAY_COUNT})`);
+
   return (
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       <View style={[styles.header, isRTL && styles.headerRTL]}>
         <Text style={[styles.title, isRTL && styles.titleRTL]}>
           {title}
         </Text>
-        <Pressable onPress={() => router.push('/products')}>
-          <Text style={[styles.seeAllText, isRTL && styles.seeAllTextRTL]}>
-            {t('seeAll')}
+        {/* Show progress indicator when we have a button */}
+        {shouldShowButton && (
+          <Text style={[styles.progress, isRTL && styles.progressRTL]}>
+            {displayedProducts.length}/{availableProducts.length}
           </Text>
-        </Pressable>
+        )}
       </View>
       
       <FlatList
@@ -137,8 +196,29 @@ const ProductListTheme: React.FC<ProductListThemeProps> = ({ theme }) => {
         numColumns={numColumns}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={false} // Disable scrolling to allow parent FlatList to handle scrolling
+        scrollEnabled={false}
         contentContainerStyle={styles.listContent}
+        ListFooterComponent={
+          shouldShowButton ? (
+            <View style={styles.footer}>
+              <Pressable
+                onPress={handleButtonPress}
+                style={({ pressed }) => [
+                  styles.button,
+                  pressed && styles.buttonPressed,
+                  hasReachedLimit && styles.seeAllButton,
+                ]}
+              >
+                <Text style={[
+                  styles.buttonText,
+                  hasReachedLimit && styles.seeAllButtonText,
+                ]}>
+                  {getButtonText()}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null
+        }
       />
     </View>
   );
@@ -162,28 +242,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerRTL: {
-    flexDirection: 'row', // Keep as row, not row-reverse
+    flexDirection: 'row',
   },
   
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: Colors.text,
-    flex: 1, // Allow title to take available space
+    flex: 1,
   },
   titleRTL: {
-    textAlign: 'left', // Title stays on left in RTL (since header is reversed by container)
+    textAlign: 'left',
   },
   
-  seeAllText: {
+  progress: {
     fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-    marginLeft: 16, // Add spacing from title
+    color: Colors.textSecondary,
+    marginLeft: 16,
+    fontWeight: '500',
   },
-  seeAllTextRTL: {
+  progressRTL: {
     marginLeft: 0,
-    marginRight: 16, // Add spacing from title in RTL
+    marginRight: 16,
   },
   
   listContent: {
@@ -197,7 +277,7 @@ const styles = StyleSheet.create({
   },
   
   gridItem: {
-    width: '48%', // Slightly less than 50% to account for spacing
+    width: '48%',
     marginBottom: 8,
   },
   
@@ -207,10 +287,53 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   
+  footer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  
+  button: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 25,
+    minWidth: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  
+  buttonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  
+  seeAllButton: {
+    backgroundColor: Colors.secondary || Colors.primary,
+  },
+  
+  buttonText: {
+    color: Colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  seeAllButtonText: {
+    color: Colors.background,
+  },
+  
   loadingContainer: {
     padding: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
   },
   loadingText: {
     fontSize: 16,

@@ -1,4 +1,5 @@
 // types/product.ts
+import { CustomizableOption } from './customizable-options';
 
 export interface BagistoPriceHtml {
   id: string;
@@ -23,12 +24,19 @@ export interface BagistoReview {
   rating: number;
   comment: string;
   createdAt: string;
+  name?: string;
 }
 
 export interface BagistoVariant {
   id: string;
   type: string;
   sku: string;
+  availableForSale?: boolean;
+  price?: number;
+  selectedOptions?: Array<{
+    name: string;
+    value: string;
+  }>;
 }
 
 export interface AdditionalData {
@@ -92,7 +100,55 @@ export interface BagistoProduct {
   reviews: BagistoReview[];
   priceHtml: BagistoPriceHtml;
   additionalData?: AdditionalData[];
-  configurableData?: ConfigurableData;
+  configutableData?: ConfigurableData;
+  relatedProducts?: BagistoProduct[];
+  categories?: Array<{ id: string; name: string }>;
+  brand?: string;
+  reviewCount?: number;
+  selectedConfigurableOption?: string;
+  variantId?: string;
+  customizableOptions?: CustomizableOption[];
 }
 
 export type Product = BagistoProduct;
+
+// Cart related types
+export interface CartItemProduct {
+  id: string;
+  productId: string;
+  name: string;
+  price: number;
+  currencyCode: string;
+  image: string;
+  variantId: string;
+  inStock: boolean;
+  brand: string;
+  type: string;
+  sku: string;
+  selectedConfigurableOption?: string;
+  selectedOptions?: Record<string, string>;
+  customizableOptions?: any[];
+}
+
+export interface CartItemFormattedPrice {
+  price: number;
+  total: number;
+  taxAmount: number;
+  discountAmount: number;
+  currency?: string;
+}
+
+export interface CartItem {
+  id: string;
+  quantity: number;
+  product: CartItemProduct;
+  formattedPrice: CartItemFormattedPrice;
+}
+
+export interface ShippingRate {
+  id?: string;
+  methodTitle?: string;
+  methodDescription?: string;
+  price?: number;
+  formattedPrice?: string;
+}

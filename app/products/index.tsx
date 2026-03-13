@@ -260,35 +260,6 @@ export default function AllProductsScreen() {
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
-      {/* Search Bar */}
-      {/* <View style={[styles.searchContainer, isRTL && styles.searchContainerRTL]}>
-        <View style={[styles.searchInputContainer, isRTL && styles.searchInputContainerRTL]}>
-          <Search 
-            size={20} 
-            color={Colors.textSecondary} 
-            style={[styles.searchIcon, isRTL && styles.searchIconRTL]} 
-          />
-          <TextInput
-            style={[styles.searchInput, isRTL && styles.searchInputRTL]}
-            placeholder={t('searchProducts')}
-            placeholderTextColor={Colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {searchQuery.length > 0 && (
-            <Pressable 
-              style={[styles.clearButton, isRTL && styles.clearButtonRTL]}
-              onPress={() => setSearchQuery('')}
-            >
-              <X size={18} color={Colors.textSecondary} />
-            </Pressable>
-          )}
-        </View>
-      </View> */}
-
       {/* Results Count and Filter Button Row */}
       <View style={[styles.resultsHeader, isRTL && styles.resultsHeaderRTL]}>
         <Text style={[styles.resultsText, isRTL && styles.resultsTextRTL]}>

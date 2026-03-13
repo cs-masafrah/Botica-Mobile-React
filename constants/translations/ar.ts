@@ -457,6 +457,25 @@ const ar = {
   min: "الحد الأدنى",
   max: "الحد الأقصى",
 
+    // ... existing translations
+  "customizableOptions": "خيارات قابلة للتخصيص",
+  "selectOptions": "اختر الخيارات",
+  "selectOption": "اختر خياراً",
+  "enterValue": "أدخل القيمة",
+  "chooseFile": "اختر ملفاً",
+  "supportedFormats": "الصيغ المدعومة",
+  "removeFile": "إزالة الملف",
+  "fileTooLarge": "الملف كبير جداً",
+  "fileSizeLimit": "يجب أن يكون حجم الملف أقل من 10 ميجابايت",
+  "filePickFailed": "فشل اختيار الملف",
+  "totalWithOptions": "الإجمالي مع الخيارات",
+  "pleaseSelectOptions": "يرجى اختيار جميع الخيارات المطلوبة قبل الإضافة إلى السلة",
+  "select": "اختر",
+  "date": "تاريخ",
+  "time": "وقت",
+  "datetime": "تاريخ ووقت",
+
+  "seeMore": "عرض المزيد",
 
 };
 

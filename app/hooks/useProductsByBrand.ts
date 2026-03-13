@@ -23,38 +23,54 @@ const GET_PRODUCTS_BY_BRAND = gql`
       }
       data {
         id
-        name
-        sku
         type
-        urlKey
-        description
-        shortDescription
-        isSaleable
         isInWishlist
         isInSale
-        averageRating
-        percentageRating
+        isSaleable
+        name
+        shareURL
+        urlKey
+        shortDescription
+        description
+        sku
+        parentId
+        
+        # Add direct price fields (cart needs these)
+        price
+        specialPrice
+        specialPriceFrom
+        specialPriceTo
+        weight
+        
+        variants {
+          id
+          type
+          sku
+          price
+          specialPrice
+        }
+        
         images {
           id
           type
           url
           productId
+          path
         }
-        inventories {
-          qty
-        }
-        categories {
-          id
-          name
-          slug
-        }
+        
+        averageRating
+        percentageRating
+        
         reviews {
           id
           title
           rating
           comment
+          status
+          name
           createdAt
         }
+        
         priceHtml {
           id
           type
@@ -64,17 +80,22 @@ const GET_PRODUCTS_BY_BRAND = gql`
           finalPrice
           formattedFinalPrice
         }
+        
         additionalData {
           id
           label
           value
           type
+          code
         }
-        variants {
+        
+        # Add categories
+        categories {
           id
-          type
-          sku
+          name
+          slug
         }
+        
         configutableData {
           attributes {
             id
@@ -87,6 +108,46 @@ const GET_PRODUCTS_BY_BRAND = gql`
               swatchType
               swatchValue
             }
+          }
+          index {
+            id
+            attributeOptionIds {
+              attributeId
+              attributeCode
+              attributeOptionId
+            }
+          }
+          variantPrices {
+            id
+            regularPrice {
+              price
+              formattedPrice
+            }
+            finalPrice {
+              price
+              formattedPrice
+            }
+          }
+        }
+        
+        customizableOptions {
+          id
+          label
+          productId
+          type
+          isRequired
+          maxCharacters
+          supportedFileExtensions
+          sortOrder
+          customizableOptionPrices {
+            id
+            isDefault
+            isUserDefined
+            label
+            price
+            productCustomizableOptionId
+            qty
+            sortOrder
           }
         }
       }

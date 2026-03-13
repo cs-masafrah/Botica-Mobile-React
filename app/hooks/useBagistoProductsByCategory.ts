@@ -5,7 +5,7 @@ import { BAGISTO_CONFIG } from "@/constants/bagisto";
 const GRAPHQL_ENDPOINT = BAGISTO_CONFIG.baseUrl;
 
 const GET_PRODUCTS_BY_CATEGORY = gql`
-  query GetProductsByCategory($input: [FilterHomeCategoriesInput!]) {
+  query allProducts($input: [FilterHomeCategoriesInput!]) {
     allProducts(input: $input) {
       paginatorInfo {
         count
@@ -16,34 +16,43 @@ const GET_PRODUCTS_BY_CATEGORY = gql`
       data {
         id
         type
-        sku
+        isInWishlist
+        isInSale
+        isSaleable
         name
-        description
+        shareURL
+        urlKey
         shortDescription
+        description
+        sku
+        parentId
+        
+        # Add direct price fields (cart needs these)
         price
         specialPrice
         specialPriceFrom
         specialPriceTo
+        weight
+        
+        variants {
+          id
+          type
+          sku
+          price
+          specialPrice
+        }
+        
         images {
           id
+          type
           url
-          path
-          type
           productId
+          path
         }
-        isSaleable
-        categories {
-          id
-          name
-          slug
-        }
-        additionalData {
-          id
-          code
-          label
-          value
-          type
-        }
+        
+        averageRating
+        percentageRating
+        
         reviews {
           id
           title
@@ -52,7 +61,86 @@ const GET_PRODUCTS_BY_CATEGORY = gql`
           status
           name
           createdAt
-          updatedAt
+        }
+        
+        priceHtml {
+          id
+          type
+          priceHtml
+          regularPrice
+          formattedRegularPrice
+          finalPrice
+          formattedFinalPrice
+        }
+        
+        additionalData {
+          id
+          label
+          value
+          type
+          code
+        }
+        
+        # Add categories
+        categories {
+          id
+          name
+          slug
+        }
+        
+        configutableData {
+          attributes {
+            id
+            code
+            label
+            swatchType
+            options {
+              id
+              label
+              swatchType
+              swatchValue
+            }
+          }
+          index {
+            id
+            attributeOptionIds {
+              attributeId
+              attributeCode
+              attributeOptionId
+            }
+          }
+          variantPrices {
+            id
+            regularPrice {
+              price
+              formattedPrice
+            }
+            finalPrice {
+              price
+              formattedPrice
+            }
+          }
+        }
+        
+        customizableOptions {
+          id
+          label
+          productId
+          type
+          isRequired
+          maxCharacters
+          supportedFileExtensions
+          sortOrder
+          customizableOptionPrices {
+            id
+            isDefault
+            isUserDefined
+            label
+            price
+            productCustomizableOptionId
+            qty
+            sortOrder
+          }
         }
       }
     }
@@ -67,43 +155,138 @@ interface FilterHomeCategoriesInput {
 interface ProductCategory {
   id: string;
   type: string;
-  sku: string;
+  isInWishlist: boolean;
+  isInSale: boolean;
+  isSaleable: boolean;
   name: string;
-  description: string;
+  shareURL: string;
+  urlKey: string;
   shortDescription: string;
-  price: string;
-  specialPrice: string;
+  description: string;
+  sku: string;
+  parentId: string | null;
+  price?: string;
+  specialPrice?: string;
   specialPriceFrom?: string;
   specialPriceTo?: string;
+  weight?: string;
+  
+  // Add variants array
+  variants?: Array<{
+    id: string;
+    type: string;
+    sku: string;
+    price?: string;
+    specialPrice?: string;
+    selectedOptions?: Array<{
+      attributeId: string;
+      attributeCode: string;
+      attributeOptionId: string;
+    }>;
+  }>;
+  
   images: Array<{
     id: string;
+    type: string;
     url: string;
-    path: string;
-    type: string;
     productId: string;
+    path?: string;
   }>;
-  isSaleable: boolean;
-  categories: Array<{
-    id: string;
-    name: string;
-    slug: string;
-  }>;
-  additionalData: Array<{
-    id: string;
-    code: string;
-    label: string;
-    value: string;
-    type: string;
-  }>;
+  
+  averageRating: number;
+  percentageRating: number;
+  
   reviews: Array<{
     id: string;
     title: string;
     rating: number;
     comment: string;
-    status: string;
-    name: string;
+    status?: string;
+    name?: string;
     createdAt: string;
-    updatedAt: string;
+    updatedAt?: string;
+  }>;
+  
+  priceHtml: {
+    id: string;
+    type: string;
+    priceHtml: string;
+    regularPrice: number;
+    formattedRegularPrice: string;
+    finalPrice: number;
+    formattedFinalPrice: string;
+  };
+  
+  additionalData: Array<{
+    id: string;
+    label: string;
+    value: string;
+    type: string;
+    code?: string;
+  }>;
+  
+  // Add categories array
+  categories?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+  }>;
+  
+  // Add configutableData
+  configutableData?: {
+    attributes: Array<{
+      id: string;
+      code: string;
+      label: string;
+      swatchType: string;
+      options: Array<{
+        id: string;
+        label: string;
+        swatchType: string;
+        swatchValue: string;
+      }>;
+    }>;
+    index: Array<{
+      id: string;
+      attributeOptionIds: Array<{
+        attributeId: string;
+        attributeCode: string;
+        attributeOptionId: string;
+      }>;
+    }>;
+    variantPrices: Array<{
+      id: string;
+      regularPrice: {
+        price: number;
+        formattedPrice: string;
+      };
+      finalPrice: {
+        price: number;
+        formattedPrice: string;
+      };
+    }>;
+  };
+  
+  // Add customizableOptions
+  customizableOptions?: Array<{
+    id: number;
+    label: string;
+    productId: string;
+    type: string;
+    isRequired: boolean;
+    maxCharacters: number | null;
+    supportedFileExtensions: string[] | null;
+    sortOrder: number;
+    customizableOptionPrices: Array<{
+      id: number;
+      isDefault: boolean | null;
+      isUserDefined: boolean | null;
+      label: string;
+      price: number;
+      productCustomizableOptionId: string;
+      qty: number | null;
+      sortOrder: number;
+    }>;
   }>;
 }
 
@@ -153,14 +336,27 @@ const transformProductList = (bagistoProduct: ProductCategory): any => {
   
   return {
     id: bagistoProduct.id,
+    productId: bagistoProduct.id, // CRITICAL: Add alias for cart
     name: bagistoProduct.name,
     sku: bagistoProduct.sku,
     type: bagistoProduct.type,
+    // Add direct price fields (CRITICAL for cart)
+    price: price,
+    comparePrice: comparePrice,
+    // Add variant info (CRITICAL for configurable products)
+    variantId: bagistoProduct.variants?.[0]?.id,
+    selectedConfigurableOption: bagistoProduct.variants?.[0]?.id,
+    selectedOptions: bagistoProduct.variants?.[0]?.selectedOptions || [],
+    // Add full variants array
+    variants: bagistoProduct.variants,
     priceHtml: {
-      finalPrice: price.toString(),
-      regularPrice: comparePrice.toString(),
-      formattedFinalPrice: formatPrice(price),
+      id: bagistoProduct.id,
+      type: bagistoProduct.type,
+      priceHtml: `<p class="final-price">${formatPrice(price)}</p>`,
+      regularPrice: comparePrice,
       formattedRegularPrice: formatPrice(comparePrice),
+      finalPrice: price,
+      formattedFinalPrice: formatPrice(price),
     },
     images: bagistoProduct.images.map((img) => ({
       id: img.id,
@@ -170,6 +366,12 @@ const transformProductList = (bagistoProduct: ProductCategory): any => {
       productId: img.productId,
     })),
     additionalData: bagistoProduct.additionalData,
+    // Add configurable data
+    configutableData: bagistoProduct.configutableData,
+    // Add customizable options and flag
+    customizableOptions: bagistoProduct.customizableOptions,
+    hasCustomizableOptions: bagistoProduct.customizableOptions && 
+      bagistoProduct.customizableOptions.length > 0,
     isSaleable: bagistoProduct.isSaleable,
     inStock: bagistoProduct.isSaleable,
     averageRating,

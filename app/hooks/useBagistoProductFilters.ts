@@ -85,92 +85,151 @@ export function useBagistoProductFilters({
         page,
       };
 
-      const query = gql`
-        query GetProductsByAttribute($input: ProductsByAttributeEavInput!) {
-          productsByAttributeEav(input: $input) {
-            data {
+  const query = gql`
+    query GetProductsByAttribute($input: ProductsByAttributeEavInput!) {
+      productsByAttributeEav(input: $input) {
+        data {
+          id
+          sku
+          type
+          parentId
+          attributeFamilyId
+          productNumber
+          name
+          shortDescription
+          description
+          urlKey
+          shareURL
+          new
+          featured
+          status
+          guestCheckout
+          visibleIndividually
+          metaTitle
+          metaKeywords
+          metaDescription
+          price
+          specialPrice
+          specialPriceFrom
+          specialPriceTo
+          weight
+          createdAt
+          updatedAt
+
+          variants {
+            id
+            type
+            sku
+            price
+            specialPrice
+          }
+
+          images {
+            id
+            type
+            url
+            productId
+          }
+
+          isInWishlist
+          isInSale
+          isSaleable
+
+          averageRating
+          percentageRating
+
+          reviews {
+            id
+            title
+            rating
+            comment
+            createdAt
+          }
+
+          priceHtml {
+            id
+            type
+            priceHtml
+            regularPrice
+            formattedRegularPrice
+            finalPrice
+            formattedFinalPrice
+          }
+
+          additionalData {
+            id
+            label
+            value
+            type
+          }
+
+          # Add configutableData for variant products (needed for selectedConfigurableOption)
+          configutableData {
+            attributes {
               id
-              sku
-              type
-              parentId
-              attributeFamilyId
-              productNumber
-              name
-              shortDescription
-              description
-              urlKey
-              shareURL
-              new
-              featured
-              status
-              guestCheckout
-              visibleIndividually
-              metaTitle
-              metaKeywords
-              metaDescription
-              price
-              specialPrice
-              specialPriceFrom
-              specialPriceTo
-              weight
-              createdAt
-              updatedAt
-
-              variants {
-                id
-                type
-                sku
-              }
-
-              images {
-                id
-                type
-                url
-                productId
-              }
-
-              isInWishlist
-              isInSale
-              isSaleable
-
-              averageRating
-              percentageRating
-
-              reviews {
-                id
-                title
-                rating
-                comment
-                createdAt
-              }
-
-              priceHtml {
-                id
-                type
-                priceHtml
-                regularPrice
-                formattedRegularPrice
-                finalPrice
-                formattedFinalPrice
-              }
-
-              additionalData {
+              code
+              label
+              swatchType
+              options {
                 id
                 label
-                value
-                type
+                swatchType
+                swatchValue
               }
             }
+            index {
+              id
+              attributeOptionIds {
+                attributeId
+                attributeCode
+                attributeOptionId
+              }
+            }
+            variantPrices {
+              id
+              regularPrice {
+                price
+                formattedPrice
+              }
+              finalPrice {
+                price
+                formattedPrice
+              }
+            }
+          }
 
-            paginatorInfo {
-              total
-              perPage
-              currentPage
-              lastPage
+          # Add customizableOptions (needed for products with customizable options)
+          customizableOptions {
+            id
+            label
+            productId
+            type
+            isRequired
+            maxCharacters
+            supportedFileExtensions
+            sortOrder
+            customizableOptionPrices {
+              id
+              isDefault
+              isUserDefined
+              label
+              price
+              productCustomizableOptionId
+              qty
+              sortOrder
             }
           }
         }
-      `;
+
+        paginatorInfo {
+          total
+          perPage
+          currentPage
+          lastPage
+        }
+      }
+    }
+`;
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",

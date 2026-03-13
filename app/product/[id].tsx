@@ -8,7 +8,7 @@ import {
   Plus,
   Star,
 } from "lucide-react-native";
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import {
   Dimensions,
   Platform,
@@ -30,6 +30,12 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { ShippingStrip } from "@/components/ShippingStrip";
 import { useBagistoProductById } from "../hooks/useBagistoProductById";
 import { useBagistoProductsByCategory } from "../hooks/useBagistoProductsByCategory";
+import { CustomizableOptions } from "@/components/CustomizableOptions";
+import { 
+  CustomizableOption, 
+  SelectedCustomizableOption,
+  ProductWithCustomizableOptions 
+} from "@/app/types/customizable-options";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -58,49 +64,42 @@ const getCategoryId = (product: any): string => {
   return product?.categories?.[0]?.id || "";
 };
 
-// Helper to get tags from product
-const getTags = (product: any): string[] => {
-  const tagsData = product?.additionalData?.find(
-    (data: any) => data.label.toLowerCase() === "tags" || data.type === "tags",
-  );
-  if (tagsData?.value) {
-    return tagsData.value.split(",").map((tag: string) => tag.trim());
-  }
-  return product?.tags || [];
-};
-
 export default function ProductDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, fromCard } = useLocalSearchParams<{ id: string; fromCard?: string }>();
   const { data: product, isLoading, error } = useBagistoProductById(id);
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { formatPrice, currentCurrency } = useCurrency();
+  const { formatPrice } = useCurrency();
   const { t, isRTL } = useLanguage();
-  const { locale } = useLanguage();
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<
-    Record<string, string>
-  >({});
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [selectedCustomizableOptions, setSelectedCustomizableOptions] = useState<SelectedCustomizableOption[]>([]);
+  const [customizableTotalPrice, setCustomizableTotalPrice] = useState<number>(0);
+  const [showCustomizableOptions, setShowCustomizableOptions] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Get category ID for related products
-  const categoryId = getCategoryId(product);
+  const categoryId = product ? getCategoryId(product) : "";
 
   // Fetch related products by category
-  const { data: categoryProductsData } =
-    useBagistoProductsByCategory(categoryId);
+  const { data: categoryProductsData } = useBagistoProductsByCategory(categoryId);
 
   // Extract brand
   const brand = getBrand(product);
 
+  // Check if product has customizable options
+  const productWithOptions = product as ProductWithCustomizableOptions;
+  const hasCustomizableOptions = product?.customizableOptions?.length > 0;
+
   // Extract price information
-  const price = parseFloat(product?.priceHtml?.finalPrice || "0");
+  const basePrice = parseFloat(product?.priceHtml?.finalPrice || "0");
+  const price = customizableTotalPrice || basePrice;
   const comparePrice = parseFloat(product?.priceHtml?.regularPrice || "0");
-  const hasDiscount = comparePrice > price;
+  const hasDiscount = comparePrice > basePrice;
   const discountPercentage = hasDiscount
-    ? Math.round(((comparePrice - price) / comparePrice) * 100)
+    ? Math.round(((comparePrice - basePrice) / comparePrice) * 100)
     : 0;
 
   // Handle images
@@ -109,13 +108,23 @@ export default function ProductDetailScreen() {
   // Handle variants if available
   const hasVariants = product?.configutableData?.attributes?.length > 0;
 
+  // If coming from product card with options, auto-scroll to options
+  useEffect(() => {
+    if (fromCard === "true" && hasCustomizableOptions) {
+      setShowCustomizableOptions(true);
+      // Scroll to options section
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 300, animated: true });
+      }, 500);
+    }
+  }, [fromCard, hasCustomizableOptions]);
+
   // Get related products from multiple sources
   const allRelatedProducts = useMemo(() => {
     if (!product) return [];
 
     const relatedProductsFromAPI = product.relatedProducts || [];
-    const categoryRelatedProducts =
-      categoryProductsData?.allProducts?.data || [];
+    const categoryRelatedProducts = categoryProductsData?.allProducts?.data || [];
 
     // Combine both sources, remove current product and duplicates
     const combined = [...relatedProductsFromAPI, ...categoryRelatedProducts]
@@ -131,7 +140,7 @@ export default function ProductDetailScreen() {
   }, [product, categoryProductsData, id]);
 
   // Initialize selected options for variants
-  React.useEffect(() => {
+  useEffect(() => {
     if (hasVariants && product?.configutableData?.attributes) {
       const initialOptions: Record<string, string> = {};
       product.configutableData.attributes.forEach((attr: any) => {
@@ -153,7 +162,7 @@ export default function ProductDetailScreen() {
         const selectedOption = attr.options.find(
           (opt: any) => opt.id === selectedOptionId,
         );
-        const variantAttribute = variant.selectedOptions.find(
+        const variantAttribute = variant.selectedOptions?.find(
           (opt: any) => opt.name === attr.code,
         );
         return variantAttribute?.value === selectedOption?.label;
@@ -164,39 +173,71 @@ export default function ProductDetailScreen() {
   const handleAddToCart = async () => {
     if (!product) return;
 
+    // If product has customizable options and none are selected, show them
+    if (hasCustomizableOptions && selectedCustomizableOptions.length === 0) {
+      setShowCustomizableOptions(true);
+      Alert.alert(
+        t("selectOptions"),
+        t("pleaseSelectOptions"),
+        [{ text: t("ok") }]
+      );
+      
+      // Scroll to options section
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 300, animated: true });
+      }, 500);
+      
+      return;
+    }
+
     // Use selected variant if available, otherwise use main product
     const selectedVariant = getSelectedVariant;
     const productToAdd = selectedVariant || product;
 
-    // Prepare product for Bagisto GraphQL API
+    // Prepare product for Bagisto GraphQL API with customizable options
     const bagistoProduct: any = {
       // Basic required fields
       id: product.id,
       productId: product.id,
       name: product.name,
-      price: parseFloat(
-        productToAdd.price || product.priceHtml?.finalPrice || "0",
+      price: customizableTotalPrice || parseFloat(
+        productToAdd.price || product.priceHtml?.finalPrice || "0"
       ),
 
       // Bagisto specific fields
       selectedConfigurableOption: selectedVariant?.id,
       variantId: selectedVariant?.id,
+      
+      // Customizable options
+      customizableOptions: selectedCustomizableOptions.map(opt => ({
+        optionId: opt.optionId,
+        value: opt.optionValue,
+      })),
     };
 
-    console.log("🛒 [PRODUCT PAGE] Adding to cart:", bagistoProduct);
+    console.log("🛒 [PRODUCT PAGE] Adding to cart with options:", bagistoProduct);
 
     try {
-      const result = await addToCart(bagistoProduct, quantity, selectedOptions);
+      const result = await addToCart(
+        bagistoProduct, 
+        quantity, 
+        selectedOptions, 
+        selectedCustomizableOptions
+      );
 
-      if (result.success) {
+      // Check if result has success property
+      if (result && typeof result === 'object' && 'success' in result) {
+        if (result.success) {
+          setAddedToCart(true);
+          setTimeout(() => setAddedToCart(false), 2000);
+          console.log("✅ Added to cart:", result.message);
+        } else {
+          Alert.alert(t("error"), result.message || t("failedToAddToCart"));
+        }
+      } else {
+        // If no success property, assume it worked
         setAddedToCart(true);
         setTimeout(() => setAddedToCart(false), 2000);
-
-        // Show success message if needed
-        console.log("✅ Added to cart:", result.message);
-      } else {
-        // Show error message
-        Alert.alert(t("error"), result.message || t("failedToAddToCart"));
       }
     } catch (error: any) {
       console.error("❌ Error adding to cart:", error);
@@ -212,9 +253,7 @@ export default function ProductDetailScreen() {
 
   if (isLoading) {
     return (
-      <View
-        style={[styles.loadingContainer, isRTL && styles.loadingContainerRTL]}
-      >
+      <View style={[styles.loadingContainer, isRTL && styles.loadingContainerRTL]}>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={[styles.loadingText, isRTL && styles.loadingTextRTL]}>
           {t("loadingProduct")}
@@ -236,9 +275,7 @@ export default function ProductDetailScreen() {
           style={[styles.retryButton, isRTL && styles.retryButtonRTL]}
           onPress={() => router.back()}
         >
-          <Text
-            style={[styles.retryButtonText, isRTL && styles.retryButtonTextRTL]}
-          >
+          <Text style={[styles.retryButtonText, isRTL && styles.retryButtonTextRTL]}>
             {t("goBack")}
           </Text>
         </Pressable>
@@ -259,9 +296,7 @@ export default function ProductDetailScreen() {
           style={[styles.retryButton, isRTL && styles.retryButtonRTL]}
           onPress={() => router.back()}
         >
-          <Text
-            style={[styles.retryButtonText, isRTL && styles.retryButtonTextRTL]}
-          >
+          <Text style={[styles.retryButtonText, isRTL && styles.retryButtonTextRTL]}>
             {t("goBack")}
           </Text>
         </Pressable>
@@ -275,11 +310,14 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={[styles.container, isRTL && styles.containerRTL]}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Image Gallery */}
         <View style={styles.imageContainer}>
           <ScrollView
-            ref={scrollViewRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -318,7 +356,6 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Header Actions */}
-
           <SafeAreaView
             style={[styles.headerActions, isRTL && styles.headerActionsRTL]}
             edges={["top"]}
@@ -330,18 +367,11 @@ export default function ProductDetailScreen() {
             >
               <ArrowLeft
                 size={24}
-                color={Colors.black} // 👈 instead of Colors.text
-                style={
-                  isRTL ? { transform: [{ rotate: "180deg" }] } : undefined
-                }
+                color={Colors.black}
+                style={isRTL ? { transform: [{ rotate: "180deg" }] } : undefined}
               />
             </Pressable>
-            <View
-              style={[
-                styles.headerRightActions,
-                isRTL && styles.headerRightActionsRTL,
-              ]}
-            >
+            <View style={[styles.headerRightActions, isRTL && styles.headerRightActionsRTL]}>
               <Pressable
                 style={styles.actionButton}
                 onPress={() => toggleWishlist(product)}
@@ -358,15 +388,8 @@ export default function ProductDetailScreen() {
 
           {/* Discount Badge */}
           {hasDiscount && (
-            <View
-              style={[styles.discountBadge, isRTL && styles.discountBadgeRTL]}
-            >
-              <Text
-                style={[
-                  styles.discountBadgeText,
-                  isRTL && styles.discountBadgeTextRTL,
-                ]}
-              >
+            <View style={[styles.discountBadge, isRTL && styles.discountBadgeRTL]}>
+              <Text style={[styles.discountBadgeText, isRTL && styles.discountBadgeTextRTL]}>
                 -{discountPercentage}%
               </Text>
             </View>
@@ -374,9 +397,7 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Product Details */}
-        <View
-          style={[styles.detailsContainer, isRTL && styles.detailsContainerRTL]}
-        >
+        <View style={[styles.detailsContainer, isRTL && styles.detailsContainerRTL]}>
           {/* Brand and Name */}
           <View style={[styles.header, isRTL && styles.headerRTL]}>
             <View style={[styles.headerLeft, isRTL && styles.headerLeftRTL]}>
@@ -389,16 +410,9 @@ export default function ProductDetailScreen() {
                 {product.name}
               </Text>
             </View>
-            <View
-              style={[styles.priceContainer, isRTL && styles.priceContainerRTL]}
-            >
+            <View style={[styles.priceContainer, isRTL && styles.priceContainerRTL]}>
               {hasDiscount && (
-                <Text
-                  style={[
-                    styles.compareAtPrice,
-                    isRTL && styles.compareAtPriceRTL,
-                  ]}
-                >
+                <Text style={[styles.compareAtPrice, isRTL && styles.compareAtPriceRTL]}>
                   {formatPrice(comparePrice)}
                 </Text>
               )}
@@ -409,31 +423,15 @@ export default function ProductDetailScreen() {
           </View>
 
           {/* Rating */}
-          <View
-            style={[styles.ratingSection, isRTL && styles.ratingSectionRTL]}
-          >
-            <View
-              style={[
-                styles.ratingContainer,
-                isRTL && styles.ratingContainerRTL,
-              ]}
-            >
+          <View style={[styles.ratingSection, isRTL && styles.ratingSectionRTL]}>
+            <View style={[styles.ratingContainer, isRTL && styles.ratingContainerRTL]}>
               <Star size={16} color={Colors.primary} fill={Colors.primary} />
               <Text style={[styles.ratingText, isRTL && styles.ratingTextRTL]}>
                 {(() => {
-                  // Safely handle averageRating
                   const rating = product?.averageRating;
-                  if (rating === null || rating === undefined) {
-                    return "0.0";
-                  }
-                  // Convert to number if it's a string
-                  const numericRating =
-                    typeof rating === "string" ? parseFloat(rating) : rating;
-                  // Ensure it's a number and has toFixed method
-                  if (
-                    typeof numericRating === "number" &&
-                    !isNaN(numericRating)
-                  ) {
+                  if (rating === null || rating === undefined) return "0.0";
+                  const numericRating = typeof rating === "string" ? parseFloat(rating) : rating;
+                  if (typeof numericRating === "number" && !isNaN(numericRating)) {
                     return numericRating.toFixed(1);
                   }
                   return "0.0";
@@ -447,9 +445,7 @@ export default function ProductDetailScreen() {
 
           {/* SKU */}
           {product.sku && (
-            <View
-              style={[styles.skuContainer, isRTL && styles.skuContainerRTL]}
-            >
+            <View style={[styles.skuContainer, isRTL && styles.skuContainerRTL]}>
               <Text style={[styles.skuLabel, isRTL && styles.skuLabelRTL]}>
                 {t("sku")}:
               </Text>
@@ -460,12 +456,7 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Availability */}
-          <View
-            style={[
-              styles.availabilityContainer,
-              isRTL && styles.availabilityContainerRTL,
-            ]}
-          >
+          <View style={[styles.availabilityContainer, isRTL && styles.availabilityContainerRTL]}>
             <View
               style={[
                 styles.availabilityDot,
@@ -476,21 +467,14 @@ export default function ProductDetailScreen() {
                 },
               ]}
             />
-            <Text
-              style={[
-                styles.availabilityText,
-                isRTL && styles.availabilityTextRTL,
-              ]}
-            >
+            <Text style={[styles.availabilityText, isRTL && styles.availabilityTextRTL]}>
               {isProductAvailable ? t("inStock") : t("outOfStock")}
             </Text>
           </View>
 
           {/* Description */}
           <View style={styles.section}>
-            <Text
-              style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
-            >
+            <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
               {t("description")}
             </Text>
             <Text style={[styles.description, isRTL && styles.descriptionRTL]}>
@@ -506,17 +490,12 @@ export default function ProductDetailScreen() {
           {hasVariants &&
             product.configutableData.attributes.map((attribute: any) => (
               <View key={attribute.id} style={styles.section}>
-                <Text
-                  style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
-                >
+                <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
                   {attribute.label}
                 </Text>
-                <View
-                  style={[styles.optionValues, isRTL && styles.optionValuesRTL]}
-                >
+                <View style={[styles.optionValues, isRTL && styles.optionValuesRTL]}>
                   {attribute.options?.map((option: any) => {
-                    const isSelected =
-                      selectedOptions[attribute.code] === option.id;
+                    const isSelected = selectedOptions[attribute.code] === option.id;
                     return (
                       <Pressable
                         key={option.id}
@@ -547,19 +526,26 @@ export default function ProductDetailScreen() {
               </View>
             ))}
 
+          {/* Customizable Options */}
+          {hasCustomizableOptions && (
+            <View style={styles.section}>
+              <CustomizableOptions
+                options={productWithOptions.customizableOptions || []}
+                onOptionsChange={(selected, totalPrice) => {
+                  setSelectedCustomizableOptions(selected);
+                  setCustomizableTotalPrice(totalPrice);
+                }}
+                basePrice={basePrice}
+              />
+            </View>
+          )}
+
           {/* Quantity Selector */}
           <View style={styles.section}>
-            <Text
-              style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
-            >
+            <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
               {t("quantity")}
             </Text>
-            <View
-              style={[
-                styles.quantitySelector,
-                isRTL && styles.quantitySelectorRTL,
-              ]}
-            >
+            <View style={[styles.quantitySelector, isRTL && styles.quantitySelectorRTL]}>
               <Pressable
                 style={[
                   styles.quantityButton,
@@ -573,9 +559,7 @@ export default function ProductDetailScreen() {
                   color={quantity <= 1 ? Colors.textSecondary : Colors.text}
                 />
               </Pressable>
-              <Text
-                style={[styles.quantityText, isRTL && styles.quantityTextRTL]}
-              >
+              <Text style={[styles.quantityText, isRTL && styles.quantityTextRTL]}>
                 {quantity}
               </Text>
               <Pressable
@@ -590,39 +574,19 @@ export default function ProductDetailScreen() {
           {/* Additional Information */}
           {product.additionalData?.length > 0 && (
             <View style={styles.section}>
-              <Text
-                style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
-              >
+              <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
                 {t("additionalInfo")}
               </Text>
-              <View
-                style={[
-                  styles.additionalDataContainer,
-                  isRTL && styles.additionalDataContainerRTL,
-                ]}
-              >
+              <View style={[styles.additionalDataContainer, isRTL && styles.additionalDataContainerRTL]}>
                 {product.additionalData.map((item: any) => (
                   <View
                     key={item.id}
-                    style={[
-                      styles.additionalDataItem,
-                      isRTL && styles.additionalDataItemRTL,
-                    ]}
+                    style={[styles.additionalDataItem, isRTL && styles.additionalDataItemRTL]}
                   >
-                    <Text
-                      style={[
-                        styles.additionalDataLabel,
-                        isRTL && styles.additionalDataLabelRTL,
-                      ]}
-                    >
+                    <Text style={[styles.additionalDataLabel, isRTL && styles.additionalDataLabelRTL]}>
                       {item.label}
                     </Text>
-                    <Text
-                      style={[
-                        styles.additionalDataValue,
-                        isRTL && styles.additionalDataValueRTL,
-                      ]}
-                    >
+                    <Text style={[styles.additionalDataValue, isRTL && styles.additionalDataValueRTL]}>
                       {item.value}
                     </Text>
                   </View>
@@ -634,72 +598,31 @@ export default function ProductDetailScreen() {
           {/* Reviews */}
           {product.reviews?.length > 0 && (
             <View style={styles.section}>
-              <Text
-                style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
-              >
+              <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
                 {t("customerReviews")}
               </Text>
               {product.reviews.slice(0, 3).map((review: any) => (
-                <View
-                  key={review.id}
-                  style={[styles.reviewItem, isRTL && styles.reviewItemRTL]}
-                >
-                  <View
-                    style={[
-                      styles.reviewHeader,
-                      isRTL && styles.reviewHeaderRTL,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.reviewAuthor,
-                        isRTL && styles.reviewAuthorRTL,
-                      ]}
-                    >
+                <View key={review.id} style={[styles.reviewItem, isRTL && styles.reviewItemRTL]}>
+                  <View style={[styles.reviewHeader, isRTL && styles.reviewHeaderRTL]}>
+                    <Text style={[styles.reviewAuthor, isRTL && styles.reviewAuthorRTL]}>
                       {review.name || t("anonymous")}
                     </Text>
-                    <View
-                      style={[
-                        styles.reviewRating,
-                        isRTL && styles.reviewRatingRTL,
-                      ]}
-                    >
-                      <Star
-                        size={14}
-                        color={Colors.primary}
-                        fill={Colors.primary}
-                      />
-                      <Text
-                        style={[
-                          styles.reviewRatingText,
-                          isRTL && styles.reviewRatingTextRTL,
-                        ]}
-                      >
+                    <View style={[styles.reviewRating, isRTL && styles.reviewRatingRTL]}>
+                      <Star size={14} color={Colors.primary} fill={Colors.primary} />
+                      <Text style={[styles.reviewRatingText, isRTL && styles.reviewRatingTextRTL]}>
                         {review.rating}
                       </Text>
                     </View>
                   </View>
                   {review.title && (
-                    <Text
-                      style={[
-                        styles.reviewTitle,
-                        isRTL && styles.reviewTitleRTL,
-                      ]}
-                    >
+                    <Text style={[styles.reviewTitle, isRTL && styles.reviewTitleRTL]}>
                       {review.title}
                     </Text>
                   )}
-                  <Text
-                    style={[
-                      styles.reviewComment,
-                      isRTL && styles.reviewCommentRTL,
-                    ]}
-                  >
+                  <Text style={[styles.reviewComment, isRTL && styles.reviewCommentRTL]}>
                     {review.comment}
                   </Text>
-                  <Text
-                    style={[styles.reviewDate, isRTL && styles.reviewDateRTL]}
-                  >
+                  <Text style={[styles.reviewDate, isRTL && styles.reviewDateRTL]}>
                     {new Date(review.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
@@ -710,18 +633,13 @@ export default function ProductDetailScreen() {
           {/* Related Products */}
           {allRelatedProducts.length > 0 && (
             <View style={styles.section}>
-              <Text
-                style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
-              >
+              <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
                 {t("relatedProducts")}
               </Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[
-                  styles.relatedScrollContent,
-                  isRTL && styles.relatedScrollContentRTL,
-                ]}
+                contentContainerStyle={[styles.relatedScrollContent, isRTL && styles.relatedScrollContentRTL]}
               >
                 {allRelatedProducts.map((relatedProduct: any) => {
                   const relatedPrice = parseFloat(
@@ -737,14 +655,9 @@ export default function ProductDetailScreen() {
                   return (
                     <Pressable
                       key={relatedProduct.id}
-                      style={[
-                        styles.relatedProductCard,
-                        isRTL && styles.relatedProductCardRTL,
-                      ]}
+                      style={[styles.relatedProductCard, isRTL && styles.relatedProductCardRTL]}
                       onPress={() => {
-                        router.push(
-                          `/product/${encodeURIComponent(relatedProduct.id)}`,
-                        );
+                        router.push(`/product/${encodeURIComponent(relatedProduct.id)}`);
                       }}
                     >
                       {relatedImage ? (
@@ -755,27 +668,12 @@ export default function ProductDetailScreen() {
                           cachePolicy="memory-disk"
                         />
                       ) : (
-                        <View
-                          style={[
-                            styles.relatedProductImage,
-                            styles.placeholderImage,
-                          ]}
-                        />
+                        <View style={[styles.relatedProductImage, styles.placeholderImage]} />
                       )}
 
                       {relatedHasDiscount && (
-                        <View
-                          style={[
-                            styles.relatedDiscountBadge,
-                            isRTL && styles.relatedDiscountBadgeRTL,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.relatedDiscountBadgeText,
-                              isRTL && styles.relatedDiscountBadgeTextRTL,
-                            ]}
-                          >
+                        <View style={[styles.relatedDiscountBadge, isRTL && styles.relatedDiscountBadgeRTL]}>
+                          <Text style={[styles.relatedDiscountBadgeText, isRTL && styles.relatedDiscountBadgeTextRTL]}>
                             -
                             {Math.round(
                               ((relatedComparePrice - relatedPrice) /
@@ -787,63 +685,32 @@ export default function ProductDetailScreen() {
                         </View>
                       )}
 
-                      <View
-                        style={[
-                          styles.relatedProductInfo,
-                          isRTL && styles.relatedProductInfoRTL,
-                        ]}
-                      >
+                      <View style={[styles.relatedProductInfo, isRTL && styles.relatedProductInfoRTL]}>
                         {relatedBrand && (
                           <Text
-                            style={[
-                              styles.relatedProductBrand,
-                              isRTL && styles.relatedProductBrandRTL,
-                            ]}
+                            style={[styles.relatedProductBrand, isRTL && styles.relatedProductBrandRTL]}
                             numberOfLines={1}
                           >
                             {relatedBrand}
                           </Text>
                         )}
                         <Text
-                          style={[
-                            styles.relatedProductName,
-                            isRTL && styles.relatedProductNameRTL,
-                          ]}
+                          style={[styles.relatedProductName, isRTL && styles.relatedProductNameRTL]}
                           numberOfLines={2}
                         >
                           {relatedProduct.name}
                         </Text>
-                        <View
-                          style={[
-                            styles.relatedPriceContainer,
-                            isRTL && styles.relatedPriceContainerRTL,
-                          ]}
-                        >
+                        <View style={[styles.relatedPriceContainer, isRTL && styles.relatedPriceContainerRTL]}>
                           {relatedHasDiscount && (
-                            <Text
-                              style={[
-                                styles.relatedCompareAtPrice,
-                                isRTL && styles.relatedCompareAtPriceRTL,
-                              ]}
-                            >
+                            <Text style={[styles.relatedCompareAtPrice, isRTL && styles.relatedCompareAtPriceRTL]}>
                               {formatPrice(relatedComparePrice)}
                             </Text>
                           )}
-                          <Text
-                            style={[
-                              styles.relatedProductPrice,
-                              isRTL && styles.relatedProductPriceRTL,
-                            ]}
-                          >
+                          <Text style={[styles.relatedProductPrice, isRTL && styles.relatedProductPriceRTL]}>
                             {formatPrice(relatedPrice)}
                           </Text>
                         </View>
-                        <View
-                          style={[
-                            styles.relatedAvailability,
-                            isRTL && styles.relatedAvailabilityRTL,
-                          ]}
-                        >
+                        <View style={[styles.relatedAvailability, isRTL && styles.relatedAvailabilityRTL]}>
                           <View
                             style={[
                               styles.relatedAvailabilityDot,
@@ -854,15 +721,8 @@ export default function ProductDetailScreen() {
                               },
                             ]}
                           />
-                          <Text
-                            style={[
-                              styles.relatedAvailabilityText,
-                              isRTL && styles.relatedAvailabilityTextRTL,
-                            ]}
-                          >
-                            {relatedProduct.isSaleable
-                              ? t("inStock")
-                              : t("outOfStock")}
+                          <Text style={[styles.relatedAvailabilityText, isRTL && styles.relatedAvailabilityTextRTL]}>
+                            {relatedProduct.isSaleable ? t("inStock") : t("outOfStock")}
                           </Text>
                         </View>
                       </View>
@@ -876,10 +736,7 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       {/* Footer Add to Cart Button */}
-      <SafeAreaView
-        style={[styles.footer, isRTL && styles.footerRTL]}
-        edges={["bottom"]}
-      >
+      <SafeAreaView style={[styles.footer, isRTL && styles.footerRTL]} edges={["bottom"]}>
         <Pressable
           style={[
             styles.addToCartButton,
@@ -889,12 +746,7 @@ export default function ProductDetailScreen() {
           onPress={handleAddToCart}
           disabled={!isProductAvailable}
         >
-          <Text
-            style={[
-              styles.addToCartButtonText,
-              isRTL && styles.addToCartButtonTextRTL,
-            ]}
-          >
+          <Text style={[styles.addToCartButtonText, isRTL && styles.addToCartButtonTextRTL]}>
             {!isProductAvailable
               ? t("outOfStock")
               : addedToCart
