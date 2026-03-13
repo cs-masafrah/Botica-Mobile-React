@@ -115,6 +115,62 @@ const GET_FILTERED_PRODUCTS = gql`
           value
           type
         }
+        configutableData {
+          attributes {
+            id
+            code
+            label
+            swatchType
+            options {
+              id
+              label
+              swatchType
+              swatchValue
+            }
+          }
+          index {
+            id
+            attributeOptionIds {
+              attributeId
+              attributeCode
+              attributeOptionId
+            }
+          }
+          variantPrices {
+            id
+            regularPrice {
+              price
+              formattedPrice
+            }
+            finalPrice {
+              price
+              formattedPrice
+            }
+          }
+        }
+        
+        customizableOptions{
+          id
+          label
+          productId
+          type
+          isRequired
+          maxCharacters
+          supportedFileExtensions
+          sortOrder
+          
+          
+          customizableOptionPrices{
+            id
+            isDefault
+            isUserDefined
+            label
+            price
+            productCustomizableOptionId
+            qty
+            sortOrder
+          }
+        }
       }
     }
   }
