@@ -459,6 +459,26 @@ const en = {
   priceRange: "Price Range",
   min: "Min",
   max: "Max",
+
+    // ... existing translations
+  "customizableOptions": "Customizable Options",
+  "selectOptions": "Select options",
+  "selectOption": "Select an option",
+  "enterValue": "Enter value",
+  "chooseFile": "Choose file",
+  "supportedFormats": "Supported formats",
+  "removeFile": "Remove file",
+  "fileTooLarge": "File too large",
+  "fileSizeLimit": "File size must be less than 10MB",
+  "filePickFailed": "Failed to pick file",
+  "totalWithOptions": "Total with options",
+  "pleaseSelectOptions": "Please select all required options before adding to cart",
+  "select": "Select",
+  "date": "date",
+  "time": "time",
+  "datetime": "date and time",
+
+  "seeMore": "See More",
 };
 
 export type TranslationKeys = keyof typeof en;
