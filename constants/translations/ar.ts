@@ -438,13 +438,16 @@ const ar = {
 
   // Forgot Password translations
   enterValidEmail: "الرجاء إدخال بريد إلكتروني صحيح",
-  forgotPasswordFailed: "فشل إرسال رابط إعادة تعيين كلمة المرور. الرجاء المحاولة مرة أخرى.",
-  enterEmailForReset: "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
+  forgotPasswordFailed:
+    "فشل إرسال رابط إعادة تعيين كلمة المرور. الرجاء المحاولة مرة أخرى.",
+  enterEmailForReset:
+    "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
   sendResetLink: "إرسال رابط إعادة التعيين",
   backToLogin: "العودة إلى تسجيل الدخول",
   resetPasswordEmailSent: "تم إرسال البريد الإلكتروني!",
   checkYourEmail: "تحقق من بريدك الإلكتروني",
-  resetPasswordEmailSentMessage: "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
+  resetPasswordEmailSentMessage:
+    "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
 
   // Add these new filter-related translations at the end or in the appropriate section
   filters: "تصفية",
@@ -457,26 +460,29 @@ const ar = {
   min: "الحد الأدنى",
   max: "الحد الأقصى",
 
-    // ... existing translations
-  "customizableOptions": "خيارات قابلة للتخصيص",
-  "selectOptions": "اختر الخيارات",
-  "selectOption": "اختر خياراً",
-  "enterValue": "أدخل القيمة",
-  "chooseFile": "اختر ملفاً",
-  "supportedFormats": "الصيغ المدعومة",
-  "removeFile": "إزالة الملف",
-  "fileTooLarge": "الملف كبير جداً",
-  "fileSizeLimit": "يجب أن يكون حجم الملف أقل من 10 ميجابايت",
-  "filePickFailed": "فشل اختيار الملف",
-  "totalWithOptions": "الإجمالي مع الخيارات",
-  "pleaseSelectOptions": "يرجى اختيار جميع الخيارات المطلوبة قبل الإضافة إلى السلة",
-  "select": "اختر",
-  "date": "تاريخ",
-  "time": "وقت",
-  "datetime": "تاريخ ووقت",
+  // ... existing translations
+  customizableOptions: "خيارات قابلة للتخصيص",
+  selectOptions: "اختر الخيارات",
+  selectOption: "اختر خياراً",
+  enterValue: "أدخل القيمة",
+  chooseFile: "اختر ملفاً",
+  supportedFormats: "الصيغ المدعومة",
+  removeFile: "إزالة الملف",
+  fileTooLarge: "الملف كبير جداً",
+  fileSizeLimit: "يجب أن يكون حجم الملف أقل من 10 ميجابايت",
+  filePickFailed: "فشل اختيار الملف",
+  totalWithOptions: "الإجمالي مع الخيارات",
+  pleaseSelectOptions:
+    "يرجى اختيار جميع الخيارات المطلوبة قبل الإضافة إلى السلة",
+  select: "اختر",
+  date: "تاريخ",
+  time: "وقت",
+  datetime: "تاريخ ووقت",
 
-  "seeMore": "عرض المزيد",
+  seeMore: "عرض المزيد",
 
+  wishlistEmpty: "قائمة الأمنيات فارغة",
+  wishlistEmptyMessage: "احفظ العناصر المفضلة لديك هنا",
 };
 
 export type TranslationKeys = keyof typeof ar;

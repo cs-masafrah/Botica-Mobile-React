@@ -19,7 +19,7 @@ interface ProductByBrandThemeProps {
   locale: string;
 }
 
-const BRAND_SIZE = 100;
+const BRAND_SIZE = 75;
 const MAX_WORDS_PER_LINE = 2;
 
 const splitTwoLinesByWords = (text: string) => {
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   brandItem: {
     alignItems: "center",
     marginRight: 0,
-    width: BRAND_SIZE + 30,
+    width: BRAND_SIZE + 15,
   },
 
   brandItemRTL: {

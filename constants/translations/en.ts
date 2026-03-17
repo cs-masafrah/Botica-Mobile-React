@@ -185,7 +185,7 @@ const en = {
   orderPlacedSuccessfully: "Order Placed Successfully!",
   thankYouForPurchase:
     "Thank you for your purchase. Your order has been received and is being processed.",
-  orderNumber: "Order #",
+  orderNumber: "Order ",
   status: "Status",
   viewMyOrders: "View My Orders",
   selectBillingAddress: "Select Billing Address",
@@ -440,16 +440,18 @@ const en = {
   serviceContent: "Services",
 
   // Forgot Password translations
-    enterValidEmail: "Please enter a valid email address",
-    forgotPasswordFailed: "Failed to send reset email. Please try again.",
-    enterEmailForReset: "Enter your email address and we'll send you a link to reset your password.",
-    sendResetLink: "Send Reset Link",
-    backToLogin: "Back to Login",
-    resetPasswordEmailSent: "Reset email sent!",
-    checkYourEmail: "Check your email",
-    resetPasswordEmailSentMessage: "We've sent a password reset link to your email address.",
-    
-    // Add these new filter-related translations at the end or in the appropriate section
+  enterValidEmail: "Please enter a valid email address",
+  forgotPasswordFailed: "Failed to send reset email. Please try again.",
+  enterEmailForReset:
+    "Enter your email address and we'll send you a link to reset your password.",
+  sendResetLink: "Send Reset Link",
+  backToLogin: "Back to Login",
+  resetPasswordEmailSent: "Reset email sent!",
+  checkYourEmail: "Check your email",
+  resetPasswordEmailSentMessage:
+    "We've sent a password reset link to your email address.",
+
+  // Add these new filter-related translations at the end or in the appropriate section
   filters: "Filters",
   filterHint: "Select gender to filter products",
   inStockOnly: "In Stock Only",
@@ -460,25 +462,30 @@ const en = {
   min: "Min",
   max: "Max",
 
-    // ... existing translations
-  "customizableOptions": "Customizable Options",
-  "selectOptions": "Select options",
-  "selectOption": "Select an option",
-  "enterValue": "Enter value",
-  "chooseFile": "Choose file",
-  "supportedFormats": "Supported formats",
-  "removeFile": "Remove file",
-  "fileTooLarge": "File too large",
-  "fileSizeLimit": "File size must be less than 10MB",
-  "filePickFailed": "Failed to pick file",
-  "totalWithOptions": "Total with options",
-  "pleaseSelectOptions": "Please select all required options before adding to cart",
-  "select": "Select",
-  "date": "date",
-  "time": "time",
-  "datetime": "date and time",
+  // ... existing translations
+  customizableOptions: "Customizable Options",
+  selectOptions: "Select options",
+  selectOption: "Select an option",
+  enterValue: "Enter value",
+  chooseFile: "Choose file",
+  supportedFormats: "Supported formats",
+  removeFile: "Remove file",
+  fileTooLarge: "File too large",
+  fileSizeLimit: "File size must be less than 10MB",
+  filePickFailed: "Failed to pick file",
+  totalWithOptions: "Total with options",
+  pleaseSelectOptions:
+    "Please select all required options before adding to cart",
+  select: "Select",
+  date: "date",
+  time: "time",
+  datetime: "date and time",
 
-  "seeMore": "See More",
+  seeMore: "See More",
+
+  priceSummary: "Price Summary",
+  wishlistEmpty: "Your wishlist is empty",
+  wishlistEmptyMessage: "Save your favorite items here",
 };
 
 export type TranslationKeys = keyof typeof en;
