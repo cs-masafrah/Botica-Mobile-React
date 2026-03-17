@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "BeautyECommercePlatform.app"
-               BlueprintName = "BeautyECommercePlatform"
-               ReferencedContainer = "container:BeautyECommercePlatform.xcodeproj">
+               BuildableName = "Botica.app"
+               BlueprintName = "Botica"
+               ReferencedContainer = "container:Botica.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "BeautyECommercePlatformTests.xctest"
-               BlueprintName = "BeautyECommercePlatformTests"
-               ReferencedContainer = "container:BeautyECommercePlatform.xcodeproj">
+               BuildableName = "BoticaTests.xctest"
+               BlueprintName = "BoticaTests"
+               ReferencedContainer = "container:Botica.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "BeautyECommercePlatform.app"
-            BlueprintName = "BeautyECommercePlatform"
-            ReferencedContainer = "container:BeautyECommercePlatform.xcodeproj">
+            BuildableName = "Botica.app"
+            BlueprintName = "Botica"
+            ReferencedContainer = "container:Botica.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "BeautyECommercePlatform.app"
-            BlueprintName = "BeautyECommercePlatform"
-            ReferencedContainer = "container:BeautyECommercePlatform.xcodeproj">
+            BuildableName = "Botica.app"
+            BlueprintName = "Botica"
+            ReferencedContainer = "container:Botica.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -1,10 +1,21 @@
 PODS:
+  - AppAuth (1.7.6):
+    - AppAuth/Core (= 1.7.6)
+    - AppAuth/ExternalUserAgent (= 1.7.6)
+  - AppAuth/Core (1.7.6)
+  - AppAuth/ExternalUserAgent (1.7.6):
+    - AppAuth/Core
   - EASClient (1.0.7):
+    - ExpoModulesCore
+  - EXAppAuth (11.1.1):
+    - AppAuth (~> 1.2)
+    - ExpoModulesCore
+  - EXApplication (7.0.8):
     - ExpoModulesCore
   - EXAV (15.1.7):
     - ExpoModulesCore
     - ReactCommon/turbomodule/core
-  - EXConstants (18.0.10):
+  - EXConstants (18.0.13):
     - ExpoModulesCore
   - EXImageLoader (6.0.0):
     - ExpoModulesCore
@@ -37,9 +48,15 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - ExpoAppleAuthentication (8.0.8):
+    - ExpoModulesCore
   - ExpoAsset (12.0.10):
     - ExpoModulesCore
   - ExpoBlur (15.0.7):
+    - ExpoModulesCore
+  - ExpoCrypto (15.0.8):
+    - ExpoModulesCore
+  - ExpoDocumentPicker (14.0.8):
     - ExpoModulesCore
   - ExpoFileSystem (19.0.19):
     - ExpoModulesCore
@@ -90,13 +107,15 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - ExpoRandom (14.0.1):
+    - ExpoModulesCore
   - ExpoSplashScreen (31.0.11):
     - ExpoModulesCore
   - ExpoSymbols (1.0.7):
     - ExpoModulesCore
   - ExpoSystemUI (6.0.8):
     - ExpoModulesCore
-  - ExpoWebBrowser (15.0.9):
+  - ExpoWebBrowser (15.0.10):
     - ExpoModulesCore
   - EXStructuredHeaders (5.0.0)
   - EXUpdates (29.0.13):
@@ -1919,6 +1938,50 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNCPicker (2.11.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - RNDateTimePicker (8.4.4):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNGestureHandler (2.28.0):
     - hermes-engine
     - RCTRequired
@@ -2119,14 +2182,19 @@ PODS:
 
 DEPENDENCIES:
   - EASClient (from `../node_modules/expo-eas-client/ios`)
+  - EXAppAuth (from `../node_modules/expo-app-auth/ios`)
+  - EXApplication (from `../node_modules/expo-application/ios`)
   - EXAV (from `../node_modules/expo-av/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - EXImageLoader (from `../node_modules/expo-image-loader/ios`)
   - EXJSONUtils (from `../node_modules/expo-json-utils/ios`)
   - EXManifests (from `../node_modules/expo-manifests/ios`)
   - Expo (from `../node_modules/expo`)
+  - ExpoAppleAuthentication (from `../node_modules/expo-apple-authentication/ios`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
   - ExpoBlur (from `../node_modules/expo-blur/ios`)
+  - ExpoCrypto (from `../node_modules/expo-crypto/ios`)
+  - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoHaptics (from `../node_modules/expo-haptics/ios`)
@@ -2138,6 +2206,7 @@ DEPENDENCIES:
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocation (from `../node_modules/expo-location/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
+  - ExpoRandom (from `../node_modules/expo-random/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - ExpoSymbols (from `../node_modules/expo-symbols/ios`)
   - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
@@ -2217,6 +2286,8 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
+  - "RNCPicker (from `../node_modules/@react-native-picker/picker`)"
+  - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -2225,6 +2296,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - AppAuth
     - libavif
     - libdav1d
     - libwebp
@@ -2237,6 +2309,10 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   EASClient:
     :path: "../node_modules/expo-eas-client/ios"
+  EXAppAuth:
+    :path: "../node_modules/expo-app-auth/ios"
+  EXApplication:
+    :path: "../node_modules/expo-application/ios"
   EXAV:
     :path: "../node_modules/expo-av/ios"
   EXConstants:
@@ -2249,10 +2325,16 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-manifests/ios"
   Expo:
     :path: "../node_modules/expo"
+  ExpoAppleAuthentication:
+    :path: "../node_modules/expo-apple-authentication/ios"
   ExpoAsset:
     :path: "../node_modules/expo-asset/ios"
   ExpoBlur:
     :path: "../node_modules/expo-blur/ios"
+  ExpoCrypto:
+    :path: "../node_modules/expo-crypto/ios"
+  ExpoDocumentPicker:
+    :path: "../node_modules/expo-document-picker/ios"
   ExpoFileSystem:
     :path: "../node_modules/expo-file-system/ios"
   ExpoFont:
@@ -2275,6 +2357,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-location/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
+  ExpoRandom:
+    :path: "../node_modules/expo-random/ios"
   ExpoSplashScreen:
     :path: "../node_modules/expo-splash-screen/ios"
   ExpoSymbols:
@@ -2432,6 +2516,10 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
+  RNCPicker:
+    :path: "../node_modules/@react-native-picker/picker"
+  RNDateTimePicker:
+    :path: "../node_modules/@react-native-community/datetimepicker"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNScreens:
@@ -2444,15 +2532,21 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
   EASClient: 68127f1248d2b25fdc82dbbfb17be95d1c4700be
+  EXAppAuth: c5cd6bec9afea6f3d83b50aaa6bf59d52a857569
+  EXApplication: 1e98d4b1dccdf30627f92917f4b2c5a53c330e5f
   EXAV: ae28256069c4cdde93d185c007d8f68d92902c2e
-  EXConstants: fd688cef4e401dcf798a021cfb5d87c890c30ba3
+  EXConstants: fce59a631a06c4151602843667f7cfe35f81e271
   EXImageLoader: 189e3476581efe3ad4d1d3fb4735b7179eb26f05
   EXJSONUtils: 1d3e4590438c3ee593684186007028a14b3686cd
   EXManifests: 26e15640538c3d5ef028077ebcaf004b744d4932
   Expo: 111394d38f32be09385d4c7f70cc96d2da438d0d
+  ExpoAppleAuthentication: 9413ae9a5e631a424cc04c1b13b0694dbab7d594
   ExpoAsset: d839c8eae8124470332408427327e8f88beb2dfd
   ExpoBlur: 2dd8f64aa31f5d405652c21d3deb2d2588b1852f
+  ExpoCrypto: b6105ebaa15d6b38a811e71e43b52cd934945322
+  ExpoDocumentPicker: 7cd9e71a0f66fb19eb0a586d6f26eee1284692e0
   ExpoFileSystem: 77157a101e03150a4ea4f854b4dd44883c93ae0a
   ExpoFont: cf9d90ec1d3b97c4f513211905724c8171f82961
   ExpoHaptics: 807476b0c39e9d82b7270349d6487928ce32df84
@@ -2464,10 +2558,11 @@ SPEC CHECKSUMS:
   ExpoLinking: 77455aa013e9b6a3601de03ecfab09858ee1b031
   ExpoLocation: 93d7faa0c2adbd5a04686af0c1a61bc6ed3ee2f7
   ExpoModulesCore: e8ec7f8727caf51a49d495598303dd420ca994bf
+  ExpoRandom: d1444df65007bdd4070009efd5dab18e20bf0f00
   ExpoSplashScreen: 268b2f128dc04284c21010540a6c4dd9f95003e3
   ExpoSymbols: 1ae04ce686de719b9720453b988d8bc5bf776c68
   ExpoSystemUI: 2761aa6875849af83286364811d46e8ed8ea64c7
-  ExpoWebBrowser: b973e1351fdcf5fec0c400997b1851f5a8219ec3
+  ExpoWebBrowser: 17b064c621789e41d4816c95c93f429b84971f52
   EXStructuredHeaders: c951e77f2d936f88637421e9588c976da5827368
   EXUpdates: abb57bc0ae1df46b35b5965fb7b7577c899b5be5
   EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734
@@ -2546,6 +2641,8 @@ SPEC CHECKSUMS:
   ReactCommon: 08810150b1206cc44aecf5f6ae19af32f29151a8
   ReactNativeDependencies: 71ce9c28beb282aa720ea7b46980fff9669f428a
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
+  RNCPicker: a7170edbcbf8288de8edb2502e08e7fc757fa755
+  RNDateTimePicker: be0e44bcb9ed0607c7c5f47dbedd88cf091f6791
   RNGestureHandler: 2914750df066d89bf9d8f48a10ad5f0051108ac3
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845
   RNSVG: 31d6639663c249b7d5abc9728dde2041eb2a3c34
@@ -2556,6 +2653,6 @@ SPEC CHECKSUMS:
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: 5934998fbeaef7845dbf698f698518695ab4cd1a
 
-PODFILE CHECKSUM: 9a712ab2cb770b0d0dcc9935a94568d6de8a50f2
+PODFILE CHECKSUM: 510f4261b5c3a97991337a59fb27c6ad168aaa5d
 
 COCOAPODS: 1.16.2
