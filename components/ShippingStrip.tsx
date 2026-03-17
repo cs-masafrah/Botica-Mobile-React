@@ -1,44 +1,54 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
-import { useAddress } from '@/contexts/AddressContext';
-import { useLanguage } from '@/contexts/LanguageContext';
-import Colors from '@/constants/colors';
+import React from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { router } from "expo-router";
+import { useAddress } from "@/contexts/AddressContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import Colors from "@/constants/colors";
 
 export function ShippingStrip() {
   const { addresses } = useAddress();
   const { t, isRTL } = useLanguage();
 
   const formatAddress = () => {
-    if (addresses.length === 0) return t('noAddress');
-    
-    const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
-    
-    // Format address based on RTL/LTR
+    if (addresses.length === 0) return t("noAddress");
+
+    const defaultAddress =
+      addresses.find((a) => a.defaultAddress) || addresses[0];
+    const separator = isRTL ? "، " : ", ";
+
+    // Flatten the multi-line address (Street 1\nBuilding 5\nApartment 3) into a single line
+    const flattenedAddress = defaultAddress.address
+      ? defaultAddress.address
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .join(separator)
+      : "";
+
+    // Build address parts in standard order (omit building if already included above)
     const parts = [
-      defaultAddress.address1,
-      defaultAddress.address2,
+      flattenedAddress,
       defaultAddress.city,
-      defaultAddress.country
+      defaultAddress.state,
+      defaultAddress.postcode,
+      defaultAddress.country,
     ].filter(Boolean);
-    
-    // For RTL, we might want to reverse the order or use a different separator
-    // This depends on how addresses are typically formatted in Arabic
-    return parts.join(isRTL ? '، ' : ', ');
+
+    return parts.join(separator);
   };
 
   return (
     <View style={[styles.shippingStrip, isRTL && styles.shippingStripRTL]}>
       <Text style={[styles.shippingText, isRTL && styles.shippingTextRTL]}>
-        {t('shippingTo')}
+        {t("shippingTo")}
       </Text>
-      <Pressable 
-        onPress={() => router.push('/addresses')}
+      <Pressable
+        onPress={() => router.push("/addresses")}
         style={[styles.addressButton, isRTL && styles.addressButtonRTL]}
       >
-        <Text 
-          style={[styles.addressText, isRTL && styles.addressTextRTL]} 
-          numberOfLines={1}
+        <Text
+          style={[styles.addressText, isRTL && styles.addressTextRTL]}
+          numberOfLines={5}
         >
           {formatAddress()}
         </Text>
@@ -49,38 +59,38 @@ export function ShippingStrip() {
 
 const styles = StyleSheet.create({
   shippingStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 6,
     backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border || 'rgba(0, 0, 0, 0.05)',
+    borderBottomColor: Colors.border || "rgba(0, 0, 0, 0.05)",
     gap: 6,
   },
   shippingStripRTL: {
-    flexDirection: 'row-reverse',
+    flexDirection: "row-reverse",
   },
   shippingText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textSecondary,
   },
   shippingTextRTL: {
-    textAlign: 'right',
+    textAlign: "right",
   },
   addressButton: {
     flex: 1,
   },
   addressButtonRTL: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   addressText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.primary,
   },
   addressTextRTL: {
-    textAlign: 'right',
+    textAlign: "right",
   },
 });

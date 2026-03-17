@@ -672,13 +672,13 @@ export default function ReelsScreen() {
                 )}
 
                 {/* Stats */}
-                <View
+                {/* <View
                   style={[
                     styles.statsContainer,
                     isRTL && styles.statsContainerRTL,
                   ]}
                 >
-                  <Text
+                    <Text
                     style={[styles.statsText, isRTL && styles.statsTextRTL]}
                   >
                     {item.views_count?.toLocaleString() || 0} {t("views")}
@@ -697,7 +697,7 @@ export default function ReelsScreen() {
                       {(item.duration % 60).toString().padStart(2, "0")}
                     </Text>
                   )}
-                </View>
+                </View>*/}
 
                 {/* Auth status */}
                 {!isAuthenticated && (
@@ -945,7 +945,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     backgroundColor: Colors.primary,
     paddingHorizontal: 24,
-    paddingVertical: 2,
+    paddingVertical: 12,
     borderRadius: 25,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
@@ -953,6 +953,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     alignItems: "center",
+    borderColor: Colors.secondary,
+    borderWidth: 2,
   },
   ctaButtonRTL: {
     alignSelf: "flex-end",
