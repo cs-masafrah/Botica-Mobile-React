@@ -1,4 +1,4 @@
-package com.beautyecommerceplatform
+package app.rork.beauty_ecommerce_platform
 
 import android.app.Application
 import android.content.res.Configuration
