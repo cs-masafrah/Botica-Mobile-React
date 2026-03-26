@@ -126,7 +126,9 @@ class CheckoutService {
           firstName: billing.firstName,
           lastName: billing.lastName,
           email: billing.email,
-          address: billing.address,
+          address: Array.isArray(billing.address)
+                  ? billing.address.join(", ")
+                  : billing.address,
           city: billing.city,
           country: billing.country,
           state: billing.state || '',
@@ -138,7 +140,9 @@ class CheckoutService {
           firstName: shipping.firstName,
           lastName: shipping.lastName,
           email: shipping.email,
-          address: shipping.address,
+          address: Array.isArray(shipping.address)
+                  ? shipping.address.join(", ")
+                  : shipping.address,
           city: shipping.city,
           country: shipping.country,
           state: shipping.state || '',
