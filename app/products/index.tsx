@@ -623,6 +623,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: SPACING,
+    paddingTop: 12,
     paddingBottom: 12,
   },
   resultsHeaderRTL: {
