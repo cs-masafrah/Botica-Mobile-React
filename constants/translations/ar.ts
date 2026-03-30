@@ -483,6 +483,11 @@ const ar = {
 
   wishlistEmpty: "قائمة الأمنيات فارغة",
   wishlistEmptyMessage: "احفظ العناصر المفضلة لديك هنا",
+
+  "viewCollections": "عرض المجموعات",
+  "viewProduct": "عرض المنتج",
+  "viewCategory": "تسوق الفئة",
+  "viewBrand": "تسوق العلامة التجارية"
 };
 
 export type TranslationKeys = keyof typeof ar;

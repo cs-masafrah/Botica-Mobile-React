@@ -25,6 +25,10 @@ const GET_THEME_CUSTOMIZATION = gql`
             slug
             type
             id
+            sku
+            category
+            brand
+            
           }
           services {
             title
@@ -33,6 +37,13 @@ const GET_THEME_CUSTOMIZATION = gql`
           }
           images {
             imageUrl
+            url
+            slug
+            type
+            id
+            sku
+            category
+            brand        
           }
           filters {
             key
