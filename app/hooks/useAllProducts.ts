@@ -1,3 +1,4 @@
+// app/hooks/useAllProducts.ts
 import { useQuery } from "@tanstack/react-query";
 import { request, gql } from "graphql-request";
 import { useAuth } from "@/contexts/AuthContext";
@@ -281,3 +282,5 @@ export const useAllProducts = (
     enabled: options?.enabled !== false,
   });
 };
+
+export { fetchAllProducts };

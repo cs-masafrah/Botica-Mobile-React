@@ -486,6 +486,11 @@ const en = {
   priceSummary: "Price Summary",
   wishlistEmpty: "Your wishlist is empty",
   wishlistEmptyMessage: "Save your favorite items here",
+
+  "viewCollections": "View Collections",
+  "viewProduct": "View Product",
+  "viewCategory": "Shop Category",
+  "viewBrand": "Shop Brand"
 };
 
 export type TranslationKeys = keyof typeof en;

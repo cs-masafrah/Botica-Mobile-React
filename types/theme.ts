@@ -26,6 +26,13 @@ export interface ThemeService {
 
 export interface ThemeImage {
   imageUrl: string;
+  url?: string;
+  slug?: string;
+  type?: string;
+  id?: string;
+  sku?: string;        // Add this
+  category?: string;   // Add this
+  brand?: string;      // Add this
 }
 
 export interface ThemeFilter {
