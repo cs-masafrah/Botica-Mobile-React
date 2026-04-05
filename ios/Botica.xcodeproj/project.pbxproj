@@ -7,29 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0EC7801842E745BBC585FBB4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 029E36F3C4CFD4422A98E287 /* PrivacyInfo.xcprivacy */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		B3ED924F5C3D468578A66B8B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CA3BE2285870010297609DDB /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		BB4BA805DD05B5FA2EFF4456 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9487838B4B3DF5532B565A77 /* ExpoModulesProvider.swift */; };
-		DB105835E682927E98954E18 /* libPods-Botica.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FAA693C634AF80A0C114A092 /* libPods-Botica.a */; };
+		BEE580DE362DE00F23FCBCB1 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F52F60791C9F32C1240BD8 /* ExpoModulesProvider.swift */; };
+		D8B67998215EB6714065C17B /* libPods-Botica.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0E6CDC4EE697A93E0C3BBC2F /* libPods-Botica.a */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		029E36F3C4CFD4422A98E287 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Botica/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		0E6CDC4EE697A93E0C3BBC2F /* libPods-Botica.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Botica.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07F961A680F5B00A75B9A /* Botica.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Botica.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Botica/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Botica/Info.plist; sourceTree = "<group>"; };
-		74B600697A609355CE8471D5 /* Pods-Botica.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Botica.debug.xcconfig"; path = "Target Support Files/Pods-Botica/Pods-Botica.debug.xcconfig"; sourceTree = "<group>"; };
-		9487838B4B3DF5532B565A77 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Botica/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		65F52F60791C9F32C1240BD8 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Botica/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		672BAFBC5ACF80771C8BCA8E /* Pods-Botica.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Botica.debug.xcconfig"; path = "Target Support Files/Pods-Botica/Pods-Botica.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Botica/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		D0239FB272FD3A4671571013 /* Pods-Botica.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Botica.release.xcconfig"; path = "Target Support Files/Pods-Botica/Pods-Botica.release.xcconfig"; sourceTree = "<group>"; };
+		CA3BE2285870010297609DDB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Botica/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		D91542A17918E396E98281B3 /* Pods-Botica.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Botica.release.xcconfig"; path = "Target Support Files/Pods-Botica/Pods-Botica.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Botica/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Botica-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Botica-Bridging-Header.h"; path = "Botica/Botica-Bridging-Header.h"; sourceTree = "<group>"; };
-		FAA693C634AF80A0C114A092 /* libPods-Botica.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Botica.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,13 +37,21 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DB105835E682927E98954E18 /* libPods-Botica.a in Frameworks */,
+				D8B67998215EB6714065C17B /* libPods-Botica.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		05B2CFF98A22B7037256B27F /* Botica */ = {
+			isa = PBXGroup;
+			children = (
+				65F52F60791C9F32C1240BD8 /* ExpoModulesProvider.swift */,
+			);
+			name = Botica;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* Botica */ = {
 			isa = PBXGroup;
 			children = (
@@ -53,7 +61,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				029E36F3C4CFD4422A98E287 /* PrivacyInfo.xcprivacy */,
+				CA3BE2285870010297609DDB /* PrivacyInfo.xcprivacy */,
 			);
 			name = Botica;
 			sourceTree = "<group>";
@@ -62,26 +70,9 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				FAA693C634AF80A0C114A092 /* libPods-Botica.a */,
+				0E6CDC4EE697A93E0C3BBC2F /* libPods-Botica.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		36019C0F49DC1C10D65C96EC /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				D5A7329838E6B12B24A9DC78 /* Botica */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		38080CEE2FED2FA4DD342F32 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				74B600697A609355CE8471D5 /* Pods-Botica.debug.xcconfig */,
-				D0239FB272FD3A4671571013 /* Pods-Botica.release.xcconfig */,
-			);
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -98,8 +89,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				38080CEE2FED2FA4DD342F32 /* Pods */,
-				36019C0F49DC1C10D65C96EC /* ExpoModulesProviders */,
+				E793AFFDE3781362C3C3DFA8 /* Pods */,
+				9BD57DB4310683B6F5E9E669 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -114,6 +105,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		9BD57DB4310683B6F5E9E669 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				05B2CFF98A22B7037256B27F /* Botica */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -123,12 +122,13 @@
 			path = Botica/Supporting;
 			sourceTree = "<group>";
 		};
-		D5A7329838E6B12B24A9DC78 /* Botica */ = {
+		E793AFFDE3781362C3C3DFA8 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				9487838B4B3DF5532B565A77 /* ExpoModulesProvider.swift */,
+				672BAFBC5ACF80771C8BCA8E /* Pods-Botica.debug.xcconfig */,
+				D91542A17918E396E98281B3 /* Pods-Botica.release.xcconfig */,
 			);
-			name = Botica;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,13 +139,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Botica" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				B7DFEBD30A2D2BC648B13ACF /* [Expo] Configure project */,
+				4DB206BB590370482793D258 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				A5A881FF6261B231E4D0070B /* [CP] Embed Pods Frameworks */,
+				DA50D3EDCDD07DC35690CD25 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				0EC7801842E745BBC585FBB4 /* PrivacyInfo.xcprivacy in Resources */,
+				B3ED924F5C3D468578A66B8B /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -241,6 +241,30 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		4DB206BB590370482793D258 /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/Botica/Botica.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-Botica/expo-configure-project.sh",
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Pods/Target Support Files/Pods-Botica/ExpoModulesProvider.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Botica/expo-configure-project.sh\"\n";
+		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -283,7 +307,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Botica/Pods-Botica-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		A5A881FF6261B231E4D0070B /* [CP] Embed Pods Frameworks */ = {
+		DA50D3EDCDD07DC35690CD25 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -305,30 +329,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Botica/Pods-Botica-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		B7DFEBD30A2D2BC648B13ACF /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/.xcode.env",
-				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/Botica/Botica.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-Botica/expo-configure-project.sh",
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-Botica/ExpoModulesProvider.swift",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Botica/expo-configure-project.sh\"\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -337,7 +337,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				BB4BA805DD05B5FA2EFF4456 /* ExpoModulesProvider.swift in Sources */,
+				BEE580DE362DE00F23FCBCB1 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,7 +346,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 74B600697A609355CE8471D5 /* Pods-Botica.debug.xcconfig */;
+			baseConfigurationReference = 672BAFBC5ACF80771C8BCA8E /* Pods-Botica.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -383,7 +383,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D0239FB272FD3A4671571013 /* Pods-Botica.release.xcconfig */;
+			baseConfigurationReference = D91542A17918E396E98281B3 /* Pods-Botica.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

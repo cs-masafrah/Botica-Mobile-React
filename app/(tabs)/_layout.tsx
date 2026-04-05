@@ -10,13 +10,23 @@ import {
 import React from "react";
 import Colors from "@/constants/colors";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useEffect } from "react";
+import { I18nManager } from "react-native";
 
 export default function TabLayout() {
   const { t, isRTL } = useLanguage();
+  // Force RTL/LTR layout based on language
+  useEffect(() => {
+    if (I18nManager.isRTL !== isRTL) {
+      I18nManager.allowRTL(isRTL);
+      // I18nManager.forceRTL(isRTL);
+    }
+  }, [isRTL]);
 
+  console.log("tab is rtl: ", isRTL);
   return (
     <Tabs
-      screenOptions={{
+      screenOptions={() => ({
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textSecondary,
         headerShown: false,
@@ -25,6 +35,7 @@ export default function TabLayout() {
           borderTopColor: Colors.border,
           borderTopWidth: 1,
           flexDirection: isRTL ? "row-reverse" : "row",
+          direction: isRTL ? "rtl" : "ltr",
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -39,7 +50,7 @@ export default function TabLayout() {
           flex: 1,
           paddingVertical: 8,
         },
-      }}
+      })}
     >
       <Tabs.Screen
         name="index"
