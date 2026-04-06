@@ -403,7 +403,7 @@ const en = {
   alreadyHaveAccount: "Already have an account?",
 
   // Brand Products Screen
-  loadingBrandProducts: "Loading {brand} products...",
+  loadingBrandProducts: "Loading products...",
   all: "All",
   noProductsForBrand: "No products found for {brand}",
 
@@ -487,10 +487,10 @@ const en = {
   wishlistEmpty: "Your wishlist is empty",
   wishlistEmptyMessage: "Save your favorite items here",
 
-  "viewCollections": "View Collections",
-  "viewProduct": "View Product",
-  "viewCategory": "Shop Category",
-  "viewBrand": "Shop Brand"
+  viewCollections: "View Collections",
+  viewProduct: "View Product",
+  viewCategory: "Shop Category",
+  viewBrand: "Shop Brand",
 };
 
 export type TranslationKeys = keyof typeof en;

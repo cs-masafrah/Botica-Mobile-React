@@ -321,7 +321,7 @@ export default function BrandProductsScreen() {
         >
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={[styles.loadingText, isRTL && styles.loadingTextRTL]}>
-            {t("loadingBrandProducts", { brand: brandName })}
+            {t("loadingBrandProducts")}
           </Text>
         </View>
       </View>
